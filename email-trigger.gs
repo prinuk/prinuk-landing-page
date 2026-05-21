@@ -40,6 +40,9 @@ function processNewOrders_() {
 
   var orderHeaders = getOrderHeaders_();
   var statusColIndex = orderHeaders.indexOf('סטטוס');
+  var customerEmailColIndex = orderHeaders.indexOf('אימייל לקוח');
+  var customerEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל לקוח');
+  var customerEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל לקוח');
   var statusCol = statusColIndex + 1;
 
   var lastRow = ordersSheet.getLastRow();
@@ -68,8 +71,13 @@ function processNewOrders_() {
   for (var i = 0; i < allRows.length; i++) {
     var row = allRows[i];
     var status = String(row[statusColIndex] || '').trim();
+    var customerEmail = String(row[customerEmailColIndex] || '').trim();
+    var customerEmailStatus = String(row[customerEmailStatusColIndex] || '').trim();
+    var customerEmailError = String(row[customerEmailErrorColIndex] || '').trim();
+    var shouldProcessOrder = status === 'חדש' && shouldProcessOrderFromCustomerEmailStatus_(customerEmailStatus, customerEmail);
+    var shouldSendCustomerEmail = shouldAttemptCustomerEmail_(customerEmailStatus, customerEmail, customerEmailError);
 
-    if (status !== 'חדש') {
+    if (!shouldProcessOrder && !shouldSendCustomerEmail) {
       continue;
     }
 
@@ -83,7 +91,7 @@ function processNewOrders_() {
       productSheetName: String(row[2] || ''),
       fullName: String(row[3] || ''),
       phone: String(row[4] || ''),
-      email: String(row[14] || ''),
+      email: customerEmail,
       title: settings.title,
       saleName: settings.saleName,
       logoUrl: settings.logoUrl,
@@ -118,17 +126,29 @@ function processNewOrders_() {
       };
     });
 
-    trySendOrderNotification_(settings, orderData, normalizedItems);
-    var customerEmailResult = trySendCustomerCopy_(settings, orderData, normalizedItems);
-
-    try {
-      appendPickingOrder_(ss, orderData, normalizedItems);
-    } catch (e) {
-      Logger.log('עדכון דף ליקוט נכשל להזמנה ' + orderId + ': ' + e.message);
+    if (shouldProcessOrder) {
+      trySendOrderNotification_(settings, orderData, normalizedItems);
     }
 
-    ordersSheet.getRange(rowNumber, statusCol).setValue('טופל');
-    updateCustomerEmailStatus_(ordersSheet, rowNumber, customerEmailResult);
+    var customerEmailResult = null;
+
+    if (shouldSendCustomerEmail) {
+      customerEmailResult = sendCustomerCopyWithRetryLimit_(settings, orderData, normalizedItems, customerEmailError);
+    }
+
+    if (shouldProcessOrder) {
+      try {
+        appendPickingOrder_(ss, orderData, normalizedItems);
+      } catch (e) {
+        Logger.log('עדכון דף ליקוט נכשל להזמנה ' + orderId + ': ' + e.message);
+      }
+
+      ordersSheet.getRange(rowNumber, statusCol).setValue('טופל');
+    }
+
+    if (customerEmailResult) {
+      updateCustomerEmailStatus_(ordersSheet, rowNumber, customerEmailResult);
+    }
 
     processedCount++;
   }
@@ -136,4 +156,79 @@ function processNewOrders_() {
   if (processedCount > 0) {
     Logger.log('עובדו ' + processedCount + ' הזמנות חדשות.');
   }
+}
+
+function shouldProcessOrderFromCustomerEmailStatus_(status, email) {
+  if (!email) {
+    return status === 'לא נמסר מייל';
+  }
+
+  return status === 'לא נשלח' || status === 'ממתין לשליחה';
+}
+
+function shouldAttemptCustomerEmail_(status, email, errorText) {
+  if (!email) {
+    return false;
+  }
+
+  if (status === 'לא נשלח' || status === 'ממתין לשליחה') {
+    return true;
+  }
+
+  if (status !== 'נכשל') {
+    return false;
+  }
+
+  if (isInvalidCustomerEmailError_(errorText)) {
+    return false;
+  }
+
+  return getCustomerEmailRetryCount_(errorText) < 3;
+}
+
+function sendCustomerCopyWithRetryLimit_(settings, orderData, normalizedItems, previousError) {
+  if (!isValidCustomerEmail_(orderData.email)) {
+    return {
+      status: 'כתובת מייל לא תקינה',
+      error: 'לא נשלח: כתובת המייל אינה תקינה.'
+    };
+  }
+
+  var previousRetryCount = getCustomerEmailRetryCount_(previousError);
+  var result = trySendCustomerCopy_(settings, orderData, normalizedItems);
+
+  if (result.status !== 'נכשל') {
+    return result;
+  }
+
+  if (isInvalidCustomerEmailError_(result.error)) {
+    return {
+      status: 'כתובת מייל לא תקינה',
+      error: result.error || 'לא נשלח: כתובת המייל אינה תקינה.'
+    };
+  }
+
+  var retryCount = previousRetryCount + 1;
+
+  return {
+    status: retryCount >= 3 ? 'נכשל סופית' : 'נכשל',
+    error: 'ניסיון ' + retryCount + '/3: ' + (result.error || 'שליחת המייל נכשלה.')
+  };
+}
+
+function getCustomerEmailRetryCount_(errorText) {
+  var match = String(errorText || '').match(/ניסיון\s+(\d+)\/3/);
+  return match ? Number(match[1]) || 0 : 0;
+}
+
+function isValidCustomerEmail_(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function isInvalidCustomerEmailError_(errorText) {
+  var text = String(errorText || '').toLowerCase();
+  return text.indexOf('כתובת המייל אינה תקינה') !== -1 ||
+    text.indexOf('invalid email') !== -1 ||
+    text.indexOf('invalid recipient') !== -1 ||
+    text.indexOf('recipient address required') !== -1;
 }
