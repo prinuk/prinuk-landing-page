@@ -1046,11 +1046,43 @@ function trySendOrderNotification_(settings, order, items) {
 }
 
 function trySendNewOrderTelegramAlert_(settings, order, items) {
-  return sendTelegramMessage_(settings, buildNewOrderTelegramMessage_(settings, order, items));
+  return sendTelegramOrderAlert_(settings, order, items);
 }
 
 function trySendEmailProblemTelegramAlert_(settings, order, items, target, errorText) {
   return sendTelegramMessage_(settings, buildEmailProblemTelegramMessage_(settings, order, items, target, errorText));
+}
+
+function sendTelegramOrderAlert_(settings, order, items) {
+  var message = buildNewOrderTelegramMessage_(settings, order, items);
+  var textResult = sendTelegramMessage_(settings, message);
+
+  if (textResult.status !== 'נשלח לטלגרם') {
+    return textResult;
+  }
+
+  var pdf = createOrderPdfSafely_(settings, order, items);
+
+  if (!pdf) {
+    return {
+      status: 'נשלח לטלגרם',
+      error: 'הודעת הטלגרם נשלחה, אבל יצירת ה-PDF נכשלה.'
+    };
+  }
+
+  var documentResult = sendTelegramDocument_(settings, pdf, buildTelegramDocumentCaption_(order, items));
+
+  if (documentResult.status !== 'נשלח לטלגרם') {
+    return {
+      status: 'נשלח לטלגרם',
+      error: 'הודעת הטלגרם נשלחה, אבל שליחת ה-PDF נכשלה: ' + (documentResult.error || 'לא ידוע')
+    };
+  }
+
+  return {
+    status: 'נשלח לטלגרם',
+    error: ''
+  };
 }
 
 function sendTelegramMessage_(settings, message) {
@@ -1074,6 +1106,61 @@ function sendTelegramMessage_(settings, message) {
         parse_mode: 'HTML',
         disable_web_page_preview: 'true'
       }
+    });
+    var code = response.getResponseCode();
+
+    if (code < 200 || code >= 300) {
+      return {
+        status: 'נכשל',
+        error: 'Telegram HTTP ' + code + ': ' + response.getContentText()
+      };
+    }
+
+    return {
+      status: 'נשלח לטלגרם',
+      error: ''
+    };
+  } catch (error) {
+    return {
+      status: 'נכשל',
+      error: error.message
+    };
+  }
+}
+
+function sendTelegramDocument_(settings, documentBlob, caption) {
+  var token = String(settings.telegramBotToken || '').trim();
+  var chatId = String(settings.telegramChatId || '').trim();
+
+  if (!token || !chatId) {
+    return {
+      status: 'לא הוגדר טלגרם',
+      error: ''
+    };
+  }
+
+  if (!documentBlob) {
+    return {
+      status: 'נכשל',
+      error: 'לא נוצר קובץ PDF'
+    };
+  }
+
+  try {
+    var payload = {
+      chat_id: chatId,
+      document: documentBlob
+    };
+
+    if (caption) {
+      payload.caption = caption;
+      payload.parse_mode = 'HTML';
+    }
+
+    var response = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendDocument', {
+      method: 'post',
+      muteHttpExceptions: true,
+      payload: payload
     });
     var code = response.getResponseCode();
 
@@ -1132,6 +1219,15 @@ function buildEmailProblemTelegramMessage_(settings, order, items, target, error
   ].filter(function(line) {
     return line;
   }).join('\n');
+}
+
+function buildTelegramDocumentCaption_(order, items) {
+  return [
+    '<b>PDF להזמנה חדשה</b>',
+    'מספר הזמנה: ' + escapeTelegramHtml_(order.orderId),
+    'לקוח: ' + escapeTelegramHtml_(order.fullName),
+    'שורות: ' + escapeTelegramHtml_(String(items.length))
+  ].join('\n');
 }
 
 function escapeTelegramHtml_(value) {
