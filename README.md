@@ -164,7 +164,7 @@
 3. ליד **Files** בצד שמאל, לוחצים על הפלוס (**+**) > **Script**
 4. נותנים לקובץ את השם: `emailTrigger`
 5. מוחקים את כל מה שכתוב בקובץ החדש
-6. פותחים את הקובץ `email-trigger.gs` מתוך הפרויקט (נמצא בתיקיית הקוד)
+6. פותחים את הקובץ `apps-script/email-trigger.gs` מתוך הפרויקט
 7. מעתיקים את **כל התוכן** ומדביקים בקובץ החדש ב-Apps Script
 8. לוחצים **Ctrl+S** (או **Cmd+S**) לשמירה
 
@@ -264,7 +264,7 @@ order/index.html        טופס ההזמנות
 api/catalog.js          API — קריאת קטלוג מהגיליון
 api/order.js            API — שליחת הזמנה לגיליון
 lib/sheets.js           קוד משותף לעבודה עם Google Sheets
-email-trigger.gs        קוד להוספה ב-Apps Script — טריגר מיילים
+apps-script/email-trigger.gs  קוד להוספה ב-Apps Script — טריגר מיילים
 vercel.json             הגדרות ניתוב ב-Vercel
 package.json            תלויות (googleapis)
 ```
