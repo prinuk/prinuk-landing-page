@@ -1,4 +1,11 @@
 {
+  "routes": [
+    {
+      "src": "/",
+      "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
+      "dest": "/order/index.html"
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
