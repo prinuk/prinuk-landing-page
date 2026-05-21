@@ -3,7 +3,7 @@
  * - שולחת מייל התראה לבעל העסק
  * - שולחת עותק מייל ללקוח
  * - מעדכנת את דף הליקוט
- * - משנה סטטוס ל"טופל"
+ * - לא משנה את סטטוס הטיפול בהזמנה
  *
  * להוספה ל-Apps Script:
  * 1. מעתיקים את כל הקוד הזה
@@ -43,7 +43,8 @@ function processNewOrders_() {
   var customerEmailColIndex = orderHeaders.indexOf('אימייל לקוח');
   var customerEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל לקוח');
   var customerEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל לקוח');
-  var statusCol = statusColIndex + 1;
+  var businessEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל פרינוק');
+  var businessEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל פרינוק');
 
   var lastRow = ordersSheet.getLastRow();
   var allRows = ordersSheet.getRange(2, 1, lastRow - 1, orderHeaders.length).getValues();
@@ -74,10 +75,12 @@ function processNewOrders_() {
     var customerEmail = String(row[customerEmailColIndex] || '').trim();
     var customerEmailStatus = String(row[customerEmailStatusColIndex] || '').trim();
     var customerEmailError = String(row[customerEmailErrorColIndex] || '').trim();
-    var shouldProcessOrder = status === 'חדש' && shouldProcessOrderFromCustomerEmailStatus_(customerEmailStatus, customerEmail);
+    var businessEmailStatus = String(row[businessEmailStatusColIndex] || '').trim();
+    var businessEmailError = String(row[businessEmailErrorColIndex] || '').trim();
     var shouldSendCustomerEmail = shouldAttemptCustomerEmail_(customerEmailStatus, customerEmail, customerEmailError);
+    var shouldSendBusinessEmail = shouldAttemptBusinessEmail_(businessEmailStatus, businessEmailError);
 
-    if (!shouldProcessOrder && !shouldSendCustomerEmail) {
+    if (!shouldSendCustomerEmail && !shouldSendBusinessEmail) {
       continue;
     }
 
@@ -126,28 +129,31 @@ function processNewOrders_() {
       };
     });
 
-    if (shouldProcessOrder) {
-      trySendOrderNotification_(settings, orderData, normalizedItems);
-    }
-
+    var businessEmailResult = null;
     var customerEmailResult = null;
+
+    if (shouldSendBusinessEmail) {
+      businessEmailResult = sendBusinessNotificationWithRetryLimit_(settings, orderData, normalizedItems, businessEmailError);
+    }
 
     if (shouldSendCustomerEmail) {
       customerEmailResult = sendCustomerCopyWithRetryLimit_(settings, orderData, normalizedItems, customerEmailError);
     }
 
-    if (shouldProcessOrder) {
+    if (status === 'חדש' && !pickingSheetHasOrder_(ss, orderId)) {
       try {
         appendPickingOrder_(ss, orderData, normalizedItems);
       } catch (e) {
         Logger.log('עדכון דף ליקוט נכשל להזמנה ' + orderId + ': ' + e.message);
       }
-
-      ordersSheet.getRange(rowNumber, statusCol).setValue('טופל');
     }
 
     if (customerEmailResult) {
       updateCustomerEmailStatus_(ordersSheet, rowNumber, customerEmailResult);
+    }
+
+    if (businessEmailResult) {
+      updateBusinessEmailStatus_(ordersSheet, rowNumber, businessEmailResult);
     }
 
     processedCount++;
@@ -156,14 +162,6 @@ function processNewOrders_() {
   if (processedCount > 0) {
     Logger.log('עובדו ' + processedCount + ' הזמנות חדשות.');
   }
-}
-
-function shouldProcessOrderFromCustomerEmailStatus_(status, email) {
-  if (!email) {
-    return status === 'לא נמסר מייל';
-  }
-
-  return status === 'לא נשלח' || status === 'ממתין לשליחה';
 }
 
 function shouldAttemptCustomerEmail_(status, email, errorText) {
@@ -216,6 +214,52 @@ function sendCustomerCopyWithRetryLimit_(settings, orderData, normalizedItems, p
   };
 }
 
+function shouldAttemptBusinessEmail_(status, errorText) {
+  if (status === 'לא נשלח' || status === 'ממתין לשליחה') {
+    return true;
+  }
+
+  if (status !== 'נכשל') {
+    return false;
+  }
+
+  if (isInvalidCustomerEmailError_(errorText)) {
+    return false;
+  }
+
+  return getCustomerEmailRetryCount_(errorText) < 3;
+}
+
+function sendBusinessNotificationWithRetryLimit_(settings, orderData, normalizedItems, previousError) {
+  if (!settings.notificationEmails) {
+    return {
+      status: 'לא הוגדר מייל',
+      error: ''
+    };
+  }
+
+  var previousRetryCount = getCustomerEmailRetryCount_(previousError);
+  var result = trySendOrderNotification_(settings, orderData, normalizedItems);
+
+  if (result.status !== 'נכשל') {
+    return result;
+  }
+
+  if (isInvalidCustomerEmailError_(result.error)) {
+    return {
+      status: 'כתובת מייל פרינוק לא תקינה',
+      error: result.error || 'לא נשלח: כתובת המייל של פרינוק אינה תקינה.'
+    };
+  }
+
+  var retryCount = previousRetryCount + 1;
+
+  return {
+    status: retryCount >= 3 ? 'נכשל סופית' : 'נכשל',
+    error: 'ניסיון ' + retryCount + '/3: ' + (result.error || 'שליחת מייל פרינוק נכשלה.')
+  };
+}
+
 function getCustomerEmailRetryCount_(errorText) {
   var match = String(errorText || '').match(/ניסיון\s+(\d+)\/3/);
   return match ? Number(match[1]) || 0 : 0;
@@ -231,4 +275,24 @@ function isInvalidCustomerEmailError_(errorText) {
     text.indexOf('invalid email') !== -1 ||
     text.indexOf('invalid recipient') !== -1 ||
     text.indexOf('recipient address required') !== -1;
+}
+
+function pickingSheetHasOrder_(ss, orderId) {
+  var sheet = ss.getSheetByName(PRINOK_CONFIG.PICKING_SHEET_NAME);
+
+  if (!sheet || !orderId || sheet.getLastRow() < 1) {
+    return false;
+  }
+
+  var values = sheet.getDataRange().getDisplayValues();
+
+  for (var row = 0; row < values.length; row++) {
+    for (var col = 0; col < values[row].length; col++) {
+      if (String(values[row][col] || '').trim() === orderId) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
