@@ -28,7 +28,7 @@ function processNewOrders() {
 
 function processNewOrders_() {
   var ss = getSpreadsheet_();
-  var ordersSheet = ss.getSheetByName(PRINOK_CONFIG.ORDERS_SHEET_NAME);
+  var ordersSheet = ensureSheet_(ss, PRINOK_CONFIG.ORDERS_SHEET_NAME, getOrderHeaders_());
 
   if (!ordersSheet || ordersSheet.getLastRow() < 2) {
     return;
