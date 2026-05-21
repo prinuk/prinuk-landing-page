@@ -1,13 +1,10 @@
 {
-  "redirects": [
+  "rewrites": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
-      "destination": "/order/",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
+      "destination": "/order/index.html"
+    },
     {
       "source": "/:path((?!api/|order/).*)",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
