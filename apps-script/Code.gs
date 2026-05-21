@@ -75,12 +75,46 @@ function onOpen() {
     .addSeparator()
     .addItem('העבר הזמנות לארכיון ונקה', 'archiveOrdersAndClear')
     .addItem('בדיקת קטלוג', 'logPrinokCatalog')
+    .addItem('בדיקת טלגרם', 'testTelegramAlert')
     .addToUi();
 }
 
 function logPrinokCatalog() {
   var catalog = getCatalog();
   Logger.log(JSON.stringify(catalog, null, 2));
+}
+
+function testTelegramAlert() {
+  var ss = getSpreadsheet_();
+  ensureSettingsSheet_(ss);
+  var productSheet = getProductSheet_(ss);
+  var settings = getSettings_(ss, productSheet);
+  var order = {
+    timestamp: new Date(),
+    orderId: 'TEST-' + Utilities.formatDate(new Date(), PRINOK_CONFIG.TIMEZONE, 'yyyyMMdd-HHmmss'),
+    productSheetName: productSheet.getName(),
+    fullName: 'בדיקת מערכת',
+    phone: settings.contactPhone || PRINOK_CONFIG.DEFAULT_CONTACT_PHONE,
+    email: '',
+    fulfillment: 'בדיקה',
+    address: '',
+    floor: '',
+    apartment: '',
+    notes: 'בדיקת חיבור טלגרם - לא נוצרה הזמנה בגיליון',
+    itemCount: 0,
+    estimatedTotal: 0,
+    unpricedItemCount: 0
+  };
+  var result = trySendNewOrderTelegramAlert_(settings, order, []);
+  var message = result.status + (result.error ? ': ' + result.error : '');
+
+  ss.toast(message, 'בדיקת טלגרם', 8);
+
+  try {
+    SpreadsheetApp.getUi().alert(message);
+  } catch (error) {
+    Logger.log(message);
+  }
 }
 
 function refreshProductsFromPricingFile() {
