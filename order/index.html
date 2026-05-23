@@ -1522,11 +1522,12 @@
             els.productsRoot.className = '';
             els.productsRoot.innerHTML = catalog.categories.map(renderCategory).join('');
 
-            activeCategory = catalog.categories[0].name;
-            els.categoryNav.innerHTML = catalog.categories.map(function (category, index) {
-                var cls = index === 0 ? 'nav-pill' : 'nav-pill inactive';
-                return '<button class="' + cls + '" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '">' + escapeHtml(category.name) + '</button>';
-            }).join('');
+            activeCategory = '';
+            els.categoryNav.innerHTML = [
+                '<button class="nav-pill" type="button" data-category-tab="">הכל</button>'
+            ].concat(catalog.categories.map(function (category) {
+                return '<button class="nav-pill inactive" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '">' + escapeHtml(category.name) + '</button>';
+            })).join('');
 
             els.categoryNav.querySelectorAll('[data-category-tab]').forEach(function (button) {
                 button.addEventListener('click', function () {
@@ -1534,7 +1535,7 @@
                 });
             });
 
-            showOnlyCategory(activeCategory);
+            applyCategoryFilter();
 
             renderSummary();
         }
@@ -1548,13 +1549,13 @@
                 button.classList.toggle('inactive', !isActive);
             });
 
-            showOnlyCategory(name);
+            applyCategoryFilter();
         }
 
-        function showOnlyCategory(name) {
+        function applyCategoryFilter() {
             els.productsRoot.querySelectorAll('[data-category-section]').forEach(function (section) {
                 var catName = section.id.replace('category-', '');
-                var match = catName === slugify(name);
+                var match = !activeCategory || catName === slugify(activeCategory);
                 section.classList.toggle('hidden', !match);
 
                 if (match) {
@@ -1743,16 +1744,18 @@
             var sections = els.productsRoot.querySelectorAll('[data-category-section]');
 
             if (!query) {
-                showOnlyCategory(activeCategory);
+                applyCategoryFilter();
                 return;
             }
 
             sections.forEach(function (section) {
+                var catName = section.id.replace('category-', '');
+                var categoryMatch = !activeCategory || catName === slugify(activeCategory);
                 var visibleCount = 0;
 
                 section.querySelectorAll('.product-row').forEach(function (row) {
                     var name = normalizeText(row.getAttribute('data-name'));
-                    var visible = name.indexOf(query) !== -1;
+                    var visible = categoryMatch && name.indexOf(query) !== -1;
                     row.classList.toggle('hidden', !visible);
 
                     if (visible) {
@@ -1760,7 +1763,7 @@
                     }
                 });
 
-                section.classList.toggle('hidden', visibleCount === 0);
+                section.classList.toggle('hidden', !categoryMatch || visibleCount === 0);
             });
         }
 
