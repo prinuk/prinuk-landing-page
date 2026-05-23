@@ -91,6 +91,9 @@
 
 ## שלב 4: העלאה ל-Vercel
 
+לפני שמחברים את הדומיינים של הפרודקשן, מומלץ להגדיר סביבת בדיקות מרוחקת.
+ראו: [REMOTE_TESTING.md](REMOTE_TESTING.md).
+
 ### 4.1 ייבוא הפרויקט
 
 1. נכנסים לדשבורד של Vercel: https://vercel.com/dashboard
