@@ -4,6 +4,11 @@
       "src": "/",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
       "dest": "/order/index.html"
+    },
+    {
+      "src": "/",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
+      "dest": "/order/index.html"
     }
   ],
   "rewrites": [
@@ -13,8 +18,18 @@
       "destination": "/order/index.html"
     },
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
+      "destination": "/order/index.html"
+    },
+    {
       "source": "/:path((?!api/|order/).*)",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
+      "destination": "/order/:path*"
+    },
+    {
+      "source": "/:path((?!api/|order/).*)",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
       "destination": "/order/:path*"
     }
   ],
