@@ -130,7 +130,8 @@ function processNewOrders_() {
         },
         quantity: Number(item['כמות'] || 0),
         orderUnit: item['יחידת הזמנה'] || '',
-        lineTotal: lineTotal
+        lineTotal: lineTotal,
+        note: String(item['הערת מוצר'] || '').trim()
       };
     });
 

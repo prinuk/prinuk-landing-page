@@ -564,6 +564,31 @@
             white-space: nowrap;
         }
 
+        .product-note {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .product-note span {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .product-note input {
+            min-height: 40px;
+            border-color: var(--category-border-color, var(--line));
+            font-size: 14px;
+            line-height: 1.35;
+        }
+
+        .product-note input:focus {
+            border-color: var(--category-color, var(--accent));
+            box-shadow: 0 0 0 3px var(--category-soft-color, var(--accent-soft));
+        }
+
         .summary h2 {
             margin-bottom: 10px;
         }
@@ -609,6 +634,14 @@
         .summary-line .summary-price.pending {
             color: var(--amber);
             font-size: 13px;
+        }
+
+        .summary-line .summary-note {
+            grid-column: 1 / -1;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
         }
 
         .summary-meta {
@@ -1017,6 +1050,10 @@
                 font-size: 12.5px;
             }
 
+            .product-note input {
+                min-height: 42px;
+            }
+
             .amount-line {
                 grid-template-columns: 112px minmax(0, 1fr);
                 gap: 8px;
@@ -1281,6 +1318,8 @@
         els.productsRoot.addEventListener('input', function (event) {
             if (event.target.matches('.quantity-input')) {
                 updateRowState(event.target.closest('.product-row'));
+                renderSummary();
+            } else if (event.target.matches('.product-note-input')) {
                 renderSummary();
             }
         });
@@ -1621,7 +1660,19 @@
                 '<span class="price">' + escapeHtml(price) + '</span>',
                 '</div>',
                 isKg ? renderKgControls(product) : renderUnitControls(product),
+                renderProductNote(product),
                 '</article>'
+            ].join('');
+        }
+
+        function renderProductNote(product) {
+            var id = 'note-' + product.id;
+
+            return [
+                '<label class="product-note" for="' + escapeAttr(id) + '">',
+                '<span>הערה למוצר</span>',
+                '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="למשל: בשל, ירוק, קטן, בלי עלים" data-product-id="' + escapeAttr(product.id) + '">',
+                '</label>'
             ].join('');
         }
 
@@ -1723,8 +1774,10 @@
 
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
                 var input = row.querySelector('.quantity-input');
+                var noteInput = row.querySelector('.product-note-input');
                 var rawValue = String(input.value || '').trim();
                 var quantity = Number(rawValue);
+                var note = String(noteInput && noteInput.value || '').trim();
 
                 row.classList.remove('is-invalid');
 
@@ -1771,6 +1824,7 @@
                     name: product.name,
                     mode: mode,
                     quantity: quantity,
+                    note: note,
                     unitLabel: mode === 'kg' ? 'ק״ג' : 'יחידות',
                     estimatedLineTotal: estimatedLineTotal
                 });
@@ -1803,6 +1857,7 @@
                     '<div class="summary-line">',
                     '<strong>' + escapeHtml(item.name) + '</strong>',
                     '<span class="summary-quantity">' + formatQuantity(item.quantity) + ' ' + escapeHtml(item.unitLabel) + '</span>',
+                    item.note ? '<span class="summary-note">הערה: ' + escapeHtml(item.note) + '</span>' : '',
                     '<span class="' + priceClass + '">' + escapeHtml(estimateText) + '</span>',
                     '</div>'
                 ].join('');
@@ -1862,7 +1917,8 @@
                     return {
                         id: item.id,
                         mode: item.mode,
-                        quantity: item.quantity
+                        quantity: item.quantity,
+                        note: item.note
                     };
                 })
             };
@@ -1919,6 +1975,10 @@
 
         function resetProducts() {
             els.productsRoot.querySelectorAll('.quantity-input').forEach(function (input) {
+                input.value = '';
+            });
+
+            els.productsRoot.querySelectorAll('.product-note-input').forEach(function (input) {
                 input.value = '';
             });
 

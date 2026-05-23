@@ -309,6 +309,7 @@ function saveOrder_(payload) {
     }
 
     var quantity = parseQuantity_(item.quantity);
+    var note = String(item.note || '').trim().slice(0, 300);
     var mode = String(item.mode || '').trim();
 
     if (!quantity || quantity <= 0) {
@@ -347,7 +348,8 @@ function saveOrder_(payload) {
       mode: mode,
       quantity: quantity,
       orderUnit: orderUnit,
-      lineTotal: lineTotal
+      lineTotal: lineTotal,
+      note: note
     });
   });
 
@@ -428,7 +430,8 @@ function saveOrder_(payload) {
       line.orderUnit,
       line.product.price,
       line.product.priceUnit || line.product.unit,
-      line.lineTotal
+      line.lineTotal,
+      line.note
     ];
   });
 
@@ -961,7 +964,8 @@ function appendPickingOrderFromRows_(ss, orderRow, itemRows) {
       },
       quantity: itemRow['כמות'],
       orderUnit: itemRow['יחידת הזמנה'],
-      lineTotal: typeof itemRow['סכום מחושב'] === 'number' ? itemRow['סכום מחושב'] : ''
+      lineTotal: typeof itemRow['סכום מחושב'] === 'number' ? itemRow['סכום מחושב'] : '',
+      note: String(itemRow['הערת מוצר'] || '').trim()
     };
   });
 
@@ -979,8 +983,12 @@ function buildPickingRows_(order, items) {
   ];
 
   items.forEach(function(line) {
+    var productText = line.note
+      ? line.product.name + '\nהערה: ' + line.note
+      : line.product.name;
+
     rows.push([
-      line.product.name,
+      productText,
       line.product.department,
       formatQuantity_(line.quantity),
       line.orderUnit,
@@ -1361,10 +1369,13 @@ function createOrderPdfSafely_(settings, order, items) {
 function buildOrderPdfHtml_(settings, order, items) {
   var rows = items.map(function(line) {
     var total = typeof line.lineTotal === 'number' ? formatMoney_(line.lineTotal) : 'לפי חישוב בפועל';
+    var noteHtml = line.note
+      ? '<div style="font-size:11px;color:#667074;margin-top:3px;">הערה: ' + escapeHtml_(line.note) + '</div>'
+      : '';
 
     return [
       '<tr>',
-      '<td>', escapeHtml_(line.product.name), '</td>',
+      '<td>', escapeHtml_(line.product.name), noteHtml, '</td>',
       '<td>', escapeHtml_(line.product.department), '</td>',
       '<td>', escapeHtml_(formatQuantity_(line.quantity)), '</td>',
       '<td>', escapeHtml_(line.orderUnit), '</td>',
@@ -1438,6 +1449,9 @@ function buildNotificationBody_(order, items) {
   items.forEach(function(line) {
     var total = typeof line.lineTotal === 'number' ? formatMoney_(line.lineTotal) : 'לפי חישוב בפועל';
     lines.push('- ' + line.product.name + ': ' + formatQuantity_(line.quantity) + ' ' + line.orderUnit + ' | ' + total);
+    if (line.note) {
+      lines.push('  הערה: ' + line.note);
+    }
   });
 
   return lines.join('\n');
@@ -1460,6 +1474,9 @@ function buildCustomerCopyBody_(order, items) {
   items.forEach(function(line) {
     var total = typeof line.lineTotal === 'number' ? formatMoney_(line.lineTotal) : 'לפי חישוב בפועל';
     lines.push('- ' + line.product.name + ': ' + formatQuantity_(line.quantity) + ' ' + line.orderUnit + ' | ' + total);
+    if (line.note) {
+      lines.push('  הערה: ' + line.note);
+    }
   });
 
   lines.push('');
@@ -1495,10 +1512,13 @@ function buildOrderEmailHtml_(settings, title, intro, order, items, logoCid) {
   var contactText = buildDocumentContactText_(settings);
   var rows = items.map(function(line) {
     var total = typeof line.lineTotal === 'number' ? formatMoney_(line.lineTotal) : 'לפי חישוב בפועל';
+    var noteHtml = line.note
+      ? '<div style="font-size:12px;color:#667074;margin-top:3px;font-weight:normal;">הערה: ' + escapeHtml_(line.note) + '</div>'
+      : '';
 
     return [
       '<tr>',
-      '<td style="border:1px solid #d9ded6;padding:8px;text-align:right;font-weight:bold;">', escapeHtml_(line.product.name), '</td>',
+      '<td style="border:1px solid #d9ded6;padding:8px;text-align:right;font-weight:bold;">', escapeHtml_(line.product.name), noteHtml, '</td>',
       '<td style="border:1px solid #d9ded6;padding:8px;text-align:right;">', escapeHtml_(formatQuantity_(line.quantity)), '</td>',
       '<td style="border:1px solid #d9ded6;padding:8px;text-align:right;">', escapeHtml_(line.orderUnit), '</td>',
       '<td style="border:1px solid #d9ded6;padding:8px;text-align:right;">', escapeHtml_(total), '</td>',
@@ -3019,7 +3039,8 @@ function getOrderItemHeaders_() {
     'יחידת הזמנה',
     'מחיר מהגיליון',
     'יחידת מחיר',
-    'סכום מחושב'
+    'סכום מחושב',
+    'הערת מוצר'
   ];
 }
 
