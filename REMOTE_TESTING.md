@@ -1,72 +1,72 @@
-# Remote testing environment
+# סביבת בדיקות מרוחקת
 
-This project can use Vercel Preview Deployments as the remote test environment.
-That keeps testing close to production because the static pages and `/api/*`
-serverless functions run on the same platform used for production.
+הפרויקט יכול להשתמש ב-Vercel Preview Deployments כסביבת בדיקות מרוחקת.
+כך הבדיקות נשארות קרובות לפרודקשן, כי הדפים הסטטיים ופונקציות השרת
+של `/api/*` רצים על אותה פלטפורמה שמשמשת את האתר החי.
 
-## Recommended setup
+## הגדרה מומלצת
 
-Use two Google Sheets files:
+השתמשו בשני קבצי Google Sheets:
 
-- Production sheet: real products and real orders.
-- Testing sheet: copied from production, safe for test orders.
+- גיליון פרודקשן: מוצרים אמיתיים והזמנות אמיתיות.
+- גיליון בדיקות: עותק של הפרודקשן, שמותר לשלוח אליו הזמנות בדיקה.
 
-Share both sheets with the same Google service account, or create a separate
-service account for testing if you want stricter separation.
+שתפו את שני הגיליונות עם אותו Google service account, או צרו service account
+נפרד לבדיקות אם רוצים הפרדה מחמירה יותר.
 
-## Vercel environments
+## סביבות ב-Vercel
 
-In Vercel, open the project and go to **Settings > Environment Variables**.
+ב-Vercel, פתחו את הפרויקט ועברו אל **Settings > Environment Variables**.
 
-Add production variables with the **Production** environment selected:
+הוסיפו משתני פרודקשן כאשר סביבת **Production** מסומנת:
 
-- `SPREADSHEET_ID`: production Google Sheet ID
-- `GOOGLE_CREDENTIALS`: production service account JSON
+- `SPREADSHEET_ID`: ה-ID של גיליון הפרודקשן
+- `GOOGLE_CREDENTIALS`: קובץ ה-JSON של ה-service account לפרודקשן
 
-Add testing variables with the **Preview** environment selected:
+הוסיפו משתני בדיקות כאשר סביבת **Preview** מסומנת:
 
-- `SPREADSHEET_ID`: testing Google Sheet ID
-- `GOOGLE_CREDENTIALS`: testing service account JSON
+- `SPREADSHEET_ID`: ה-ID של גיליון הבדיקות
+- `GOOGLE_CREDENTIALS`: קובץ ה-JSON של ה-service account לבדיקות
 
-With this setup:
+עם ההגדרה הזו:
 
-- Deployments from `main` use the production sheet.
-- Pull requests and non-production branches use the testing sheet.
+- פריסות מתוך `main` משתמשות בגיליון הפרודקשן.
+- Pull requests וענפים שאינם פרודקשן משתמשים בגיליון הבדיקות.
 
-## Testing flow
+## תהליך בדיקה
 
-1. Create a branch for the change.
-2. Push the branch to GitHub.
-3. Vercel creates a Preview Deployment automatically.
-4. Open the preview URL from the Vercel deployment page.
-5. Test the landing page at `/`.
-6. Test the order form at `/order/`.
-7. Submit a test order and confirm it appears in the testing Google Sheet.
-8. Merge to `main` only after the preview passes.
+1. יוצרים branch עבור השינוי.
+2. עושים push ל-branch ב-GitHub.
+3. Vercel יוצר Preview Deployment אוטומטית.
+4. פותחים את כתובת ה-preview מתוך עמוד ה-deployment ב-Vercel.
+5. בודקים את דף הנחיתה ב-`/`.
+6. בודקים את טופס ההזמנות ב-`/order/`.
+7. שולחים הזמנת בדיקה ומוודאים שהיא מופיעה בגיליון הבדיקות.
+8. ממזגים ל-`main` רק אחרי שה-preview עבר בדיקה.
 
-## Stable testing domain
+## דומיין בדיקות קבוע
 
-For a stable test URL, add this custom domain in Vercel:
+כדי לקבל כתובת בדיקות קבועה, הוסיפו את הדומיין הבא ב-Vercel:
 
 - `test.prinuk.co.il`
 
-Point the domain to Vercel from DNS, then assign it to the preview or staging
-branch deployment you want to test.
+כוונו את הדומיין ל-Vercel דרך ה-DNS, ואז שייכו אותו ל-preview או ל-branch
+של סביבת הבדיקות שרוצים לבדוק.
 
-Recommended test URLs:
+כתובות בדיקה מומלצות:
 
-- Landing page: `https://test.prinuk.co.il/`
-- Order form: `https://test.prinuk.co.il/order/`
+- דף נחיתה: `https://test.prinuk.co.il/`
+- טופס הזמנות: `https://test.prinuk.co.il/order/`
 
-Keep production on:
+השאירו את הפרודקשן על:
 
-- Landing page: `https://prinuk.co.il/`
-- Order form: `https://order.prinuk.co.il/`
+- דף נחיתה: `https://prinuk.co.il/`
+- טופס הזמנות: `https://order.prinuk.co.il/`
 
-This keeps the production shortcut domain `order.prinuk.co.il` unchanged while
-still giving testers a stable and obvious URL for the order form.
+כך דומיין הקיצור של הפרודקשן, `order.prinuk.co.il`, נשאר ללא שינוי,
+ובמקביל לבודקים יש כתובת קבועה וברורה לטופס ההזמנות.
 
-## What not to do
+## מה לא לעשות
 
-Do not test new changes against the production Google Sheet. The order API
-writes directly to the configured sheet, so test submissions are real writes.
+לא לבדוק שינויים חדשים מול גיליון הפרודקשן. ה-API של ההזמנות כותב ישירות
+לגיליון שמוגדר בסביבה, ולכן הזמנות בדיקה הן כתיבות אמיתיות.
