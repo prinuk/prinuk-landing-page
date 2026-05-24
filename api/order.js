@@ -63,6 +63,7 @@ module.exports = async function handler(req, res) {
       itemCount: order.items.length,
       estimatedTotal: order.estimatedTotal,
       unpricedItemCount: order.unpricedItemCount,
+      estimatedWeightItemCount: order.estimatedWeightItemCount,
       customerEmailStatus: customerEmailResult.status,
       businessEmailStatus: businessEmailResult.status,
       telegramStatus: telegramResult.status,
