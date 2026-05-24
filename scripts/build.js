@@ -4,6 +4,7 @@ const path = require('path');
 const { parseProducts } = require('../lib/sheets');
 
 const ROOT = path.resolve(__dirname, '..');
+const OUTPUT_DIR = path.join(ROOT, 'public');
 const REQUIRED_FILES = [
   'index.html',
   'order/index.html',
@@ -13,6 +14,13 @@ const REQUIRED_FILES = [
   'api/order.js',
   'lib/sheets.js',
   'assets/produce-photo-bg.png',
+];
+const STATIC_ENTRIES = [
+  'index.html',
+  'order',
+  'script.js',
+  'styles.css',
+  'assets',
 ];
 
 const SAMPLE_PRODUCTS = [
@@ -93,11 +101,37 @@ function validateProductImages() {
   });
 }
 
+function copyStaticEntry(relativePath) {
+  const from = path.join(ROOT, relativePath);
+  const to = path.join(OUTPUT_DIR, relativePath);
+  const stat = fs.statSync(from);
+
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+
+  if (stat.isDirectory()) {
+    fs.cpSync(from, to, {
+      recursive: true,
+      filter: source => path.basename(source) !== '.DS_Store',
+    });
+    return;
+  }
+
+  fs.copyFileSync(from, to);
+}
+
+function writeStaticOutput() {
+  fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  STATIC_ENTRIES.forEach(copyStaticEntry);
+}
+
 function main() {
   REQUIRED_FILES.forEach(assertFileExists);
   validateStaticReferences();
   validateProductImages();
+  writeStaticOutput();
   console.log('Build validation OK');
+  console.log('Static output written to public/');
 }
 
 try {
