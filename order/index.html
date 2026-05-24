@@ -499,7 +499,9 @@
             display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            padding: 4px;
+            background: #fff;
         }
 
         .product-name {
@@ -1321,7 +1323,6 @@
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
-        var PRODUCT_IMAGE_FALLBACK_URL = '/assets/produce-photo-bg.png';
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -1415,20 +1416,6 @@
             setProductMode(row, button.getAttribute('data-mode-button'));
             renderSummary();
         });
-
-        els.productsRoot.addEventListener('error', function (event) {
-            if (!event.target.matches('.product-image')) {
-                return;
-            }
-
-            if (event.target.dataset.fallbackApplied === '1') {
-                event.target.classList.add('hidden');
-                return;
-            }
-
-            event.target.dataset.fallbackApplied = '1';
-            event.target.src = PRODUCT_IMAGE_FALLBACK_URL;
-        }, true);
 
         function readOrderDraft() {
             try {
@@ -1902,7 +1889,7 @@
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
                 '<span class="price">' + escapeHtml(price) + '</span>',
-                '<span class="row-estimate empty" data-row-estimate>בחרו כמות להצגת סכום</span>',
+                '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
                 isKg ? renderKgControls(product) : renderUnitControls(product),
@@ -1912,7 +1899,11 @@
         }
 
         function renderProductImage(product) {
-            var imageUrl = String(product.imageUrl || PRODUCT_IMAGE_FALLBACK_URL).trim();
+            var imageUrl = String(product.imageUrl || '').trim();
+
+            if (!imageUrl) {
+                return '';
+            }
 
             return [
                 '<div class="product-image-wrap">',
@@ -1926,8 +1917,7 @@
 
             return [
                 '<label class="product-note hidden" for="' + escapeAttr(id) + '">',
-                '<span>הערה למוצר</span>',
-                '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="למשל: בשל, ירוק, קטן, בלי עלים" data-product-id="' + escapeAttr(product.id) + '">',
+                '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="הוסיפו הערה..." aria-label="הערה למוצר" data-product-id="' + escapeAttr(product.id) + '">',
                 '</label>'
             ].join('');
         }
@@ -2159,7 +2149,7 @@
             }
 
             if (!product || !quantity || quantity <= 0) {
-                estimate.textContent = 'בחרו כמות להצגת סכום';
+                estimate.textContent = '';
                 estimate.className = 'row-estimate empty';
                 return;
             }
@@ -2186,7 +2176,7 @@
                 return;
             }
 
-            estimate.textContent = 'סכום: ₪' + formatMoney(lineEstimate.total) + (lineEstimate.isEstimatedWeight ? ' משוער' : '');
+            estimate.textContent = (lineEstimate.isEstimatedWeight ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total);
             estimate.className = 'row-estimate' + (lineEstimate.isEstimatedWeight ? ' pending' : '');
         }
 

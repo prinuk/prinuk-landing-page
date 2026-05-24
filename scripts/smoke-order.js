@@ -173,6 +173,10 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected row estimate to include ₪3, got: ' + result.estimateText);
     }
 
+    if (!result.estimateText.includes('סכום משוער')) {
+      throw new Error('Expected row estimate to use estimated total wording, got: ' + result.estimateText);
+    }
+
     if (!result.summaryTotal.includes('₪3')) {
       throw new Error('Expected summary total to include ₪3, got: ' + result.summaryTotal);
     }

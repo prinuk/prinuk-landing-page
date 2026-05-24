@@ -93,9 +93,10 @@ function validateProductImages() {
   assert(byName['עגבניות שרי צהוב (סלסלה)'].imageUrl === '/assets/produce/cherry-tomatoes-yellow.jpg', 'Cherry tomato image match failed.');
   assert(byName['תפוח פינק ליידי'].imageUrl === '/assets/produce/apple-pink-lady.jpg', 'Pink Lady image match failed.');
   assert(byName['שומר'].estimatedUnitWeightKg === 0.25, 'Missing fennel unit weight estimate.');
+  assert(byName['שומר'].imageUrl === '', 'Products without an image should not use a fallback image.');
 
   products.forEach(product => {
-    if (product.imageUrl.startsWith('/assets/produce/')) {
+    if (product.imageUrl && product.imageUrl.startsWith('/assets/produce/')) {
       assertFileExists(product.imageUrl.slice(1));
     }
   });
