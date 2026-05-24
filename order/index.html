@@ -1916,12 +1916,20 @@
                     apartment: document.getElementById('apartment').value.trim()
                 },
                 notes: document.getElementById('notes').value.trim(),
+                itemNotes: collected.items.reduce(function (notesById, item) {
+                    if (item.note) {
+                        notesById[item.id] = item.note;
+                    }
+                    return notesById;
+                }, {}),
                 items: collected.items.map(function (item) {
                     return {
                         id: item.id,
                         mode: item.mode,
                         quantity: item.quantity,
-                        note: item.note
+                        note: item.note,
+                        comment: item.note,
+                        productNote: item.note
                     };
                 })
             };
