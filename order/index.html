@@ -1260,53 +1260,6 @@
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
-        var UNIT_WEIGHT_ESTIMATES_KG = {
-            'תפוא לבן שק (כ4 קג)': 4,
-            'תפוא לבן תפזורת': 0.25,
-            'תפוא אדום מיוחד דוד משה שק (כ1.7 קג)': 1.7,
-            'תפוא אדום מיוחד דוד משה (תפזורת)': 0.25,
-            'תפוא גורמה בייבי (מארז)': 1.5,
-            'בצל לבן': 0.2,
-            'בצל אדום': 0.2,
-            'מלפפון': 0.15,
-            'עגבניה איכותית': 0.15,
-            'עגבניה לבישול': 0.15,
-            'עגבניות שרי אדום (סלסלה)': 1.2,
-            'עגבניות שרי צהוב (סלסלה)': 1.2,
-            'פלפל אדום': 0.17,
-            'פלפל צהוב': 0.17,
-            'פלפל חריף': 0.07,
-            'קישואים': 0.18,
-            'גזר ארוז': 1.3,
-            'קולורבי': 0.3,
-            'חציל': 0.4,
-            'בטטה': 0.3,
-            'סלק': 0.4,
-            'לימון': 0.15,
-            'אבוקדו': 0.3,
-            'תפוח פינק ליידי': 0.23,
-            'תפוח סמיט': 0.25,
-            'תפוח צהוב': 0.25,
-            'תפוח אדום': 0.25,
-            'אגס': 0.15,
-            'שסק (סלסלה)': 1,
-            'משמש': 0.1,
-            'אפרסק': 0.15,
-            'נקטרינה': 0.2,
-            'שזיף': 0.2,
-            'קווי חול מיוחד': 0.15,
-            'קיווי חול מיוחד': 0.15,
-            'ענב ירוק חול': 1,
-            'ענב ירוק (סלסלה)': 1,
-            'ענב אדום (סלסלה)': 1,
-            'תפוז': 0.35,
-            'בננה': 0.2,
-            'אבטיח': 8,
-            'מלון': 1.5,
-            'כרוב אדום': 1,
-            'כרוב לבן': 1,
-            'שומר': 0.25
-        };
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -2294,7 +2247,7 @@
             }
 
             if (mode === 'unit' && priceUnitType === 'kg') {
-                var estimatedWeightPerUnitKg = getEstimatedUnitWeightKg(product.name);
+                var estimatedWeightPerUnitKg = getEstimatedUnitWeightKg(product);
 
                 if (estimatedWeightPerUnitKg) {
                     var estimatedWeightKg = roundWeight(quantity * estimatedWeightPerUnitKg);
@@ -2316,14 +2269,8 @@
             };
         }
 
-        function getEstimatedUnitWeightKg(productName) {
-            return UNIT_WEIGHT_ESTIMATES_KG[normalizeProductName(productName)] || 0;
-        }
-
-        function normalizeProductName(value) {
-            return normalizeText(value)
-                .replace(/["']/g, '')
-                .replace(/\s+/g, ' ');
+        function getEstimatedUnitWeightKg(product) {
+            return Number(product && product.estimatedUnitWeightKg || 0);
         }
 
         function roundMoney(value) {
