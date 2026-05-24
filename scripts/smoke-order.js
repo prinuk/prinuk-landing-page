@@ -22,6 +22,7 @@ const CATALOG_ROWS = [
   ['עגבניה איכותית', 'ירקות', 'ק״ג', 'ק״ג', '10'],
   ['תפוח פינק ליידי', 'פירות', 'ק״ג', 'ק״ג', '12'],
   ['שומר', 'ירקות', 'יחידות', 'ק״ג', '8'],
+  ['שום קלוף', 'ירקות', 'יחידות', 'יחידות', '5'],
 ];
 
 function findChromeExecutable() {
@@ -148,12 +149,27 @@ async function runSmokeTest(baseUrl, executablePath) {
 
       const noteHiddenBefore = note.classList.contains('hidden');
 
+      input.value = '1';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const kgEstimateText = estimate.textContent;
+
       unitButton.click();
       input.value = '2';
       input.dispatchEvent(new Event('input', { bubbles: true }));
 
+      const unitPricedRow = findRow('שום');
+      if (!unitPricedRow) throw new Error('Unit-priced product row not found.');
+
+      const unitPricedInput = unitPricedRow.querySelector('.quantity-input');
+      const unitPricedEstimate = unitPricedRow.querySelector('[data-row-estimate]');
+
+      unitPricedInput.value = '3';
+      unitPricedInput.dispatchEvent(new Event('input', { bubbles: true }));
+
       return {
         estimateText: estimate.textContent,
+        kgEstimateText,
+        unitPricedEstimateText: unitPricedEstimate.textContent,
         noteHiddenBefore,
         noteHiddenAfter: note.classList.contains('hidden'),
         imageLoaded: image.complete && image.naturalWidth > 0,
@@ -177,8 +193,16 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected row estimate to use estimated total wording, got: ' + result.estimateText);
     }
 
-    if (!result.summaryTotal.includes('₪3')) {
-      throw new Error('Expected summary total to include ₪3, got: ' + result.summaryTotal);
+    if (!result.kgEstimateText.includes('סכום משוער') || !result.kgEstimateText.includes('₪10')) {
+      throw new Error('Expected kg-priced row to use estimated total wording, got: ' + result.kgEstimateText);
+    }
+
+    if (!result.unitPricedEstimateText.includes('סכום: ₪15') || result.unitPricedEstimateText.includes('סכום משוער')) {
+      throw new Error('Expected unit-priced row to use fixed total wording, got: ' + result.unitPricedEstimateText);
+    }
+
+    if (!result.summaryTotal.includes('₪18')) {
+      throw new Error('Expected summary total to include ₪18, got: ' + result.summaryTotal);
     }
   } finally {
     await browser.close();

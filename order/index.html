@@ -2079,6 +2079,7 @@
                     estimatedLineTotal: estimatedLineTotal,
                     estimatedWeightKg: lineEstimate.estimatedWeightKg,
                     estimatedWeightPerUnitKg: lineEstimate.estimatedWeightPerUnitKg,
+                    isEstimatedPrice: lineEstimate.isEstimatedPrice,
                     isEstimatedWeight: lineEstimate.isEstimatedWeight
                 });
 
@@ -2101,7 +2102,7 @@
             els.summaryItems.innerHTML = collected.items.map(function (item) {
                 var estimateText = item.estimatedLineTotal === null
                     ? 'יחושב לפי שקילה בפועל'
-                    : '₪' + formatMoney(item.estimatedLineTotal);
+                    : '₪' + formatMoney(item.estimatedLineTotal) + (item.isEstimatedPrice ? ' משוער' : '');
                 var priceClass = item.estimatedLineTotal === null
                     ? 'summary-price pending'
                     : 'summary-price';
@@ -2176,8 +2177,8 @@
                 return;
             }
 
-            estimate.textContent = (lineEstimate.isEstimatedWeight ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total);
-            estimate.className = 'row-estimate' + (lineEstimate.isEstimatedWeight ? ' pending' : '');
+            estimate.textContent = (lineEstimate.isEstimatedPrice ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total);
+            estimate.className = 'row-estimate' + (lineEstimate.isEstimatedPrice ? ' pending' : '');
         }
 
         function submitOrder(event) {
@@ -2362,6 +2363,7 @@
                     total: roundMoney(quantity * price),
                     estimatedWeightKg: null,
                     estimatedWeightPerUnitKg: null,
+                    isEstimatedPrice: true,
                     isEstimatedWeight: false
                 };
             }
@@ -2371,6 +2373,7 @@
                     total: roundMoney(quantity * price),
                     estimatedWeightKg: null,
                     estimatedWeightPerUnitKg: null,
+                    isEstimatedPrice: false,
                     isEstimatedWeight: false
                 };
             }
@@ -2385,6 +2388,7 @@
                         total: roundMoney(estimatedWeightKg * price),
                         estimatedWeightKg: estimatedWeightKg,
                         estimatedWeightPerUnitKg: estimatedWeightPerUnitKg,
+                        isEstimatedPrice: true,
                         isEstimatedWeight: true
                     };
                 }
@@ -2394,6 +2398,7 @@
                 total: null,
                 estimatedWeightKg: null,
                 estimatedWeightPerUnitKg: null,
+                isEstimatedPrice: priceUnitType === 'kg',
                 isEstimatedWeight: false
             };
         }
