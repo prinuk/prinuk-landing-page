@@ -1,4 +1,13 @@
-const { readCatalog, validateAndBuildOrder, writeOrder } = require('../lib/sheets');
+const {
+  appendPickingOrder,
+  readCatalog,
+  updateOrderNotificationStatuses,
+  validateAndBuildOrder,
+  writeOrder,
+} = require('../lib/sheets');
+const { sendBusinessOrderEmail, sendCustomerOrderEmail } = require('../lib/email');
+const { createOrderPdf } = require('../lib/order-pdf');
+const { sendTelegramOrder } = require('../lib/telegram');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -6,8 +15,47 @@ module.exports = async function handler(req, res) {
 
   try {
     const catalog = await readCatalog();
+    const settings = catalog.settings || {};
     const order = validateAndBuildOrder(req.body, catalog.products);
-    await writeOrder(order);
+    order.settings = settings;
+
+    const writeResult = await writeOrder(order);
+    const documentOrder = {
+      ...order,
+      timestamp: writeResult.timestamp,
+    };
+
+    try {
+      await appendPickingOrder(documentOrder, order.items);
+    } catch (error) {
+      console.error('Picking sheet append failed:', error);
+    }
+
+    let pdfBuffer = null;
+    let pdfError = '';
+
+    try {
+      pdfBuffer = await createOrderPdf(settings, documentOrder, order.items);
+    } catch (error) {
+      pdfError = error.message || 'יצירת PDF נכשלה.';
+      console.error('Order PDF generation failed:', error);
+    }
+
+    const [customerEmailResult, businessEmailResult, telegramResult] = await Promise.all([
+      sendCustomerOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError),
+      sendBusinessOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError),
+      sendTelegramOrder(settings, documentOrder, order.items, pdfBuffer, pdfError),
+    ]);
+
+    try {
+      await updateOrderNotificationStatuses(order.orderId, writeResult.rowNumber, {
+        customerEmail: customerEmailResult,
+        businessEmail: businessEmailResult,
+        telegram: telegramResult,
+      });
+    } catch (error) {
+      console.error('Order notification status update failed:', error);
+    }
 
     res.json({
       ok: true,
@@ -15,7 +63,9 @@ module.exports = async function handler(req, res) {
       itemCount: order.items.length,
       estimatedTotal: order.estimatedTotal,
       unpricedItemCount: order.unpricedItemCount,
-      customerEmailStatus: 'לא נשלח',
+      customerEmailStatus: customerEmailResult.status,
+      businessEmailStatus: businessEmailResult.status,
+      telegramStatus: telegramResult.status,
     });
   } catch (error) {
     console.error('Order error:', error);

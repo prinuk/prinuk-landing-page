@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/order.js": {
+      "maxDuration": 60
+    }
+  },
   "routes": [
     {
       "src": "/",

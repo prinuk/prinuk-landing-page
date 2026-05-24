@@ -4,6 +4,9 @@
     "node": ">=18"
   },
   "dependencies": {
-    "googleapis": "^144.0.0"
+    "@sparticuz/chromium": "^131.0.1",
+    "googleapis": "^144.0.0",
+    "puppeteer-core": "^23.11.1",
+    "resend": "^4.8.0"
   }
 }
