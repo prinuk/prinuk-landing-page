@@ -478,6 +478,30 @@
             background: #fff8f8;
         }
 
+        .product-info {
+            display: grid;
+            grid-template-columns: 76px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .product-image-wrap {
+            width: 76px;
+            height: 76px;
+            border: 1px solid var(--category-border-color, var(--line));
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--category-soft-color, #f5f7f4);
+        }
+
+        .product-image {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .product-name {
             display: flex;
             flex-direction: column;
@@ -494,6 +518,24 @@
             color: var(--muted);
             font-size: 13px;
             font-weight: 700;
+        }
+
+        .row-estimate {
+            color: var(--accent-dark);
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .row-estimate.empty {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .row-estimate.pending {
+            color: var(--amber);
+            font-size: 12px;
+            font-weight: 800;
         }
 
         .amount-line {
@@ -1050,6 +1092,16 @@
                 padding: 10px;
             }
 
+            .product-info {
+                grid-template-columns: 66px minmax(0, 1fr);
+                gap: 10px;
+            }
+
+            .product-image-wrap {
+                width: 66px;
+                height: 66px;
+            }
+
             .product-name strong {
                 font-size: 16px;
                 line-height: 1.25;
@@ -1088,6 +1140,15 @@
         }
 
         @media (max-width: 420px) {
+            .product-info {
+                grid-template-columns: 58px minmax(0, 1fr);
+            }
+
+            .product-image-wrap {
+                width: 58px;
+                height: 58px;
+            }
+
             .amount-line {
                 grid-template-columns: 1fr;
             }
@@ -1260,6 +1321,7 @@
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
+        var PRODUCT_IMAGE_FALLBACK_URL = '/assets/produce-photo-bg.png';
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -1354,6 +1416,20 @@
             renderSummary();
         });
 
+        els.productsRoot.addEventListener('error', function (event) {
+            if (!event.target.matches('.product-image')) {
+                return;
+            }
+
+            if (event.target.dataset.fallbackApplied === '1') {
+                event.target.classList.add('hidden');
+                return;
+            }
+
+            event.target.dataset.fallbackApplied = '1';
+            event.target.src = PRODUCT_IMAGE_FALLBACK_URL;
+        }, true);
+
         function readOrderDraft() {
             try {
                 var rawDraft = window.localStorage.getItem(ORDER_DRAFT_STORAGE_KEY);
@@ -1405,11 +1481,11 @@
                     var note = String(noteInput && noteInput.value || '').trim();
                     var mode = row.getAttribute('data-mode') || 'unit';
 
-                    if (quantity || note || mode !== getDefaultProductMode(id)) {
+                    if (quantity || mode !== getDefaultProductMode(id)) {
                         products[id] = {
                             mode: mode,
                             quantity: quantity,
-                            note: note
+                            note: quantity ? note : ''
                         };
                     }
                 });
@@ -1821,9 +1897,13 @@
 
             return [
                 '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="' + (isKg ? 'kg' : 'unit') + '">',
+                '<div class="product-info">',
+                renderProductImage(product),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
                 '<span class="price">' + escapeHtml(price) + '</span>',
+                '<span class="row-estimate empty" data-row-estimate>בחרו כמות להצגת סכום</span>',
+                '</div>',
                 '</div>',
                 isKg ? renderKgControls(product) : renderUnitControls(product),
                 renderProductNote(product),
@@ -1831,11 +1911,21 @@
             ].join('');
         }
 
+        function renderProductImage(product) {
+            var imageUrl = String(product.imageUrl || PRODUCT_IMAGE_FALLBACK_URL).trim();
+
+            return [
+                '<div class="product-image-wrap">',
+                '<img class="product-image" src="' + escapeAttr(imageUrl) + '" loading="lazy" decoding="async" alt="' + escapeAttr(product.name) + '">',
+                '</div>'
+            ].join('');
+        }
+
         function renderProductNote(product) {
             var id = 'note-' + product.id;
 
             return [
-                '<label class="product-note" for="' + escapeAttr(id) + '">',
+                '<label class="product-note hidden" for="' + escapeAttr(id) + '">',
                 '<span>הערה למוצר</span>',
                 '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="למשל: בשל, ירוק, קטן, בלי עלים" data-product-id="' + escapeAttr(product.id) + '">',
                 '</label>'
@@ -2047,8 +2137,57 @@
             }
 
             var input = row.querySelector('.quantity-input');
+            var product = productById[row.getAttribute('data-product-id')];
             var quantity = Number(input.value || 0);
-            row.classList.toggle('is-selected', quantity > 0);
+            var isSelected = quantity > 0;
+            var note = row.querySelector('.product-note');
+
+            row.classList.toggle('is-selected', isSelected);
+
+            if (note) {
+                note.classList.toggle('hidden', !isSelected);
+            }
+
+            updateRowEstimate(row, product, quantity);
+        }
+
+        function updateRowEstimate(row, product, quantity) {
+            var estimate = row.querySelector('[data-row-estimate]');
+
+            if (!estimate) {
+                return;
+            }
+
+            if (!product || !quantity || quantity <= 0) {
+                estimate.textContent = 'בחרו כמות להצגת סכום';
+                estimate.className = 'row-estimate empty';
+                return;
+            }
+
+            var mode = row.getAttribute('data-mode') || 'unit';
+
+            if (mode === 'unit' && !isWholeNumber(quantity)) {
+                estimate.textContent = 'יחידות במספר שלם';
+                estimate.className = 'row-estimate pending';
+                return;
+            }
+
+            if (mode === 'kg' && !isHalfStep(quantity)) {
+                estimate.textContent = 'משקל במספר שלם או חצי';
+                estimate.className = 'row-estimate pending';
+                return;
+            }
+
+            var lineEstimate = calculateLineEstimate(mode, quantity, product);
+
+            if (lineEstimate.total === null) {
+                estimate.textContent = 'יחושב לפי שקילה בפועל';
+                estimate.className = 'row-estimate pending';
+                return;
+            }
+
+            estimate.textContent = 'סכום: ₪' + formatMoney(lineEstimate.total) + (lineEstimate.isEstimatedWeight ? ' משוער' : '');
+            estimate.className = 'row-estimate' + (lineEstimate.isEstimatedWeight ? ' pending' : '');
         }
 
         function submitOrder(event) {
