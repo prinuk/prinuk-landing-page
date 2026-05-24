@@ -1259,6 +1259,7 @@
         var productById = {};
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
+        var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -1306,6 +1307,8 @@
 
         els.refreshButton.addEventListener('click', loadCatalog);
         els.searchInput.addEventListener('input', applySearch);
+        els.form.addEventListener('input', saveOrderDraft);
+        els.form.addEventListener('change', saveOrderDraft);
         els.form.addEventListener('submit', submitOrder);
         els.marketNoticeAccept.addEventListener('click', acceptMarketNotice);
         els.brandLogo.addEventListener('error', function () {
@@ -1321,10 +1324,13 @@
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
         showMarketNoticeIfNeeded();
+        restoreOrderDraft();
         loadCatalog();
 
         document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
-            input.addEventListener('change', toggleDeliveryFields);
+            input.addEventListener('change', function () {
+                toggleDeliveryFields();
+            });
         });
 
         els.productsRoot.addEventListener('input', function (event) {
@@ -1347,6 +1353,152 @@
             setProductMode(row, button.getAttribute('data-mode-button'));
             renderSummary();
         });
+
+        function readOrderDraft() {
+            try {
+                var rawDraft = window.localStorage.getItem(ORDER_DRAFT_STORAGE_KEY);
+                return rawDraft ? JSON.parse(rawDraft) : null;
+            } catch (error) {
+                try {
+                    var fallbackDraft = window.sessionStorage.getItem(ORDER_DRAFT_STORAGE_KEY);
+                    return fallbackDraft ? JSON.parse(fallbackDraft) : null;
+                } catch (fallbackError) {
+                    return null;
+                }
+            }
+        }
+
+        function writeOrderDraft(draft) {
+            var value = JSON.stringify(draft);
+
+            try {
+                window.localStorage.setItem(ORDER_DRAFT_STORAGE_KEY, value);
+                return;
+            } catch (error) {
+                try {
+                    window.sessionStorage.setItem(ORDER_DRAFT_STORAGE_KEY, value);
+                } catch (fallbackError) { }
+            }
+        }
+
+        function clearOrderDraft() {
+            try {
+                window.localStorage.removeItem(ORDER_DRAFT_STORAGE_KEY);
+            } catch (error) { }
+
+            try {
+                window.sessionStorage.removeItem(ORDER_DRAFT_STORAGE_KEY);
+            } catch (error) { }
+        }
+
+        function saveOrderDraft() {
+            var existingDraft = readOrderDraft() || {};
+            var productRows = els.productsRoot.querySelectorAll('.product-row');
+            var products = {};
+
+            if (productRows.length) {
+                productRows.forEach(function (row) {
+                    var id = row.getAttribute('data-product-id');
+                    var quantityInput = row.querySelector('.quantity-input');
+                    var noteInput = row.querySelector('.product-note-input');
+                    var quantity = String(quantityInput && quantityInput.value || '').trim();
+                    var note = String(noteInput && noteInput.value || '').trim();
+                    var mode = row.getAttribute('data-mode') || 'unit';
+
+                    if (quantity || note || mode !== getDefaultProductMode(id)) {
+                        products[id] = {
+                            mode: mode,
+                            quantity: quantity,
+                            note: note
+                        };
+                    }
+                });
+            } else {
+                products = existingDraft.products || {};
+            }
+
+            writeOrderDraft({
+                customer: {
+                    fullName: document.getElementById('fullName').value,
+                    phone: document.getElementById('phone').value,
+                    email: document.getElementById('customerEmail').value
+                },
+                fulfillment: getFulfillment(),
+                delivery: {
+                    address: document.getElementById('address').value,
+                    floor: document.getElementById('floor').value,
+                    apartment: document.getElementById('apartment').value
+                },
+                notes: document.getElementById('notes').value,
+                products: products
+            });
+        }
+
+        function restoreOrderDraft() {
+            var draft = readOrderDraft();
+
+            if (!draft) {
+                toggleDeliveryFields();
+                return;
+            }
+
+            setInputValue('fullName', draft.customer && draft.customer.fullName);
+            setInputValue('phone', draft.customer && draft.customer.phone);
+            setInputValue('customerEmail', draft.customer && draft.customer.email);
+
+            if (draft.fulfillment) {
+                var fulfillmentInput = els.form.querySelector('input[name="fulfillment"][value="' + cssEscape(draft.fulfillment) + '"]');
+
+                if (fulfillmentInput) {
+                    fulfillmentInput.checked = true;
+                }
+            }
+
+            setInputValue('address', draft.delivery && draft.delivery.address);
+            setInputValue('floor', draft.delivery && draft.delivery.floor);
+            setInputValue('apartment', draft.delivery && draft.delivery.apartment);
+            setInputValue('notes', draft.notes);
+            toggleDeliveryFields();
+
+            Object.keys(draft.products || {}).forEach(function (id) {
+                var row = els.productsRoot.querySelector('[data-product-id="' + cssEscape(id) + '"]');
+                var item = draft.products[id] || {};
+
+                if (!row) {
+                    return;
+                }
+
+                if (item.mode) {
+                    setProductMode(row, item.mode);
+                }
+
+                var quantityInput = row.querySelector('.quantity-input');
+                var noteInput = row.querySelector('.product-note-input');
+
+                if (quantityInput) {
+                    quantityInput.value = item.quantity || '';
+                }
+
+                if (noteInput) {
+                    noteInput.value = item.note || '';
+                }
+
+                updateRowState(row);
+            });
+        }
+
+        function setInputValue(id, value) {
+            if (typeof value === 'undefined' || value === null) {
+                return;
+            }
+
+            document.getElementById(id).value = value;
+        }
+
+        function getDefaultProductMode(id) {
+            var product = productById[id];
+            return product && product.unitType === 'kg' ? 'kg' : 'unit';
+        }
 
         function getPageScrollTop() {
             if (window.visualViewport && typeof window.visualViewport.pageTop === 'number') {
@@ -1549,6 +1701,7 @@
 
             applyCategoryFilter();
 
+            restoreOrderDraft();
             renderSummary();
         }
 
@@ -1959,6 +2112,7 @@
                     setSubmitting(false);
                     showMessage(buildSuccessMessage(result.data, collected), 'success');
                     resetProducts();
+                    clearOrderDraft();
                 })
                 .catch(function (error) {
                     setSubmitting(false);
@@ -2142,6 +2296,14 @@
 
         function escapeAttr(value) {
             return escapeHtml(value);
+        }
+
+        function cssEscape(value) {
+            if (window.CSS && typeof window.CSS.escape === 'function') {
+                return window.CSS.escape(String(value || ''));
+            }
+
+            return String(value || '').replace(/["\\]/g, '\\$&');
         }
     </script>
 </body>
