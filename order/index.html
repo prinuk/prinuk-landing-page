@@ -126,6 +126,14 @@
             margin-bottom: 16px;
         }
 
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
         .brand {
             display: flex;
             flex-direction: column;
@@ -384,6 +392,7 @@
             min-height: 38px;
             padding: 8px 12px;
             font-weight: 700;
+            text-decoration: none;
         }
 
         .nav-pill {
@@ -1130,7 +1139,10 @@
                 </div>
                 <div class="source" id="sourceName">טוען קטלוג...</div>
             </div>
-            <button class="ghost" type="button" id="refreshButton">רענון</button>
+            <div class="topbar-actions">
+                <a class="ghost" href="/api/price-list" target="_blank" rel="noopener">מחירון</a>
+                <button class="ghost" type="button" id="refreshButton">רענון</button>
+            </div>
         </header>
 
         <form id="orderForm" class="layout" novalidate>

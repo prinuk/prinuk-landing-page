@@ -237,11 +237,13 @@ Apps Script נשאר שימושי לתפריטים, ארכיון וכלים יד
 - **צפייה בהזמנות** — בגיליון "הזמנות" ו-"פריטי הזמנות"
 - **ארכיון ו-PDF** — מהתפריט "פרינוק" בגיליון
 - **מיילים והתראות** — נשלחים אוטומטית מ-Vercel בזמן שליחת ההזמנה
+- **מחירון אוטומטי** — נכנסים ל-`/api/price-list` או לוחצים "מחירון" בטופס ההזמנה כדי ליצור PDF עדכני מהגיליון
 
 ### מה שונה:
 - הטופס מוגש מ-Vercel במקום מ-Apps Script — יותר מהיר ויציב בזמן מכירות
 - הקטלוג נשמר בזיכרון מטמון (cache) ל-60 שניות — אחרי שינוי מוצרים, לוקח עד דקה עד שהטופס מתעדכן
 - מיילים, PDF הזמנה, Telegram ודפי ליקוט מטופלים ב-Vercel עבור הזמנות חדשות
+- מחירון ה-PDF נוצר אוטומטית ב-Vercel מתוך גיליון "מוצרים" על בסיס תבנית המחירון
 
 ---
 
@@ -255,10 +257,14 @@ assets/                 תמונות
 order/index.html        טופס ההזמנות
 api/catalog.js          API — קריאת קטלוג מהגיליון
 api/order.js            API — שליחת הזמנה, PDF והתראות
+api/price-list.js       API — יצירת מחירון PDF עדכני
 lib/sheets.js           קוד משותף לעבודה עם Google Sheets
 lib/order-pdf.js        יצירת PDF הזמנה עם Chromium
+lib/price-list-pdf.js   יצירת מחירון PDF עם Chromium
 lib/email.js            שליחת מיילים דרך Resend
 lib/telegram.js         שליחת התראות וקבצי PDF ל-Telegram
+assets/price-list-template.png  תבנית תמונה למחירון
+assets/templates/price-list-template.docx  תבנית Word מעודכנת למחירון
 apps-script/email-trigger.gs  טריגר מיילים ישן ל-Apps Script (לא נדרש להזמנות Vercel חדשות)
 vercel.json             הגדרות ניתוב ב-Vercel
 package.json            תלויות Node
