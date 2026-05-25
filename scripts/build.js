@@ -36,6 +36,7 @@ const SAMPLE_PRODUCTS = [
   ['חסה לאליק', 'ירקות', 'יחידות', 'יחידות', '8'],
   ['כרוב לבן', 'ירקות', 'יחידות', 'יחידות', '9'],
   ['שומר', 'ירקות', 'יחידות', 'ק״ג', '8'],
+  ['זוקיני', 'ירקות', 'יחידות', 'ק״ג', '10'],
 ];
 
 function assert(condition, message) {
@@ -108,6 +109,8 @@ function validateProductImages() {
   assert(byName['כרוב לבן'].imageUrl === '/assets/produce/white-cabbage.jpg', 'White cabbage image match failed.');
   assert(byName['שומר'].estimatedUnitWeightKg === 0.25, 'Missing fennel unit weight estimate.');
   assert(byName['שומר'].imageUrl === '/assets/produce/fennel.jpg', 'Fennel image match failed.');
+  assert(byName['זוקיני'].estimatedUnitWeightKg === 0.1, 'Missing zucchini unit weight estimate.');
+  assert(byName['זוקיני'].imageUrl === '/assets/produce/zucchini.jpg', 'Zucchini image match failed.');
 
   products.forEach(product => {
     if (product.imageUrl && product.imageUrl.startsWith('/assets/produce/')) {
