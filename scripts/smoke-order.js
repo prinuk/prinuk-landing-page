@@ -132,6 +132,24 @@ async function runSmokeTest(baseUrl, executablePath) {
 
     await page.waitForSelector('.product-row', { timeout: 10000 });
 
+    const phoneValidationResult = await page.evaluate(() => {
+      const phone = document.getElementById('phone');
+      const phoneError = document.getElementById('phoneError');
+      phone.value = '02-123-4567';
+      phone.dispatchEvent(new Event('input', { bubbles: true }));
+      phone.dispatchEvent(new Event('blur', { bubbles: true }));
+
+      return {
+        text: phoneError.textContent,
+        shown: phoneError.classList.contains('show'),
+        invalid: phone.getAttribute('aria-invalid'),
+      };
+    });
+
+    if (!phoneValidationResult.shown || phoneValidationResult.invalid !== 'true' || !phoneValidationResult.text.includes('מספר הטלפון הנייד אינו תקין')) {
+      throw new Error('Expected phone validation under field, got: ' + JSON.stringify(phoneValidationResult));
+    }
+
     const result = await page.evaluate(() => {
       function findRow(namePart) {
         return [...document.querySelectorAll('.product-row')]
