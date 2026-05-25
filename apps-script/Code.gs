@@ -5,13 +5,13 @@ var PRINOK_CONFIG = {
   ORDERS_SHEET_NAME: 'הזמנות',
   ORDER_ITEMS_SHEET_NAME: 'פריטי הזמנות',
   PICKING_SHEET_NAME: 'דפי ליקוט',
-  ARCHIVE_SPREADSHEET_NAME: 'ארכיון הזמנות פרינוק',
+  ARCHIVE_SPREADSHEET_NAME: 'ארכיון הזמנות פרינוּק',
   PDF_LOGO_FILE_NAME: 'prinuk-logo-for-pdf.jpg',
   MAX_LOGO_DATA_URL_LENGTH: 250000,
   MAX_LOGO_BYTES: 250000,
   PRICING_SPREADSHEET_NAME: 'חישוב מחירים',
   CATEGORY_ORDER: ['ירקות', 'פירות', 'עלים', 'מיוחדים'],
-  DEFAULT_FORM_TITLE: 'פרינוק - המכירה השבועית',
+  DEFAULT_FORM_TITLE: 'פרינוּק - המכירה השבועית',
   DEFAULT_FORM_DESCRIPTION: 'בחרו את הפירות והירקות שתרצו להזמין.',
   DEFAULT_CLOSED_MESSAGE: 'ההזמנות עוד לא נפתחו. הטופס ייפתח בקרוב.',
   DEFAULT_PICKUP_TEXT: 'המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00',
@@ -22,7 +22,7 @@ var PRINOK_CONFIG = {
 function doGet() {
   return HtmlService
     .createHtmlOutputFromFile('Index')
-    .setTitle('פרינוק - המכירה השבועית')
+    .setTitle('פרינוּק - המכירה השבועית')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -65,7 +65,7 @@ function setupPrinokOrderSheets() {
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('פרינוק')
+    .createMenu('פרינוּק')
     .addItem('הכן גיליונות הזמנות', 'setupPrinokOrderSheets')
     .addItem('רענן מוצרים מחישוב מחירים', 'refreshProductsFromPricingFile')
     .addItem('צור PDF מחירון', 'createPriceListPdf')
@@ -124,7 +124,7 @@ function refreshProductsFromPricingFile() {
     : 'גיליון מוצרים רוענן מתוך "' + result.fileName + '" / "' + result.sheetName + '". ' + result.rowCount + ' שורות הועתקו.';
 
   Logger.log(message);
-  getSpreadsheet_().toast(message, 'פרינוק', 8);
+  getSpreadsheet_().toast(message, 'פרינוּק', 8);
 }
 
 function createPriceListPdf() {
@@ -138,7 +138,7 @@ function createPriceListPdf() {
   }
 
   Logger.log(message);
-  getSpreadsheet_().toast(result.emailRecipients ? 'המחירון נוצר ונשלח למייל.' : 'המחירון נוצר ונשמר בדרייב.', 'פרינוק', 8);
+  getSpreadsheet_().toast(result.emailRecipients ? 'המחירון נוצר ונשלח למייל.' : 'המחירון נוצר ונשמר בדרייב.', 'פרינוּק', 8);
 
   try {
     SpreadsheetApp.getUi().alert('המחירון נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
@@ -157,7 +157,7 @@ function createDesignedPriceFlyerPdf() {
   }
 
   Logger.log(message);
-  getSpreadsheet_().toast(result.emailRecipients ? 'פלייר המחירים נוצר ונשלח למייל.' : 'פלייר המחירים נוצר ונשמר בדרייב.', 'פרינוק', 8);
+  getSpreadsheet_().toast(result.emailRecipients ? 'פלייר המחירים נוצר ונשלח למייל.' : 'פלייר המחירים נוצר ונשמר בדרייב.', 'פרינוּק', 8);
 
   try {
     SpreadsheetApp.getUi().alert('פלייר המחירים נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
@@ -170,7 +170,7 @@ function createPrintableOrderFormPdf() {
   var message = 'טופס ההזמנה נוצר בהצלחה: ' + result.fileName + '\n' + result.url;
 
   Logger.log(message);
-  getSpreadsheet_().toast('טופס ההזמנה נוצר ונשמר בדרייב.', 'פרינוק', 8);
+  getSpreadsheet_().toast('טופס ההזמנה נוצר ונשמר בדרייב.', 'פרינוּק', 8);
 
   try {
     SpreadsheetApp.getUi().alert('טופס ההזמנה נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
@@ -202,7 +202,7 @@ function archiveOrdersAndClear() {
   ].join('\n');
 
   Logger.log(message);
-  getSpreadsheet_().toast('ההזמנות הועברו לארכיון והקובץ נוקה.', 'פרינוק', 8);
+  getSpreadsheet_().toast('ההזמנות הועברו לארכיון והקובץ נוקה.', 'פרינוּק', 8);
   ui.alert('הסתיים', message, ui.ButtonSet.OK);
 }
 
@@ -1022,7 +1022,7 @@ function trySendOrderNotification_(settings, order, items) {
   }
 
   try {
-    var subject = 'הזמנה חדשה מפרינוק - ' + order.fullName + ' - ' + order.orderId;
+    var subject = 'הזמנה חדשה מפרינוּק - ' + order.fullName + ' - ' + order.orderId;
     var body = buildNotificationBody_(order, items);
     var emailAssets = getEmailInlineImageAssets_(settings);
     var pdf = createOrderPdfSafely_(settings, order, items);
@@ -1193,7 +1193,7 @@ function sendTelegramDocument_(settings, documentBlob, caption) {
 
 function buildNewOrderTelegramMessage_(settings, order, items) {
   var lines = [
-    '<b>הזמנה חדשה בפרינוק</b>',
+    '<b>הזמנה חדשה בפרינוּק</b>',
     'מספר הזמנה: ' + escapeTelegramHtml_(order.orderId),
     'לקוח: ' + escapeTelegramHtml_(order.fullName),
     'טלפון: ' + escapeTelegramHtml_(order.phone),
@@ -1215,7 +1215,7 @@ function buildNewOrderTelegramMessage_(settings, order, items) {
 }
 
 function buildEmailProblemTelegramMessage_(settings, order, items, target, errorText) {
-  var targetText = target === 'customer' ? 'מייל ללקוח' : 'מייל פרינוק';
+  var targetText = target === 'customer' ? 'מייל ללקוח' : 'מייל פרינוּק';
   return [
     '<b>בעיה דחופה בשליחת מייל</b>',
     'סוג תקלה: ' + escapeTelegramHtml_(targetText),
@@ -1254,7 +1254,7 @@ function trySendCustomerCopy_(settings, order, items) {
   }
 
   try {
-    var subject = 'ההזמנה שלך בפרינוק התקבלה - ' + order.orderId;
+    var subject = 'ההזמנה שלך בפרינוּק התקבלה - ' + order.orderId;
     var body = buildCustomerCopyBody_(order, items);
     var emailAssets = getEmailInlineImageAssets_(settings);
     var pdf = createOrderPdfSafely_(settings, order, items);
@@ -1264,7 +1264,7 @@ function trySendCustomerCopy_(settings, order, items) {
       subject: subject,
       body: body,
       htmlBody: buildCustomerCopyHtmlBody_(settings, order, items, emailAssets.logoCid),
-      name: 'פרינוק - המכירה השבועית'
+      name: 'פרינוּק - המכירה השבועית'
     };
 
     if (pdf) {
@@ -1406,7 +1406,7 @@ function buildOrderPdfHtml_(settings, order, items) {
     '</style>',
     '</head>',
     '<body>',
-    buildDocumentHeaderHtml_(settings, 'פרינוק - פרטי הזמנה', [order.orderId]),
+    buildDocumentHeaderHtml_(settings, 'פרינוּק - פרטי הזמנה', [order.orderId]),
     '<div class="box grid">',
     '<div><span class="label">לקוח:</span> ', escapeHtml_(order.fullName), '</div>',
     '<div><span class="label">טלפון:</span> ', escapeHtml_(order.phone), '</div>',
@@ -1461,7 +1461,7 @@ function buildCustomerCopyBody_(order, items) {
   var lines = [
     'שלום ' + order.fullName + ',',
     '',
-    'ההזמנה שלך בפרינוק התקבלה בהצלחה.',
+    'ההזמנה שלך בפרינוּק התקבלה בהצלחה.',
     'מספר הזמנה: ' + order.orderId,
     'שיטת הזמנה: ' + order.fulfillment,
     'כתובת/איסוף: ' + buildAddressText_(order),
@@ -1481,7 +1481,7 @@ function buildCustomerCopyBody_(order, items) {
 
   lines.push('');
   lines.push('מצורף PDF עם פרטי ההזמנה.');
-  lines.push('תודה, פרינוק');
+  lines.push('תודה, פרינוּק');
 
   return lines.join('\n');
 }
@@ -1490,7 +1490,7 @@ function buildNotificationHtmlBody_(settings, order, items, logoCid) {
   return buildOrderEmailHtml_(
     settings,
     'התקבלה הזמנה חדשה',
-    'התקבלה הזמנה חדשה בפרינוק.',
+    'התקבלה הזמנה חדשה בפרינוּק.',
     order,
     items,
     logoCid
@@ -1501,7 +1501,7 @@ function buildCustomerCopyHtmlBody_(settings, order, items, logoCid) {
   return buildOrderEmailHtml_(
     settings,
     'ההזמנה שלך התקבלה',
-    'שלום ' + order.fullName + ', ההזמנה שלך בפרינוק התקבלה בהצלחה.',
+    'שלום ' + order.fullName + ', ההזמנה שלך בפרינוּק התקבלה בהצלחה.',
     order,
     items,
     logoCid
@@ -1526,7 +1526,7 @@ function buildOrderEmailHtml_(settings, title, intro, order, items, logoCid) {
     ].join('');
   }).join('');
   var logoHtml = logoCid
-    ? '<img src="cid:' + escapeHtml_(logoCid) + '" alt="פרינוק" width="76" height="76" style="display:block;width:76px;height:76px;object-fit:contain;border:0;">'
+    ? '<img src="cid:' + escapeHtml_(logoCid) + '" alt="פרינוּק" width="76" height="76" style="display:block;width:76px;height:76px;object-fit:contain;border:0;">'
     : '';
 
   return [
@@ -1537,7 +1537,7 @@ function buildOrderEmailHtml_(settings, title, intro, order, items, logoCid) {
     '<td style="width:92px;padding:0 0 12px;text-align:center;vertical-align:middle;">', logoHtml, '</td>',
     '<td style="padding:0 12px 12px;text-align:center;vertical-align:middle;">',
     '<div style="font-size:26px;font-weight:800;color:#1e2528;">', escapeHtml_(title), '</div>',
-    '<div style="font-size:15px;font-weight:700;color:#165a43;margin-top:4px;">פרינוק - המכירה השבועית</div>',
+    '<div style="font-size:15px;font-weight:700;color:#165a43;margin-top:4px;">פרינוּק - המכירה השבועית</div>',
     contactText ? '<div style="font-size:13px;font-weight:700;color:#165a43;margin-top:4px;">' + escapeHtml_(contactText) + '</div>' : '',
     '</td>',
     '</tr>',
@@ -1572,7 +1572,7 @@ function buildOrderEmailHtml_(settings, title, intro, order, items, logoCid) {
 function buildSimpleEmailHtml_(settings, title, paragraphs, logoCid) {
   var contactText = buildDocumentContactText_(settings);
   var logoHtml = logoCid
-    ? '<img src="cid:' + escapeHtml_(logoCid) + '" alt="פרינוק" width="76" height="76" style="display:block;width:76px;height:76px;object-fit:contain;border:0;">'
+    ? '<img src="cid:' + escapeHtml_(logoCid) + '" alt="פרינוּק" width="76" height="76" style="display:block;width:76px;height:76px;object-fit:contain;border:0;">'
     : '';
   var paragraphHtml = (paragraphs || []).map(function(paragraph) {
     return '<p style="margin:0 0 10px;font-size:15px;">' + escapeHtml_(paragraph) + '</p>';
@@ -1586,7 +1586,7 @@ function buildSimpleEmailHtml_(settings, title, paragraphs, logoCid) {
     '<td style="width:92px;padding:0 0 12px;text-align:center;vertical-align:middle;">', logoHtml, '</td>',
     '<td style="padding:0 12px 12px;text-align:center;vertical-align:middle;">',
     '<div style="font-size:26px;font-weight:800;color:#1e2528;">', escapeHtml_(title), '</div>',
-    '<div style="font-size:15px;font-weight:700;color:#165a43;margin-top:4px;">פרינוק - המכירה השבועית</div>',
+    '<div style="font-size:15px;font-weight:700;color:#165a43;margin-top:4px;">פרינוּק - המכירה השבועית</div>',
     contactText ? '<div style="font-size:13px;font-weight:700;color:#165a43;margin-top:4px;">' + escapeHtml_(contactText) + '</div>' : '',
     '</td>',
     '</tr>',
@@ -1671,7 +1671,7 @@ function buildDocumentHeaderHtml_(settings, documentTitle, metaParts) {
 
   return [
     '<header class="doc-header">',
-    logoUrl ? '<img class="doc-logo" src="' + escapeHtml_(logoUrl) + '" alt="פרינוק">' : '',
+    logoUrl ? '<img class="doc-logo" src="' + escapeHtml_(logoUrl) + '" alt="פרינוּק">' : '',
     '<div class="doc-copy">',
     '<h1>', escapeHtml_(documentTitle), '</h1>',
     metaText ? '<div class="doc-meta">' + escapeHtml_(metaText) + '</div>' : '',
@@ -2098,7 +2098,7 @@ function createPriceListPdf_() {
   var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
   var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
   var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
-  var fileName = 'מחירון-פרינוק' + salePart + '-' + timestamp + '.pdf';
+  var fileName = 'מחירון-פרינוּק' + salePart + '-' + timestamp + '.pdf';
   var pdf = Utilities
     .newBlob(html, 'text/html', 'price-list.html')
     .getAs('application/pdf')
@@ -2129,7 +2129,7 @@ function createDesignedPriceFlyerPdf_() {
   var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
   var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
   var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
-  var fileName = 'פלייר-מחירים-פרינוק' + salePart + '-' + timestamp + '.pdf';
+  var fileName = 'פלייר-מחירים-פרינוּק' + salePart + '-' + timestamp + '.pdf';
   var pdf = Utilities
     .newBlob(html, 'text/html', 'price-flyer.html')
     .getAs('application/pdf')
@@ -2160,7 +2160,7 @@ function createPrintableOrderFormPdf_() {
   var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
   var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
   var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
-  var fileName = 'טופס-הזמנה-פרינוק' + salePart + '-' + timestamp + '.pdf';
+  var fileName = 'טופס-הזמנה-פרינוּק' + salePart + '-' + timestamp + '.pdf';
   var pdf = Utilities
     .newBlob(html, 'text/html', 'printable-order-form.html')
     .getAs('application/pdf')
@@ -2320,10 +2320,10 @@ function buildDesignedPriceFlyerPdfHtml_(settings, categories, productCount) {
     '<body>',
     '<section class="flyer">',
     '<header class="flyer-header">',
-    '<div class="logo-cell">', logoDataUrl ? '<img class="logo" src="' + escapeHtml_(logoDataUrl) + '" alt="פרינוק">' : '', '</div>',
+    '<div class="logo-cell">', logoDataUrl ? '<img class="logo" src="' + escapeHtml_(logoDataUrl) + '" alt="פרינוּק">' : '', '</div>',
     '<div class="headline">',
     '<div class="bsad">בס״ד</div>',
-    '<div class="brand">פרינוק</div>',
+    '<div class="brand">פרינוּק</div>',
     '<div class="subtitle">המכירה השבועית</div>',
     saleName ? '<div class="sale-name">' + escapeHtml_(saleName) + '</div>' : '',
     '</div>',
@@ -2480,22 +2480,22 @@ function sendPriceListPdfEmail_(settings, pdf, file, productCount) {
   }
 
   var saleName = settings.saleName ? ' - ' + settings.saleName : '';
-  var subject = 'מחירון פרינוק' + saleName;
+  var subject = 'מחירון פרינוּק' + saleName;
   var body = [
-    'מצורף מחירון פרינוק בפורמט PDF.',
+    'מצורף מחירון פרינוּק בפורמט PDF.',
     '',
     'מספר מוצרים: ' + productCount,
     'קישור לקובץ בדרייב: ' + file.getUrl(),
     '',
-    'פרינוק'
+    'פרינוּק'
   ].join('\n');
   var emailAssets = getEmailInlineImageAssets_(settings);
   var options = {
     to: recipients,
     subject: subject,
     body: body,
-    htmlBody: buildSimpleEmailHtml_(settings, 'מחירון פרינוק', [
-      'מצורף מחירון פרינוק בפורמט PDF.',
+    htmlBody: buildSimpleEmailHtml_(settings, 'מחירון פרינוּק', [
+      'מצורף מחירון פרינוּק בפורמט PDF.',
       'מספר מוצרים: ' + productCount,
       'קישור לקובץ בדרייב: ' + file.getUrl()
     ], emailAssets.logoCid),
@@ -2516,22 +2516,22 @@ function sendPriceFlyerPdfEmail_(settings, pdf, file, productCount) {
   }
 
   var saleName = settings.saleName ? ' - ' + settings.saleName : '';
-  var subject = 'פלייר מחירים פרינוק' + saleName;
+  var subject = 'פלייר מחירים פרינוּק' + saleName;
   var body = [
-    'מצורף פלייר מחירים של פרינוק בפורמט PDF.',
+    'מצורף פלייר מחירים של פרינוּק בפורמט PDF.',
     '',
     'מספר מוצרים: ' + productCount,
     'קישור לקובץ בדרייב: ' + file.getUrl(),
     '',
-    'פרינוק'
+    'פרינוּק'
   ].join('\n');
   var emailAssets = getEmailInlineImageAssets_(settings);
   var options = {
     to: recipients,
     subject: subject,
     body: body,
-    htmlBody: buildSimpleEmailHtml_(settings, 'פלייר מחירים פרינוק', [
-      'מצורף פלייר מחירים של פרינוק בפורמט PDF.',
+    htmlBody: buildSimpleEmailHtml_(settings, 'פלייר מחירים פרינוּק', [
+      'מצורף פלייר מחירים של פרינוּק בפורמט PDF.',
       'מספר מוצרים: ' + productCount,
       'קישור לקובץ בדרייב: ' + file.getUrl()
     ], emailAssets.logoCid),

@@ -57,12 +57,22 @@ module.exports = async function handler(req, res) {
       console.error('Order notification status update failed:', error);
     }
 
+    const skippedEmail = Boolean(customerEmailResult.skippedEmail || businessEmailResult.skippedEmail);
+    const skippedEmailReason = [customerEmailResult.reason, businessEmailResult.reason]
+      .filter(Boolean)
+      .filter((reason, index, reasons) => reasons.indexOf(reason) === index)
+      .join(' ');
+
     res.json({
       ok: true,
+      success: true,
+      skippedEmail,
+      reason: skippedEmail ? skippedEmailReason : '',
       orderId: order.orderId,
       itemCount: order.items.length,
       estimatedTotal: order.estimatedTotal,
       unpricedItemCount: order.unpricedItemCount,
+      estimatedWeightItemCount: order.estimatedWeightItemCount,
       customerEmailStatus: customerEmailResult.status,
       businessEmailStatus: businessEmailResult.status,
       telegramStatus: telegramResult.status,
