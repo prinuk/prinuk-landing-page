@@ -1256,7 +1256,7 @@
 
                         <label class="field">
                             <span>טלפון <span class="required-star">*</span></span>
-                            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" required>
+                            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="14" pattern="(?:\+972|0)5\d{8}" required>
                         </label>
 
                         <label class="field field-wide">
@@ -2382,15 +2382,15 @@
 
         function validateForm() {
             var fullName = document.getElementById('fullName').value.trim();
-            var phone = document.getElementById('phone').value.replace(/\D/g, '');
+            var phone = normalizeCustomerPhone(document.getElementById('phone').value);
             var customerEmail = document.getElementById('customerEmail').value.trim();
 
             if (!fullName) {
                 return 'יש למלא שם מלא.';
             }
 
-            if (!/^0\d{8,9}$/.test(phone)) {
-                return 'מספר הטלפון אינו תקין.';
+            if (!isValidCustomerPhone(phone)) {
+                return 'מספר הטלפון הנייד אינו תקין. הזינו מספר שמתחיל ב-05 ובו 10 ספרות.';
             }
 
             if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
@@ -2408,6 +2408,20 @@
             }
 
             return '';
+        }
+
+        function normalizeCustomerPhone(value) {
+            var digits = String(value || '').replace(/\D/g, '');
+
+            if (digits.indexOf('9725') === 0 && digits.length === 12) {
+                return '0' + digits.slice(3);
+            }
+
+            return digits;
+        }
+
+        function isValidCustomerPhone(phone) {
+            return /^05\d{8}$/.test(phone);
         }
 
         function resetProducts() {

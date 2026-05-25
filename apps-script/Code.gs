@@ -242,6 +242,20 @@ function refreshPickingSheets() {
   Logger.log('דפי הליקוט רועננו בהצלחה.');
 }
 
+function normalizeCustomerPhone_(value) {
+  var digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.indexOf('9725') === 0 && digits.length === 12) {
+    return '0' + digits.slice(3);
+  }
+
+  return digits;
+}
+
+function isValidCustomerPhone_(phone) {
+  return /^05\d{8}$/.test(phone);
+}
+
 function saveOrder_(payload) {
   payload = payload || {};
 
@@ -262,15 +276,15 @@ function saveOrder_(payload) {
   var notes = String(payload.notes || '').trim();
 
   var fullName = String(customer.fullName || '').trim();
-  var phone = String(customer.phone || '').replace(/\D/g, '');
+  var phone = normalizeCustomerPhone_(customer.phone);
   var customerEmail = String(customer.email || '').trim();
 
   if (!fullName) {
     throw new Error('חסר שם מלא.');
   }
 
-  if (!/^0\d{8,9}$/.test(phone)) {
-    throw new Error('מספר הטלפון אינו תקין.');
+  if (!isValidCustomerPhone_(phone)) {
+    throw new Error('מספר הטלפון הנייד אינו תקין. הזינו מספר שמתחיל ב-05 ובו 10 ספרות.');
   }
 
   if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {

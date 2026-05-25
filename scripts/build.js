@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { parseProducts } = require('../lib/sheets');
+const { parseProducts, validateAndBuildOrder } = require('../lib/sheets');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(ROOT, 'public');
@@ -119,6 +119,42 @@ function validateProductImages() {
   });
 }
 
+function validatePhoneRules() {
+  const products = parseProducts(SAMPLE_PRODUCTS);
+  const basePayload = {
+    customer: {
+      fullName: 'ישראל ישראלי',
+      phone: '+972-53-523-4975',
+      email: '',
+    },
+    fulfillment: 'איסוף עצמי',
+    delivery: {},
+    items: [
+      {
+        id: products[0].id,
+        quantity: 1,
+        mode: 'unit',
+      },
+    ],
+  };
+
+  const order = validateAndBuildOrder(basePayload, products);
+  assert(order.phone === '0535234975', 'Expected +972 mobile phone to normalize to local format.');
+
+  try {
+    validateAndBuildOrder({
+      ...basePayload,
+      customer: {
+        ...basePayload.customer,
+        phone: '02-123-4567',
+      },
+    }, products);
+    throw new Error('Expected landline phone validation to fail.');
+  } catch (error) {
+    assert(String(error.message || error).includes('מספר הטלפון הנייד אינו תקין'), 'Unexpected invalid phone error.');
+  }
+}
+
 function copyStaticEntry(relativePath) {
   const from = path.join(ROOT, relativePath);
   const to = path.join(OUTPUT_DIR, relativePath);
@@ -147,6 +183,7 @@ function main() {
   REQUIRED_FILES.forEach(assertFileExists);
   validateStaticReferences();
   validateProductImages();
+  validatePhoneRules();
   writeStaticOutput();
   console.log('Build validation OK');
   console.log('Static output written to public/');
