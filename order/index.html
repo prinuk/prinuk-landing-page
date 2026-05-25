@@ -335,6 +335,15 @@
             color: var(--amber);
         }
 
+        .order-info-panel {
+            display: grid;
+            gap: 10px;
+        }
+
+        .order-info-panel h2 {
+            margin-bottom: 0;
+        }
+
         .billing-notice,
         .quality-notice {
             border: 1px solid #d7e5db;
@@ -375,7 +384,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin: -4px 0 12px;
+            margin: 0;
         }
 
         .contact-title {
@@ -1478,6 +1487,30 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <section class="panel order-info-panel" aria-labelledby="orderInfoTitle">
+                    <h2 id="orderInfoTitle">מה חשוב לדעת לפני שמזמינים</h2>
+                    <div class="delivery-note">
+                        משלוח: 25 ש״ח. בהזמנה מעל 200 ש״ח המשלוח חינם.
+                    </div>
+                    <div id="pickupInfo" class="pickup-info">
+                        המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00
+                    </div>
+                    <div id="contactInfo" class="contact-info">
+                        <div class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</div>
+                        <a id="phoneContact" class="contact-link" href="tel:0535234975">שיחה: 0535234975</a>
+                        <a id="whatsappContact" class="contact-link" href="https://wa.me/972535234975" target="_blank"
+                            rel="noopener">וואטסאפ</a>
+                        <a id="emailContact" class="contact-link" href="mailto:prinuk10@gmail.com">מייל</a>
+                    </div>
+                    <div class="billing-notice">
+                        הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
+                    </div>
+                    <div class="quality-notice">
+                        <strong>חשוב לנו שתדעו:</strong>
+                        <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
+                    </div>
+                </section>
+
                 <section class="panel">
                     <div class="products-head">
                         <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
@@ -1516,26 +1549,6 @@
                             <input type="radio" name="fulfillment" value="משלוח">
                             <span>משלוח</span>
                         </label>
-                    </div>
-                    <div class="delivery-note">
-                        משלוח: 25 ש״ח. בהזמנה מעל 200 ש״ח המשלוח חינם.
-                    </div>
-                    <div id="pickupInfo" class="pickup-info">
-                        המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00
-                    </div>
-                    <div id="contactInfo" class="contact-info">
-                        <div class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</div>
-                        <a id="phoneContact" class="contact-link" href="tel:0535234975">שיחה: 0535234975</a>
-                        <a id="whatsappContact" class="contact-link" href="https://wa.me/972535234975" target="_blank"
-                            rel="noopener">וואטסאפ</a>
-                        <a id="emailContact" class="contact-link" href="mailto:prinuk10@gmail.com">מייל</a>
-                    </div>
-                    <div class="billing-notice">
-                        הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
-                    </div>
-                    <div class="quality-notice">
-                        <strong>חשוב לנו שתדעו:</strong>
-                        <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
