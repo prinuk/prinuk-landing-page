@@ -263,6 +263,12 @@
             border-color: var(--danger);
         }
 
+        .panel.needs-attention {
+            animation: attention-panel 900ms ease;
+            border-color: rgba(179, 54, 54, 0.46);
+            box-shadow: 0 0 0 4px rgba(179, 54, 54, 0.08), var(--shadow);
+        }
+
         .field-wide {
             grid-column: 1 / -1;
         }
@@ -1034,6 +1040,20 @@
             }
         }
 
+        @keyframes attention-panel {
+            0% {
+                transform: translateY(0);
+            }
+
+            35% {
+                transform: translateY(-3px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
         .notice-modal {
             position: fixed;
             inset: 0;
@@ -1520,7 +1540,7 @@
                     <div id="productsRoot" class="loading">טוען מוצרים...</div>
                 </section>
 
-                <section class="panel">
+                <section id="customerDetailsPanel" class="panel">
                     <h2>פרטי הזמנה</h2>
                     <div class="fields">
                         <label class="field">
@@ -1655,6 +1675,7 @@
             phoneError: document.getElementById('phoneError'),
             searchInput: document.getElementById('searchInput'),
             deliveryFields: document.getElementById('deliveryFields'),
+            customerDetailsPanel: document.getElementById('customerDetailsPanel'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             submitButton: document.getElementById('submitButton'),
@@ -2741,7 +2762,8 @@
             var validation = validateForm();
 
             if (validation) {
-                showMessage(validation, 'error');
+                showMessage(validation.message, 'error');
+                guideToMissingDetails(validation.field);
                 return;
             }
 
@@ -2810,34 +2832,81 @@
         }
 
         function validateForm() {
-            var fullName = document.getElementById('fullName').value.trim();
-            var customerEmail = document.getElementById('customerEmail').value.trim();
+            var fullNameInput = document.getElementById('fullName');
+            var customerEmailInput = document.getElementById('customerEmail');
+            var addressInput = document.getElementById('address');
+            var floorInput = document.getElementById('floor');
+            var fullName = fullNameInput.value.trim();
+            var customerEmail = customerEmailInput.value.trim();
 
             if (!fullName) {
-                return 'יש למלא שם מלא.';
+                return {
+                    message: 'יש למלא שם מלא.',
+                    field: fullNameInput
+                };
             }
 
             var phoneError = validatePhoneField();
 
             if (phoneError) {
-                return phoneError;
+                return {
+                    message: phoneError,
+                    field: els.phoneInput
+                };
             }
 
             if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-                return 'כתובת המייל אינה תקינה.';
+                return {
+                    message: 'כתובת המייל אינה תקינה.',
+                    field: customerEmailInput
+                };
             }
 
             if (getFulfillment() === 'משלוח') {
-                if (!document.getElementById('address').value.trim()) {
-                    return 'יש למלא כתובת למשלוח.';
+                if (!addressInput.value.trim()) {
+                    return {
+                        message: 'יש למלא כתובת למשלוח.',
+                        field: addressInput
+                    };
                 }
 
-                if (!document.getElementById('floor').value.trim()) {
-                    return 'יש למלא קומה למשלוח.';
+                if (!floorInput.value.trim()) {
+                    return {
+                        message: 'יש למלא קומה למשלוח.',
+                        field: floorInput
+                    };
                 }
             }
 
-            return '';
+            return null;
+        }
+
+        function guideToMissingDetails(field) {
+            var target = field || els.customerDetailsPanel;
+
+            setCartSummaryOpen(false);
+
+            if (els.customerDetailsPanel) {
+                els.customerDetailsPanel.classList.remove('needs-attention');
+                els.customerDetailsPanel.offsetWidth;
+                els.customerDetailsPanel.classList.add('needs-attention');
+                window.setTimeout(function () {
+                    els.customerDetailsPanel.classList.remove('needs-attention');
+                }, 1200);
+            }
+
+            if (target && target.scrollIntoView) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+
+            if (field && field.focus) {
+                window.setTimeout(function () {
+                    field.focus({ preventScroll: true });
+                }, 350);
+            }
         }
 
         function normalizeCustomerPhone(value) {
