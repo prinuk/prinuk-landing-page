@@ -135,14 +135,6 @@
             margin-bottom: 16px;
         }
 
-        .topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-        }
-
         .brand {
             display: flex;
             flex-direction: column;
@@ -1212,9 +1204,6 @@
                 </div>
                 <div class="source" id="sourceName">טוען קטלוג...</div>
             </div>
-            <div class="topbar-actions">
-                <button class="ghost" type="button" id="refreshButton">רענון</button>
-            </div>
         </header>
 
         <form id="orderForm" class="layout" novalidate>
@@ -1366,7 +1355,6 @@
             whatsappContact: document.getElementById('whatsappContact'),
             emailContact: document.getElementById('emailContact'),
             searchInput: document.getElementById('searchInput'),
-            refreshButton: document.getElementById('refreshButton'),
             deliveryFields: document.getElementById('deliveryFields'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
@@ -1377,7 +1365,6 @@
             message: document.getElementById('message')
         };
 
-        els.refreshButton.addEventListener('click', loadCatalog);
         els.searchInput.addEventListener('input', applySearch);
         els.form.addEventListener('input', saveOrderDraft);
         els.form.addEventListener('change', saveOrderDraft);
