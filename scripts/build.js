@@ -43,6 +43,16 @@ const SAMPLE_PRODUCTS = [
   ['לוף', 'ירקות', 'יחידות', 'ק״ג', '10'],
   ['קלמנטינה', 'פירות', 'יחידות', 'ק״ג', '10'],
   ['בצלצלי שאלוט', 'ירקות', 'יחידות', 'יחידות', '10'],
+  ['מארז פלפלונים', 'ירקות', 'יחידות', 'יחידות', '12'],
+  ['מארז גזר צבעוני', 'ירקות', 'יחידות', 'יחידות', '14'],
+  ['חציל בלאדי', 'ירקות', 'יחידות', 'ק״ג', '10'],
+  ['אנדיב', 'ירקות', 'יחידות', 'יחידות', '8'],
+  ['טימין', 'ירקות', 'יחידות', 'יחידות', '6'],
+  ['רוזמרין', 'ירקות', 'יחידות', 'יחידות', '6'],
+  ['ראש סלרי', 'ירקות', 'יחידות', 'יחידות', '7'],
+  ['עלי סלק', 'ירקות', 'יחידות', 'יחידות', '7'],
+  ['ענב ירוק חו״ל', 'פירות', 'יחידות', 'ק״ג', '20'],
+  ['ג׳ינג׳ר', 'ירקות', 'יחידות', 'ק״ג', '24'],
 ];
 
 function assert(condition, message) {
@@ -125,6 +135,16 @@ function validateProductImages() {
   assert(byName['קלמנטינה'].estimatedUnitWeightKg === 0.22, 'Missing clementine unit weight estimate.');
   assert(byName['קלמנטינה'].imageUrl === '/assets/produce/clementine.jpg', 'Clementine image match failed.');
   assert(byName['בצלצלי שאלוט'].imageUrl === '/assets/produce/shallots.jpg', 'Shallots image match failed.');
+  assert(byName['מארז פלפלונים'].imageUrl === '/assets/produce/mini-peppers-pack.jpg', 'Mini peppers pack image match failed.');
+  assert(byName['מארז גזר צבעוני'].imageUrl === '/assets/produce/rainbow-carrots-pack.jpg', 'Rainbow carrots pack image match failed.');
+  assert(byName['חציל בלאדי'].imageUrl === '/assets/produce/baladi-eggplant.jpg', 'Baladi eggplant image match failed.');
+  assert(byName['אנדיב'].imageUrl === '/assets/produce/endive.jpg', 'Endive image match failed.');
+  assert(byName['טימין'].imageUrl === '/assets/produce/thyme.jpg', 'Thyme image match failed.');
+  assert(byName['רוזמרין'].imageUrl === '/assets/produce/rosemary.jpg', 'Rosemary image match failed.');
+  assert(byName['ראש סלרי'].imageUrl === '/assets/produce/celery-root.jpg', 'Celery root image match failed.');
+  assert(byName['עלי סלק'].imageUrl === '/assets/produce/beet-leaves.jpg', 'Beet leaves image match failed.');
+  assert(byName['ענב ירוק חו״ל'].imageUrl === '/assets/produce/green-grapes-imported.jpg', 'Imported green grapes image match failed.');
+  assert(byName['ג׳ינג׳ר'].imageUrl === '/assets/produce/ginger.jpg', 'Ginger image match failed.');
 
   products.forEach(product => {
     if (product.imageUrl && product.imageUrl.startsWith('/assets/produce/')) {
