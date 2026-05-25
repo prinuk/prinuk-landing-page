@@ -2084,7 +2084,7 @@
                     '<strong>' + escapeHtml(item.name) + '</strong>',
                     '<span class="summary-quantity">' + formatQuantity(item.quantity) + ' ' + escapeHtml(item.unitLabel) + '</span>',
                     item.note ? '<span class="summary-note">הערה: ' + escapeHtml(item.note) + '</span>' : '',
-                    item.isEstimatedWeight ? '<span class="summary-note">המחיר לפי משקל משוער של כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
+                    item.isEstimatedWeight ? '<span class="summary-note">משקל משוער: כ-' + escapeHtml(formatQuantity(item.estimatedWeightKg)) + ' ק״ג לפי כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
                     '<span class="' + priceClass + '">' + escapeHtml(estimateText) + '</span>',
                     '</div>'
                 ].join('');
@@ -2143,7 +2143,8 @@
                 return;
             }
 
-            estimate.textContent = (lineEstimate.isEstimatedPrice ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total);
+            estimate.textContent = (lineEstimate.isEstimatedPrice ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total)
+                + (lineEstimate.estimatedWeightKg ? ' | כ-' + formatQuantity(lineEstimate.estimatedWeightKg) + ' ק״ג' : '');
             estimate.className = 'row-estimate' + (lineEstimate.isEstimatedPrice ? ' pending' : '');
         }
 

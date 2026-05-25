@@ -189,7 +189,7 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Product note visibility did not follow selected quantity.');
     }
 
-    if (!result.estimateText.includes('₪3')) {
+    if (!result.estimateText.includes('₪3') || !result.estimateText.includes('כ-0.3 ק״ג')) {
       throw new Error('Expected row estimate to include ₪3, got: ' + result.estimateText);
     }
 
@@ -197,7 +197,7 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected row estimate to use estimated total wording, got: ' + result.estimateText);
     }
 
-    if (!result.singleUnitEstimateText.includes('סכום משוער') || !result.singleUnitEstimateText.includes('₪1.5')) {
+    if (!result.singleUnitEstimateText.includes('סכום משוער') || !result.singleUnitEstimateText.includes('₪1.5') || !result.singleUnitEstimateText.includes('כ-0.15 ק״ג')) {
       throw new Error('Expected kg-priced row to use unit estimate wording, got: ' + result.singleUnitEstimateText);
     }
 
