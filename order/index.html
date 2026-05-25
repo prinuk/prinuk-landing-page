@@ -2126,7 +2126,6 @@
         function renderCatalog() {
             var settings = catalog.settings || {};
             var title = settings.title || 'פרינוּק - המכירה השבועית';
-            var description = settings.description || '';
             var saleName = settings.saleName || '';
             var closedMessage = settings.closedMessage || 'ההזמנות עוד לא נפתחו. הטופס ייפתח בקרוב.';
             var pickupText = settings.pickupText || '';
@@ -2141,10 +2140,7 @@
             renderContactInfo(contactPhone, contactEmail);
             setBrandLogo(logoUrl);
 
-            els.sourceName.textContent = [
-                description,
-                saleName ? 'מכירה: ' + saleName : ''
-            ].filter(Boolean).join(' | ');
+            els.sourceName.textContent = saleName ? 'מכירה: ' + saleName : '';
 
             if (!catalog.categories || !catalog.categories.length) {
                 setOrderingClosed(closedMessage);
