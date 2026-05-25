@@ -1286,12 +1286,42 @@
             .product-row {
                 gap: 10px;
                 min-height: 0;
+                max-width: 100%;
                 padding: 10px;
+                overflow: hidden;
             }
 
             .amount-line {
                 grid-template-columns: 1fr;
                 gap: 8px;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .number-wrap {
+                grid-template-columns: 44px minmax(0, 1fr) 44px;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .suffix {
+                grid-column: 1 / -1;
+                min-width: 0;
+                min-height: 34px;
+                height: auto;
+                padding: 6px 8px;
+                border-top: 1px solid var(--category-border-color, var(--line));
+                border-inline-start: 0;
+                white-space: normal;
+            }
+
+            .quality-notice,
+            .quality-notice p,
+            .delivery-note,
+            .billing-notice,
+            .pickup-info {
+                max-width: 100%;
+                overflow-wrap: anywhere;
             }
 
             .cart-feedback {
