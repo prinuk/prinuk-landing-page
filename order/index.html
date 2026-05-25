@@ -64,19 +64,24 @@
     </script>
     <style>
         :root {
-            --bg: #132820;
+            --bg: #eef7f1;
             --surface: #ffffff;
-            --ink: #1e2528;
-            --muted: #667074;
-            --line: #d9ded6;
-            --accent: #1f7a5a;
-            --accent-dark: #165a43;
-            --accent-soft: #e5f2ec;
-            --amber: #a86216;
-            --danger: #a33232;
-            --shadow: 0 12px 30px rgba(10, 22, 18, 0.16);
+            --surface-tint: #f7fbff;
+            --ink: #17242f;
+            --muted: #68767f;
+            --line: #dce7df;
+            --accent: #0c4c9c;
+            --accent-dark: #07306b;
+            --accent-soft: #e8f2ff;
+            --fresh: #1d9b68;
+            --fresh-soft: #e8f7ef;
+            --fruit: #ec6f4a;
+            --amber: #b46e16;
+            --danger: #b33636;
+            --shadow: 0 14px 34px rgba(22, 43, 56, 0.12);
+            --shadow-soft: 0 8px 22px rgba(22, 43, 56, 0.08);
             --radius: 8px;
-            --mobile-summary-height: 98px;
+            --mobile-summary-height: 112px;
         }
 
         * {
@@ -84,15 +89,16 @@
         }
 
         html {
+            max-width: 100%;
+            overflow-x: hidden;
             scroll-padding-top: 76px;
         }
 
         body {
             margin: 0;
-            background:
-                linear-gradient(145deg, rgba(31, 122, 90, 0.35) 0%, rgba(31, 122, 90, 0) 38%),
-                linear-gradient(24deg, rgba(168, 98, 22, 0.18) 0%, rgba(168, 98, 22, 0) 30%),
-                var(--bg);
+            max-width: 100%;
+            overflow-x: hidden;
+            background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 44%, #f6f4ec 100%);
             color: var(--ink);
             font-family: Arial, Helvetica, sans-serif;
             line-height: 1.45;
@@ -117,12 +123,13 @@
 
         .shell {
             width: min(1180px, calc(100% - 16px));
+            max-width: calc(100vw - 16px);
             margin: 0 auto;
-            padding: 14px 0 24px;
+            padding: 12px 0 24px;
         }
 
         .bsd-mark {
-            color: rgba(238, 247, 241, 0.82);
+            color: rgba(23, 36, 47, 0.58);
             font-size: 13px;
             font-weight: 700;
             line-height: 1;
@@ -135,8 +142,13 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 16px;
-            color: #f7fbf8;
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(12, 76, 156, 0.12);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-soft);
         }
 
         .brand {
@@ -152,12 +164,12 @@
         }
 
         .brand-logo {
-            width: 72px;
-            height: 72px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             object-fit: contain;
-            background: transparent;
-            border: 0;
+            background: #f5f9ff;
+            border: 1px solid rgba(12, 76, 156, 0.14);
         }
 
         h1,
@@ -171,6 +183,7 @@
             margin-bottom: 2px;
             font-size: 30px;
             line-height: 1.12;
+            color: var(--accent-dark);
         }
 
         h2 {
@@ -179,7 +192,7 @@
         }
 
         .source {
-            color: rgba(225, 239, 230, 0.82);
+            color: var(--muted);
             font-size: 14px;
         }
 
@@ -205,13 +218,21 @@
         }
 
         .panel {
-            padding: 14px;
+            padding: 16px;
         }
 
         .summary {
-            position: sticky;
+            position: fixed;
             top: 14px;
+            bottom: 14px;
+            left: max(8px, calc((100vw - 1180px) / 2));
+            display: flex;
+            flex-direction: column;
+            width: 320px;
+            max-height: calc(100vh - 28px);
+            max-height: calc(100dvh - 28px);
             padding: 16px;
+            overflow: hidden;
             overflow-anchor: none;
         }
 
@@ -237,6 +258,28 @@
             color: var(--danger);
             font-weight: 900;
             margin-inline-start: 3px;
+        }
+
+        .field-error {
+            display: none;
+            color: var(--danger);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .field-error.show {
+            display: block;
+        }
+
+        input.is-invalid-field {
+            border-color: var(--danger);
+        }
+
+        .panel.needs-attention {
+            animation: attention-panel 900ms ease;
+            border-color: rgba(179, 54, 54, 0.46);
+            box-shadow: 0 0 0 4px rgba(179, 54, 54, 0.08), var(--shadow);
         }
 
         .field-wide {
@@ -311,10 +354,34 @@
             color: var(--amber);
         }
 
-        .billing-notice {
+        .order-info-panel {
+            display: grid;
+            gap: 10px;
+        }
+
+        .order-info-panel h2 {
+            margin-bottom: 0;
+        }
+
+        .billing-notice,
+        .quality-notice {
             border: 1px solid #d7e5db;
             background: var(--accent-soft);
             color: var(--accent-dark);
+        }
+
+        .quality-notice {
+            display: block;
+            line-height: 1.5;
+        }
+
+        .quality-notice strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .quality-notice p {
+            margin: 0;
         }
 
         .pickup-info {
@@ -336,7 +403,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin: -4px 0 12px;
+            margin: 0;
         }
 
         .contact-title {
@@ -453,51 +520,62 @@
         }
 
         .product-list {
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--line);
-            border-radius: var(--radius);
-            overflow: hidden;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
         }
 
         .product-row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
-            gap: 14px;
+            grid-template-columns: 1fr;
+            gap: 12px;
             align-items: center;
-            min-height: 70px;
+            min-height: 190px;
             padding: 12px;
             background: #fff;
-            border-bottom: 1px solid var(--line);
+            border: 1px solid var(--category-border-color, var(--line));
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-soft);
+            transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
         }
 
-        .product-row:last-child {
-            border-bottom: 0;
+        .product-row:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(22, 43, 56, 0.12);
         }
 
         .product-row.is-selected {
-            background: #f8fcf9;
+            background: linear-gradient(180deg, #ffffff 0%, var(--category-soft-color, var(--fresh-soft)) 100%);
+            border-color: var(--category-color, var(--accent));
+            box-shadow: 0 16px 32px rgba(12, 76, 156, 0.14);
         }
 
         .product-row.is-invalid {
             background: #fff8f8;
+            border-color: var(--danger);
+        }
+
+        .product-row.just-added {
+            animation: item-added 480ms ease;
         }
 
         .product-info {
             display: grid;
-            grid-template-columns: 76px minmax(0, 1fr);
+            grid-template-columns: 88px minmax(0, 1fr);
             gap: 12px;
             align-items: center;
             min-width: 0;
         }
 
         .product-image-wrap {
-            width: 76px;
-            height: 76px;
-            border: 1px solid var(--category-border-color, var(--line));
+            position: relative;
+            width: 88px;
+            height: 88px;
+            border: 1px solid rgba(12, 76, 156, 0.08);
             border-radius: 8px;
             overflow: hidden;
-            background: var(--category-soft-color, #f5f7f4);
+            background: var(--surface-tint);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.78);
         }
 
         .product-image {
@@ -509,6 +587,38 @@
             background: #fff;
         }
 
+        .product-image-placeholder {
+            display: grid;
+            place-items: center;
+            color: var(--category-strong-color, var(--accent-dark));
+            font-size: 14px;
+            font-weight: 900;
+            background: var(--category-soft-color, var(--fresh-soft));
+        }
+
+        .selected-badge {
+            position: absolute;
+            top: 6px;
+            inset-inline-end: 6px;
+            display: grid;
+            min-width: 26px;
+            height: 26px;
+            place-items: center;
+            padding: 0 7px;
+            color: #fff;
+            background: var(--accent);
+            border: 2px solid #fff;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 18px rgba(12, 76, 156, 0.25);
+        }
+
+        .selected-badge[hidden] {
+            display: none;
+        }
+
         .product-name {
             display: flex;
             flex-direction: column;
@@ -517,8 +627,18 @@
         }
 
         .product-name strong {
-            font-size: 17px;
+            color: var(--accent-dark);
+            font-size: 18px;
+            line-height: 1.25;
             overflow-wrap: anywhere;
+        }
+
+        .product-name::after {
+            display: block;
+            width: min(220px, 100%);
+            margin-top: 4px;
+            border-bottom: 3px dotted rgba(12, 76, 156, 0.32);
+            content: "";
         }
 
         .price {
@@ -547,7 +667,7 @@
 
         .amount-line {
             display: grid;
-            grid-template-columns: 116px minmax(0, 1fr);
+            grid-template-columns: 1fr;
             gap: 8px;
             align-items: center;
         }
@@ -581,13 +701,13 @@
 
         .number-wrap {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: 48px minmax(54px, 1fr) 48px auto;
             align-items: center;
             border: 1px solid var(--category-border-color, var(--line));
             border-radius: 7px;
             overflow: hidden;
             background: #fff;
-            min-height: 42px;
+            min-height: 48px;
         }
 
         .number-wrap:focus-within {
@@ -599,13 +719,54 @@
             border: 0;
             border-radius: 0;
             box-shadow: none;
-            min-height: 40px;
+            min-height: 46px;
+            padding: 0 8px;
             text-align: center;
-            font-weight: 800;
+            font-size: 18px;
+            font-weight: 900;
+            appearance: textfield;
+            -moz-appearance: textfield;
         }
 
         .number-wrap input:focus {
             box-shadow: none;
+        }
+
+        .number-wrap input::-webkit-outer-spin-button,
+        .number-wrap input::-webkit-inner-spin-button {
+            margin: 0;
+            appearance: none;
+        }
+
+        .quantity-button {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            min-height: 46px;
+            place-items: center;
+            border: 0;
+            background: var(--category-soft-color, var(--accent-soft));
+            color: var(--category-strong-color, var(--accent-dark));
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1;
+            transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+
+        .quantity-button:hover,
+        .quantity-button:focus-visible {
+            background: var(--category-color, var(--accent));
+            color: var(--category-text-color, #fff);
+        }
+
+        .quantity-button:active {
+            transform: scale(0.94);
+        }
+
+        .quantity-button:disabled {
+            cursor: default;
+            opacity: 0.42;
+            transform: none;
         }
 
         .suffix {
@@ -616,7 +777,7 @@
             justify-content: center;
             padding: 0 10px;
             background: var(--category-soft-color, #eef2ea);
-            border-right: 1px solid var(--category-border-color, var(--line));
+            border-inline-start: 1px solid var(--category-border-color, var(--line));
             color: var(--category-strong-color, var(--accent-dark));
             font-weight: 800;
             white-space: nowrap;
@@ -654,10 +815,11 @@
         .summary-items {
             display: flex;
             flex-direction: column;
+            flex: 1 1 auto;
             gap: 8px;
-            max-height: 360px;
-            overflow: auto;
-            padding-left: 4px;
+            min-height: 0;
+            overflow-y: auto;
+            padding-inline-end: 4px;
             margin-bottom: 12px;
         }
 
@@ -723,6 +885,7 @@
         }
 
         .summary-ad {
+            flex: 0 0 auto;
             margin-top: 14px;
             padding-top: 14px;
             border-top: 1px solid var(--line);
@@ -742,10 +905,15 @@
         }
 
         .submit-row {
+            position: sticky;
+            bottom: 0;
+            z-index: 1;
             display: flex;
+            flex: 0 0 auto;
             flex-direction: column;
             gap: 10px;
             border-top: 1px solid var(--line);
+            background: var(--surface);
             padding-top: 12px;
         }
 
@@ -775,6 +943,40 @@
             opacity: 0.7;
         }
 
+        .reset-order {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            background: #fff;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .reset-order:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .cart-toggle {
+            display: none;
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid rgba(12, 76, 156, 0.22);
+            border-radius: 7px;
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .cart-toggle:hover,
+        .cart-toggle:focus-visible {
+            border-color: var(--accent);
+            background: #f8fbff;
+        }
+
         .message {
             display: none;
             border-radius: 7px;
@@ -802,6 +1004,78 @@
             color: var(--accent-dark);
             font-size: 16px;
             line-height: 1.5;
+        }
+
+        .cart-feedback {
+            position: fixed;
+            inset-inline-end: 18px;
+            bottom: 18px;
+            z-index: 1001;
+            max-width: min(320px, calc(100vw - 32px));
+            padding: 12px 14px;
+            color: #fff;
+            background: var(--accent-dark);
+            border-radius: 8px;
+            box-shadow: 0 18px 40px rgba(7, 48, 107, 0.28);
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1.35;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(12px);
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .cart-feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .summary.bump {
+            animation: cart-bump 420ms ease;
+        }
+
+        @keyframes item-added {
+            0% {
+                transform: scale(1);
+            }
+
+            45% {
+                transform: scale(1.015);
+                box-shadow: 0 18px 36px rgba(29, 155, 104, 0.18);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes cart-bump {
+            0% {
+                transform: scale(1);
+            }
+
+            45% {
+                transform: scale(1.025);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes attention-panel {
+            0% {
+                transform: translateY(0);
+            }
+
+            35% {
+                transform: translateY(-3px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
         }
 
         .notice-modal {
@@ -878,23 +1152,31 @@
 
         @media (max-width: 900px) {
             .layout {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
             }
 
             .summary {
-                position: static;
+                position: fixed;
+                display: block;
+                right: max(8px, env(safe-area-inset-right));
+                bottom: calc(8px + var(--mobile-browser-bar, 0px) + env(safe-area-inset-bottom));
+                left: max(8px, env(safe-area-inset-left));
+                top: auto;
+                z-index: 80;
+                width: auto;
+                max-width: calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+                max-height: min(78dvh, 620px);
+                overflow: hidden;
+                padding: 10px;
                 border-radius: 8px;
-                z-index: auto;
-                height: auto;
-                max-height: none;
-                overflow: visible;
-                padding: 12px;
-                box-shadow: var(--shadow);
-                transition: none;
+                box-shadow: 0 18px 42px rgba(7, 48, 107, 0.22);
+                transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
             }
 
             .shell {
-                padding-bottom: calc(16px + env(safe-area-inset-bottom));
+                width: 100%;
+                max-width: 100vw;
+                padding: 8px 6px calc(var(--mobile-summary-height) + var(--mobile-browser-bar, 0px) + 28px + env(safe-area-inset-bottom));
             }
 
             .summary h2,
@@ -903,9 +1185,25 @@
                 display: none;
             }
 
+            .summary.is-open {
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .summary.is-open h2 {
+                display: block;
+            }
+
+            .summary.is-open .summary-items {
+                display: flex;
+                max-height: min(42dvh, 360px);
+                margin-bottom: 12px;
+            }
+
             .submit-row {
+                position: static;
                 display: grid;
-                grid-template-columns: auto minmax(160px, 1fr);
+                grid-template-columns: minmax(92px, 0.8fr) minmax(90px, 0.75fr) minmax(126px, 1fr);
                 align-items: center;
                 gap: 10px;
                 border-top: 0;
@@ -913,7 +1211,15 @@
                 width: 100%;
             }
 
+            .cart-toggle {
+                display: block;
+            }
+
             .message {
+                grid-column: 1 / -1;
+            }
+
+            .reset-order {
                 grid-column: 1 / -1;
             }
 
@@ -938,16 +1244,108 @@
                 min-height: 52px;
             }
 
+            .topbar,
+            .products-head,
+            .fields,
+            .delivery-fields,
+            .product-row {
+                grid-template-columns: 1fr;
+            }
+
+            .products-head {
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .category-nav {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overscroll-behavior-x: contain;
+                gap: 8px;
+                margin: 0 -10px 12px;
+                padding: 0 10px 8px;
+                background: var(--surface);
+                border-bottom: 1px solid var(--line);
+                overflow-anchor: none;
+            }
+
+            .nav-pill {
+                flex: 0 0 auto;
+                min-height: 40px;
+                white-space: nowrap;
+            }
+
+            .product-list {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .product-row {
+                gap: 10px;
+                min-height: 0;
+                max-width: 100%;
+                padding: 10px;
+                overflow: hidden;
+            }
+
+            .amount-line {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .number-wrap {
+                grid-template-columns: 44px minmax(0, 1fr) 44px;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .suffix {
+                grid-column: 1 / -1;
+                min-width: 0;
+                min-height: 34px;
+                height: auto;
+                padding: 6px 8px;
+                border-top: 1px solid var(--category-border-color, var(--line));
+                border-inline-start: 0;
+                white-space: normal;
+            }
+
+            .quality-notice,
+            .quality-notice p,
+            .delivery-note,
+            .billing-notice,
+            .pickup-info {
+                max-width: 100%;
+                overflow-wrap: anywhere;
+            }
+
+            .cart-feedback {
+                inset-inline: 12px;
+                bottom: calc(var(--mobile-summary-height) + 18px + env(safe-area-inset-bottom));
+                max-width: none;
+            }
+
             body.is-text-editing .summary {
+                opacity: 1;
                 pointer-events: auto;
                 transform: none;
             }
         }
 
         @media (max-width: 720px) {
+            :root {
+                --mobile-browser-bar: 0px;
+            }
+
             .shell {
                 width: 100%;
-                padding: 8px 6px calc(14px + env(safe-area-inset-bottom));
+                max-width: 100vw;
+                padding: 8px 6px calc(var(--mobile-summary-height) + var(--mobile-browser-bar) + 28px + env(safe-area-inset-bottom));
             }
 
             h1 {
@@ -1090,7 +1488,8 @@
             }
 
             .product-list {
-                border-radius: 7px;
+                grid-template-columns: 1fr;
+                gap: 10px;
             }
 
             .product-row {
@@ -1100,13 +1499,13 @@
             }
 
             .product-info {
-                grid-template-columns: 66px minmax(0, 1fr);
+                grid-template-columns: 76px minmax(0, 1fr);
                 gap: 10px;
             }
 
             .product-image-wrap {
-                width: 66px;
-                height: 66px;
+                width: 76px;
+                height: 76px;
             }
 
             .product-name strong {
@@ -1123,7 +1522,7 @@
             }
 
             .amount-line {
-                grid-template-columns: 112px minmax(0, 1fr);
+                grid-template-columns: 1fr;
                 gap: 8px;
             }
 
@@ -1144,24 +1543,29 @@
             .suffix {
                 min-width: 72px;
             }
+
+            .summary .reset-order {
+                display: none;
+            }
+
+            .summary.is-open .reset-order {
+                display: block;
+            }
         }
 
         @media (max-width: 420px) {
             .product-info {
-                grid-template-columns: 58px minmax(0, 1fr);
+                grid-template-columns: 68px minmax(0, 1fr);
             }
 
             .product-image-wrap {
-                width: 58px;
-                height: 58px;
-            }
-
-            .amount-line {
-                grid-template-columns: 1fr;
+                width: 68px;
+                height: 68px;
             }
 
             .suffix {
-                min-width: 82px;
+                min-width: 66px;
+                padding: 0 8px;
             }
 
             .summary {
@@ -1170,16 +1574,24 @@
             }
 
             .submit-row {
-                grid-template-columns: auto minmax(170px, 1fr);
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
                 gap: 7px;
+            }
+
+            .summary-meta {
+                grid-column: 1 / -1;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                min-width: 0;
             }
 
             .count {
                 text-align: right;
             }
 
-            .summary-meta {
-                min-width: 92px;
+            .submit {
+                min-height: 50px;
             }
         }
     </style>
@@ -1189,10 +1601,9 @@
     <div id="marketNoticeModal" class="notice-modal hidden" role="dialog" aria-modal="true"
         aria-labelledby="marketNoticeTitle">
         <div class="notice-dialog">
-            <h2 id="marketNoticeTitle">לקוחות יקרים,</h2>
-            <p>שוק הפירות והירקות הוא דינמי מאוד. כדי להבטיח שתקבלו תמיד אך ורק את הסחורה הטרייה והאיכותית ביותר, ייתכנו
-                שינויים זמניים במלאי או במחירים.</p>
-            <p>בכל מקרה של שינוי בהזמנתכם, ניצור עמכם קשר לעדכון ואישור לפני המשלוח.</p>
+            <h2 id="marketNoticeTitle">חשוב לנו שתדעו:</h2>
+            <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו.</p>
+            <p>במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
             <button id="marketNoticeAccept" class="submit" type="button">אישור והמשך להזמנה</button>
         </div>
     </div>
@@ -1212,7 +1623,40 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <section class="panel order-info-panel" aria-labelledby="orderInfoTitle">
+                    <h2 id="orderInfoTitle">מה חשוב לדעת לפני שמזמינים</h2>
+                    <div class="delivery-note">
+                        משלוח: 25 ש״ח. בהזמנה מעל 200 ש״ח המשלוח חינם.
+                    </div>
+                    <div id="pickupInfo" class="pickup-info">
+                        המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00
+                    </div>
+                    <div id="contactInfo" class="contact-info">
+                        <div class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</div>
+                        <a id="phoneContact" class="contact-link" href="tel:0535234975">שיחה: 0535234975</a>
+                        <a id="whatsappContact" class="contact-link" href="https://wa.me/972535234975" target="_blank"
+                            rel="noopener">וואטסאפ</a>
+                        <a id="emailContact" class="contact-link" href="mailto:prinuk10@gmail.com">מייל</a>
+                    </div>
+                    <div class="billing-notice">
+                        הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
+                    </div>
+                    <div class="quality-notice">
+                        <strong>חשוב לנו שתדעו:</strong>
+                        <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
+                    </div>
+                </section>
+
                 <section class="panel">
+                    <div class="products-head">
+                        <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
+                        <input id="searchInput" type="search" placeholder="חיפוש מוצר">
+                    </div>
+                    <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
+                    <div id="productsRoot" class="loading">טוען מוצרים...</div>
+                </section>
+
+                <section id="customerDetailsPanel" class="panel">
                     <h2>פרטי הזמנה</h2>
                     <div class="fields">
                         <label class="field">
@@ -1222,7 +1666,8 @@
 
                         <label class="field">
                             <span>טלפון <span class="required-star">*</span></span>
-                            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" required>
+                            <input id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="14" pattern="(?:\+972|0)5\d{8}" aria-describedby="phoneError" required>
+                            <small id="phoneError" class="field-error" aria-live="polite"></small>
                         </label>
 
                         <label class="field field-wide">
@@ -1240,22 +1685,6 @@
                             <input type="radio" name="fulfillment" value="משלוח">
                             <span>משלוח</span>
                         </label>
-                    </div>
-                    <div class="delivery-note">
-                        משלוח: 25 ש״ח. בהזמנה מעל 200 ש״ח המשלוח חינם.
-                    </div>
-                    <div id="pickupInfo" class="pickup-info">
-                        המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00
-                    </div>
-                    <div id="contactInfo" class="contact-info">
-                        <div class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</div>
-                        <a id="phoneContact" class="contact-link" href="tel:0535234975">שיחה: 0535234975</a>
-                        <a id="whatsappContact" class="contact-link" href="https://wa.me/972535234975" target="_blank"
-                            rel="noopener">וואטסאפ</a>
-                        <a id="emailContact" class="contact-link" href="mailto:prinuk10@gmail.com">מייל</a>
-                    </div>
-                    <div class="billing-notice">
-                        הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
@@ -1279,14 +1708,6 @@
                     </label>
                 </section>
 
-                <section class="panel">
-                    <div class="products-head">
-                        <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
-                        <input id="searchInput" type="search" placeholder="חיפוש מוצר">
-                    </div>
-                    <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
-                    <div id="productsRoot" class="loading">טוען מוצרים...</div>
-                </section>
             </main>
 
             <aside class="summary" aria-live="polite">
@@ -1299,7 +1720,9 @@
                         <div id="summaryCount" class="count">0 מוצרים</div>
                         <div id="summaryTotal" class="summary-total">סכום משוער: ₪0</div>
                     </div>
+                    <button id="cartToggleButton" class="cart-toggle" type="button" aria-expanded="false" aria-controls="summaryItems">סל קניות</button>
                     <button id="submitButton" class="submit" type="submit">שליחת הזמנה</button>
+                    <button id="resetOrderButton" class="reset-order" type="button">איפוס הזמנה</button>
                     <div id="message" class="message"></div>
                 </div>
                 <div class="summary-ad" aria-label="פרסומת פרינוּק">
@@ -1309,6 +1732,7 @@
                 </div>
             </aside>
         </form>
+        <div id="cartFeedback" class="cart-feedback" role="status" aria-live="polite"></div>
     </div>
 
     <script>
@@ -1324,26 +1748,31 @@
         var productById = {};
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
+        var productAddSequence = 0;
+        var pendingScrollRestore = true;
+        var scrollSaveTimer = null;
+        var cartFeedbackTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
+        var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
 
         var CATEGORY_COLORS = {
             'ירקות': {
-                color: '#2A523e',
-                soft: '#e6eee9',
-                border: '#cbd8cf',
-                strong: '#2A523e'
+                color: '#1d9b68',
+                soft: '#e8f7ef',
+                border: '#bde3ce',
+                strong: '#0d6544'
             },
             'עלים': {
-                color: '#97A994',
-                soft: '#eef2ec',
-                border: '#d8dfd5',
-                strong: '#4f5f4c'
+                color: '#8caf4f',
+                soft: '#f0f7e4',
+                border: '#d8e8b9',
+                strong: '#516b1e'
             },
             'פירות': {
-                color: '#D97A53',
-                soft: '#fbede7',
-                border: '#efcbbb',
-                strong: '#9a4f32'
+                color: '#ec6f4a',
+                soft: '#fff0ea',
+                border: '#f4c6b8',
+                strong: '#a64225'
             }
         };
 
@@ -1358,14 +1787,21 @@
             phoneContact: document.getElementById('phoneContact'),
             whatsappContact: document.getElementById('whatsappContact'),
             emailContact: document.getElementById('emailContact'),
+            phoneInput: document.getElementById('phone'),
+            phoneError: document.getElementById('phoneError'),
             searchInput: document.getElementById('searchInput'),
             deliveryFields: document.getElementById('deliveryFields'),
+            customerDetailsPanel: document.getElementById('customerDetailsPanel'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             submitButton: document.getElementById('submitButton'),
+            resetOrderButton: document.getElementById('resetOrderButton'),
+            cartToggleButton: document.getElementById('cartToggleButton'),
+            summaryPanel: document.querySelector('.summary'),
             summaryItems: document.getElementById('summaryItems'),
             summaryCount: document.getElementById('summaryCount'),
             summaryTotal: document.getElementById('summaryTotal'),
+            cartFeedback: document.getElementById('cartFeedback'),
             message: document.getElementById('message')
         };
 
@@ -1373,6 +1809,14 @@
         els.form.addEventListener('input', saveOrderDraft);
         els.form.addEventListener('change', saveOrderDraft);
         els.form.addEventListener('submit', submitOrder);
+        els.phoneInput.addEventListener('blur', validatePhoneField);
+        els.phoneInput.addEventListener('input', function () {
+            if (els.phoneError.classList.contains('show')) {
+                validatePhoneField({ allowEmpty: true });
+            }
+        });
+        els.resetOrderButton.addEventListener('click', resetOrder);
+        els.cartToggleButton.addEventListener('click', toggleCartSummary);
         els.marketNoticeAccept.addEventListener('click', acceptMarketNotice);
         els.brandLogo.addEventListener('error', function () {
             useDefaultBrandLogo();
@@ -1381,14 +1825,20 @@
         document.addEventListener('focusout', handleTextEditingBlur);
         window.addEventListener('pageshow', handleNoticeViewportChange);
         window.addEventListener('resize', handleNoticeViewportChange);
+        window.addEventListener('resize', updateMobileSummaryMetrics);
+        window.addEventListener('scroll', scheduleScrollSave, { passive: true });
+        window.addEventListener('pagehide', saveScrollPosition);
+        window.addEventListener('beforeunload', saveScrollPosition);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', handleNoticeViewportChange);
+            window.visualViewport.addEventListener('resize', updateMobileSummaryMetrics);
         }
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
         showMarketNoticeIfNeeded();
         restoreOrderDraft();
         loadCatalog();
+        updateMobileSummaryMetrics();
 
         document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
             input.addEventListener('change', function () {
@@ -1398,14 +1848,28 @@
 
         els.productsRoot.addEventListener('input', function (event) {
             if (event.target.matches('.quantity-input')) {
-                updateRowState(event.target.closest('.product-row'));
+                var row = event.target.closest('.product-row');
+                var wasSelected = row && row.classList.contains('is-selected');
+                normalizeQuantityInput(event.target);
+                updateRowState(row);
                 renderSummary();
+                if (!wasSelected && row && row.classList.contains('is-selected')) {
+                    showItemFeedback(row);
+                    scrollSummaryToLatestItem();
+                }
             } else if (event.target.matches('.product-note-input')) {
                 renderSummary();
             }
         });
 
         els.productsRoot.addEventListener('click', function (event) {
+            var quantityButton = event.target.closest('[data-quantity-action]');
+
+            if (quantityButton) {
+                adjustQuantity(quantityButton.closest('.product-row'), quantityButton.getAttribute('data-quantity-action'));
+                return;
+            }
+
             var button = event.target.closest('[data-mode-button]');
 
             if (!button) {
@@ -1467,12 +1931,14 @@
                     var quantity = String(quantityInput && quantityInput.value || '').trim();
                     var note = String(noteInput && noteInput.value || '').trim();
                     var mode = row.getAttribute('data-mode') || 'unit';
+                    var addedOrder = Number(row.getAttribute('data-added-order') || 0);
 
                     if (quantity || mode !== getDefaultProductMode(id)) {
                         products[id] = {
                             mode: mode,
                             quantity: quantity,
-                            note: quantity ? note : ''
+                            note: quantity ? note : '',
+                            addedOrder: quantity ? addedOrder : 0
                         };
                     }
                 });
@@ -1537,6 +2003,12 @@
 
                 var quantityInput = row.querySelector('.quantity-input');
                 var noteInput = row.querySelector('.product-note-input');
+                var addedOrder = Number(item.addedOrder || 0);
+
+                if (addedOrder > 0) {
+                    row.setAttribute('data-added-order', String(addedOrder));
+                    productAddSequence = Math.max(productAddSequence, addedOrder);
+                }
 
                 if (quantityInput) {
                     quantityInput.value = item.quantity || '';
@@ -1550,6 +2022,43 @@
             });
         }
 
+        function saveScrollPosition() {
+            var scrollTop = getPageScrollTop();
+
+            try {
+                window.sessionStorage.setItem(ORDER_SCROLL_STORAGE_KEY, String(scrollTop));
+            } catch (error) { }
+        }
+
+        function scheduleScrollSave() {
+            if (scrollSaveTimer) {
+                return;
+            }
+
+            scrollSaveTimer = window.setTimeout(function () {
+                scrollSaveTimer = null;
+                saveScrollPosition();
+            }, 150);
+        }
+
+        function restoreScrollPosition() {
+            if (!pendingScrollRestore) {
+                return;
+            }
+
+            pendingScrollRestore = false;
+
+            try {
+                var scrollTop = Number(window.sessionStorage.getItem(ORDER_SCROLL_STORAGE_KEY) || 0);
+
+                if (scrollTop > 0) {
+                    window.setTimeout(function () {
+                        window.scrollTo(0, scrollTop);
+                    }, 0);
+                }
+            } catch (error) { }
+        }
+
         function setInputValue(id, value) {
             if (typeof value === 'undefined' || value === null) {
                 return;
@@ -1559,8 +2068,7 @@
         }
 
         function getDefaultProductMode(id) {
-            var product = productById[id];
-            return product && product.unitType === 'kg' ? 'kg' : 'unit';
+            return 'unit';
         }
 
         function getPageScrollTop() {
@@ -1720,7 +2228,6 @@
         function renderCatalog() {
             var settings = catalog.settings || {};
             var title = settings.title || 'פרינוּק - המכירה השבועית';
-            var description = settings.description || '';
             var saleName = settings.saleName || '';
             var closedMessage = settings.closedMessage || 'ההזמנות עוד לא נפתחו. הטופס ייפתח בקרוב.';
             var pickupText = settings.pickupText || '';
@@ -1735,10 +2242,7 @@
             renderContactInfo(contactPhone, contactEmail);
             setBrandLogo(logoUrl);
 
-            els.sourceName.textContent = [
-                description,
-                saleName ? 'מכירה: ' + saleName : ''
-            ].filter(Boolean).join(' | ');
+            els.sourceName.textContent = saleName ? 'מכירה: ' + saleName : '';
 
             if (!catalog.categories || !catalog.categories.length) {
                 setOrderingClosed(closedMessage);
@@ -1766,6 +2270,7 @@
 
             restoreOrderDraft();
             renderSummary();
+            restoreScrollPosition();
         }
 
         function switchCategory(name) {
@@ -1861,10 +2366,10 @@
 
         function getCategoryStyle(categoryName) {
             var palette = CATEGORY_COLORS[String(categoryName || '').trim()] || {
-                color: '#1f7a5a',
-                soft: '#e5f2ec',
-                border: '#d7e5db',
-                strong: '#165a43'
+                color: '#0c4c9c',
+                soft: '#e8f2ff',
+                border: '#c9ddf7',
+                strong: '#07306b'
             };
             var color = palette.color;
             var textColor = color.toLowerCase() === '#97a994' ? '#1e2528' : '#ffffff';
@@ -1880,10 +2385,9 @@
 
         function renderProduct(product, categoryName) {
             var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
-            var isKg = product.unitType === 'kg';
 
             return [
-                '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="' + (isKg ? 'kg' : 'unit') + '">',
+                '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
                 '<div class="product-info">',
                 renderProductImage(product),
                 '<div class="product-name">',
@@ -1892,7 +2396,7 @@
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
-                isKg ? renderKgControls(product) : renderUnitControls(product),
+                renderUnitControls(product),
                 renderProductNote(product),
                 '</article>'
             ].join('');
@@ -1900,14 +2404,21 @@
 
         function renderProductImage(product) {
             var imageUrl = String(product.imageUrl || '').trim();
+            var badge = '<span class="selected-badge" data-selected-badge hidden>0</span>';
 
             if (!imageUrl) {
-                return '';
+                return [
+                    '<div class="product-image-wrap product-image-placeholder">',
+                    '<span aria-hidden="true">טרי</span>',
+                    badge,
+                    '</div>'
+                ].join('');
             }
 
             return [
                 '<div class="product-image-wrap">',
                 '<img class="product-image" src="' + escapeAttr(imageUrl) + '" loading="lazy" decoding="async" alt="' + escapeAttr(product.name) + '">',
+                badge,
                 '</div>'
             ].join('');
         }
@@ -1922,30 +2433,67 @@
             ].join('');
         }
 
-        function renderKgControls(product) {
+        function renderUnitControls(product) {
+            var productName = escapeAttr(product.name);
+
             return [
-                '<div class="amount-line">',
-                '<div class="segment" role="group" aria-label="יחידת הזמנה">',
-                '<button type="button" class="active" data-mode-button="kg">ק״ג</button>',
-                '<button type="button" data-mode-button="unit">יחידות</button>',
+                '<div class="amount-line single">',
+                '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
+                '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
+                '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
+                '<button class="quantity-button" type="button" data-quantity-action="increase" aria-label="הוספת כמות עבור ' + productName + '">+</button>',
+                '<span class="suffix">יחידות</span>',
                 '</div>',
-                '<label class="number-wrap">',
-                '<input class="quantity-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" data-product-id="' + escapeAttr(product.id) + '">',
-                '<span class="suffix">ק״ג</span>',
-                '</label>',
                 '</div>'
             ].join('');
         }
 
-        function renderUnitControls(product) {
-            return [
-                '<div class="amount-line single">',
-                '<label class="number-wrap">',
-                '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" data-product-id="' + escapeAttr(product.id) + '">',
-                '<span class="suffix">יחידות</span>',
-                '</label>',
-                '</div>'
-            ].join('');
+        function normalizeQuantityInput(input) {
+            var value = String(input && input.value || '').trim();
+
+            if (!value) {
+                return;
+            }
+
+            var quantity = Number(value);
+
+            if (!isFinite(quantity) || quantity < 0) {
+                input.value = '';
+            }
+        }
+
+        function adjustQuantity(row, action) {
+            if (!row) {
+                return;
+            }
+
+            var input = row.querySelector('.quantity-input');
+
+            if (!input) {
+                return;
+            }
+
+            var current = Number(input.value || 0);
+
+            if (!isFinite(current) || current < 0) {
+                current = 0;
+            }
+
+            current = Math.round(current);
+
+            var next = action === 'increase'
+                ? current + 1
+                : Math.max(0, current - 1);
+
+            input.value = next > 0 ? String(next) : '';
+            updateRowState(row);
+            renderSummary();
+            saveOrderDraft();
+
+            if (action === 'increase') {
+                showItemFeedback(row);
+                scrollSummaryToLatestItem();
+            }
         }
 
         function setProductMode(row, mode) {
@@ -1953,6 +2501,7 @@
                 return;
             }
 
+            mode = 'unit';
             row.setAttribute('data-mode', mode);
 
             row.querySelectorAll('[data-mode-button]').forEach(function (button) {
@@ -1962,21 +2511,25 @@
             var input = row.querySelector('.quantity-input');
             var suffix = row.querySelector('.suffix');
 
-            if (mode === 'unit') {
-                input.step = '1';
-                input.inputMode = 'numeric';
-                suffix.textContent = 'יחידות';
+            if (!input || !suffix) {
+                return;
+            }
 
-                if (input.value && !isWholeNumber(Number(input.value))) {
-                    input.value = '';
-                }
-            } else {
-                input.step = '0.5';
-                input.inputMode = 'decimal';
-                suffix.textContent = 'ק״ג';
+            input.step = '1';
+            input.inputMode = 'numeric';
+            suffix.textContent = 'יחידות';
+
+            if (input.value && !isWholeNumber(Number(input.value))) {
+                input.value = '';
             }
 
             updateRowState(row);
+        }
+
+        function syncQuantityControls(row, quantity) {
+            row.querySelectorAll('[data-quantity-action="decrease"]').forEach(function (button) {
+                button.disabled = !(quantity > 0);
+            });
         }
 
         function toggleDeliveryFields() {
@@ -2051,12 +2604,6 @@
                     return;
                 }
 
-                if (mode === 'kg' && !isHalfStep(quantity)) {
-                    result.errors.push(product.name + ': משקל חייב להיות במספר שלם או חצי.');
-                    row.classList.add('is-invalid');
-                    return;
-                }
-
                 var lineEstimate = calculateLineEstimate(mode, quantity, product);
                 var estimatedLineTotal = lineEstimate.total;
 
@@ -2074,8 +2621,9 @@
                     name: product.name,
                     mode: mode,
                     quantity: quantity,
+                    addedOrder: Number(row.getAttribute('data-added-order') || 0),
                     note: note,
-                    unitLabel: mode === 'kg' ? 'ק״ג' : 'יחידות',
+                    unitLabel: 'יחידות',
                     estimatedLineTotal: estimatedLineTotal,
                     estimatedWeightKg: lineEstimate.estimatedWeightKg,
                     estimatedWeightPerUnitKg: lineEstimate.estimatedWeightPerUnitKg,
@@ -2086,6 +2634,10 @@
                 updateRowState(row);
             });
 
+            result.items.sort(function (a, b) {
+                return (a.addedOrder || 0) - (b.addedOrder || 0);
+            });
+
             return result;
         }
 
@@ -2094,8 +2646,10 @@
 
             if (!collected.items.length) {
                 els.summaryItems.innerHTML = '<div class="muted">עוד לא נבחרו מוצרים</div>';
-                els.summaryCount.textContent = '0 מוצרים';
+                els.summaryCount.textContent = formatItemCountText(0);
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
+                updateCartToggleState(0);
+                updateMobileSummaryMetrics();
                 return;
             }
 
@@ -2112,14 +2666,50 @@
                     '<strong>' + escapeHtml(item.name) + '</strong>',
                     '<span class="summary-quantity">' + formatQuantity(item.quantity) + ' ' + escapeHtml(item.unitLabel) + '</span>',
                     item.note ? '<span class="summary-note">הערה: ' + escapeHtml(item.note) + '</span>' : '',
-                    item.isEstimatedWeight ? '<span class="summary-note">המחיר לפי משקל משוער של כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
+                    item.isEstimatedWeight ? '<span class="summary-note">משקל משוער: כ-' + escapeHtml(formatQuantity(item.estimatedWeightKg)) + ' ק״ג לפי כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
                     '<span class="' + priceClass + '">' + escapeHtml(estimateText) + '</span>',
                     '</div>'
                 ].join('');
             }).join('');
 
-            els.summaryCount.textContent = collected.items.length + ' מוצרים';
+            els.summaryCount.textContent = formatItemCountText(collected.items.length);
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
+            updateCartToggleState(collected.items.length);
+            updateMobileSummaryMetrics();
+        }
+
+        function updateMobileSummaryMetrics() {
+            if (!els.summaryPanel) {
+                return;
+            }
+
+            window.requestAnimationFrame(function () {
+                var height = Math.ceil(els.summaryPanel.getBoundingClientRect().height);
+
+                if (height > 0) {
+                    document.documentElement.style.setProperty('--mobile-summary-height', height + 'px');
+                }
+            });
+        }
+
+        function formatItemCountText(count) {
+            if (!count) {
+                return '0 מוצרים';
+            }
+
+            if (count === 1) {
+                return 'פריט אחד';
+            }
+
+            return count + ' פריטים';
+        }
+
+        function updateCartToggleState(itemCount) {
+            if (!els.cartToggleButton || els.cartToggleButton.getAttribute('aria-expanded') === 'true') {
+                return;
+            }
+
+            els.cartToggleButton.textContent = itemCount ? 'סל (' + itemCount + ')' : 'סל קניות';
         }
 
         function updateRowState(row) {
@@ -2132,14 +2722,135 @@
             var quantity = Number(input.value || 0);
             var isSelected = quantity > 0;
             var note = row.querySelector('.product-note');
+            var badge = row.querySelector('[data-selected-badge]');
 
             row.classList.toggle('is-selected', isSelected);
+
+            if (isSelected && !row.getAttribute('data-added-order')) {
+                productAddSequence++;
+                row.setAttribute('data-added-order', String(productAddSequence));
+            } else if (!isSelected) {
+                row.removeAttribute('data-added-order');
+            }
 
             if (note) {
                 note.classList.toggle('hidden', !isSelected);
             }
 
+            if (badge) {
+                badge.textContent = isSelected ? formatQuantity(quantity) : '0';
+                badge.hidden = !isSelected;
+            }
+
+            syncQuantityControls(row, quantity);
             updateRowEstimate(row, product, quantity);
+        }
+
+        function scrollSummaryToLatestItem() {
+            window.setTimeout(function () {
+                els.summaryItems.scrollTop = els.summaryItems.scrollHeight;
+            }, 0);
+        }
+
+        function showItemFeedback(row) {
+            if (!row) {
+                return;
+            }
+
+            var product = productById[row.getAttribute('data-product-id')];
+            var productName = product && product.name ? product.name : 'המוצר';
+
+            row.classList.remove('just-added');
+            row.offsetWidth;
+            row.classList.add('just-added');
+            window.setTimeout(function () {
+                row.classList.remove('just-added');
+            }, 520);
+
+            if (els.summaryPanel) {
+                els.summaryPanel.classList.remove('bump');
+                els.summaryPanel.offsetWidth;
+                els.summaryPanel.classList.add('bump');
+                window.setTimeout(function () {
+                    els.summaryPanel.classList.remove('bump');
+                }, 460);
+            }
+
+            if (!els.cartFeedback) {
+                return;
+            }
+
+            els.cartFeedback.textContent = productName + ' נוסף לסל';
+            els.cartFeedback.classList.add('show');
+
+            if (cartFeedbackTimer) {
+                window.clearTimeout(cartFeedbackTimer);
+            }
+
+            cartFeedbackTimer = window.setTimeout(function () {
+                els.cartFeedback.classList.remove('show');
+            }, 1600);
+        }
+
+        function toggleCartSummary() {
+            var isOpen = !(els.summaryPanel && els.summaryPanel.classList.contains('is-open'));
+            setCartSummaryOpen(isOpen);
+        }
+
+        function setCartSummaryOpen(isOpen) {
+            if (!els.summaryPanel || !els.cartToggleButton) {
+                return;
+            }
+
+            els.summaryPanel.classList.toggle('is-open', Boolean(isOpen));
+            els.cartToggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            els.cartToggleButton.textContent = isOpen ? 'סגירת סל' : 'סל קניות';
+            if (!isOpen) {
+                updateCartToggleState(collectItems().items.length);
+            }
+            updateMobileSummaryMetrics();
+        }
+
+        function resetOrder() {
+            var hasOrder = collectItems().items.length > 0
+                || els.form.querySelector('#fullName').value
+                || els.form.querySelector('#phone').value
+                || els.form.querySelector('#customerEmail').value
+                || els.form.querySelector('#address').value
+                || els.form.querySelector('#floor').value
+                || els.form.querySelector('#apartment').value
+                || els.form.querySelector('#notes').value;
+
+            if (hasOrder && !window.confirm('לאפס את ההזמנה? כל הפריטים והפרטים שהוזנו יימחקו.')) {
+                return;
+            }
+
+            els.form.reset();
+            productAddSequence = 0;
+            els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
+                row.removeAttribute('data-added-order');
+                setProductMode(row, 'unit');
+                var quantityInput = row.querySelector('.quantity-input');
+                var noteInput = row.querySelector('.product-note-input');
+
+                if (quantityInput) {
+                    quantityInput.value = '';
+                }
+
+                if (noteInput) {
+                    noteInput.value = '';
+                }
+
+                updateRowState(row);
+            });
+            toggleDeliveryFields();
+            clearOrderDraft();
+            validatePhoneField({ allowEmpty: true });
+            renderSummary();
+            setCartSummaryOpen(false);
+            showMessage('', '');
+            window.scrollTo(0, 0);
+            saveScrollPosition();
         }
 
         function updateRowEstimate(row, product, quantity) {
@@ -2163,12 +2874,6 @@
                 return;
             }
 
-            if (mode === 'kg' && !isHalfStep(quantity)) {
-                estimate.textContent = 'משקל במספר שלם או חצי';
-                estimate.className = 'row-estimate pending';
-                return;
-            }
-
             var lineEstimate = calculateLineEstimate(mode, quantity, product);
 
             if (lineEstimate.total === null) {
@@ -2177,7 +2882,8 @@
                 return;
             }
 
-            estimate.textContent = (lineEstimate.isEstimatedPrice ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total);
+            estimate.textContent = (lineEstimate.isEstimatedPrice ? 'סכום משוער: ₪' : 'סכום: ₪') + formatMoney(lineEstimate.total)
+                + (lineEstimate.estimatedWeightKg ? ' | כ-' + formatQuantity(lineEstimate.estimatedWeightKg) + ' ק״ג' : '');
             estimate.className = 'row-estimate' + (lineEstimate.isEstimatedPrice ? ' pending' : '');
         }
 
@@ -2188,7 +2894,8 @@
             var validation = validateForm();
 
             if (validation) {
-                showMessage(validation, 'error');
+                showMessage(validation.message, 'error');
+                guideToMissingDetails(validation.field);
                 return;
             }
 
@@ -2257,33 +2964,131 @@
         }
 
         function validateForm() {
-            var fullName = document.getElementById('fullName').value.trim();
-            var phone = document.getElementById('phone').value.replace(/\D/g, '');
-            var customerEmail = document.getElementById('customerEmail').value.trim();
+            var fullNameInput = document.getElementById('fullName');
+            var customerEmailInput = document.getElementById('customerEmail');
+            var addressInput = document.getElementById('address');
+            var floorInput = document.getElementById('floor');
+            var fullName = fullNameInput.value.trim();
+            var customerEmail = customerEmailInput.value.trim();
 
             if (!fullName) {
-                return 'יש למלא שם מלא.';
+                return {
+                    message: 'יש למלא שם מלא.',
+                    field: fullNameInput
+                };
             }
 
-            if (!/^0\d{8,9}$/.test(phone)) {
-                return 'מספר הטלפון אינו תקין.';
+            var phoneError = validatePhoneField();
+
+            if (phoneError) {
+                return {
+                    message: phoneError,
+                    field: els.phoneInput
+                };
             }
 
             if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-                return 'כתובת המייל אינה תקינה.';
+                return {
+                    message: 'כתובת המייל אינה תקינה.',
+                    field: customerEmailInput
+                };
             }
 
             if (getFulfillment() === 'משלוח') {
-                if (!document.getElementById('address').value.trim()) {
-                    return 'יש למלא כתובת למשלוח.';
+                if (!addressInput.value.trim()) {
+                    return {
+                        message: 'יש למלא כתובת למשלוח.',
+                        field: addressInput
+                    };
                 }
 
-                if (!document.getElementById('floor').value.trim()) {
-                    return 'יש למלא קומה למשלוח.';
+                if (!floorInput.value.trim()) {
+                    return {
+                        message: 'יש למלא קומה למשלוח.',
+                        field: floorInput
+                    };
                 }
             }
 
+            return null;
+        }
+
+        function guideToMissingDetails(field) {
+            var target = field || els.customerDetailsPanel;
+
+            setCartSummaryOpen(false);
+
+            if (els.customerDetailsPanel) {
+                els.customerDetailsPanel.classList.remove('needs-attention');
+                els.customerDetailsPanel.offsetWidth;
+                els.customerDetailsPanel.classList.add('needs-attention');
+                window.setTimeout(function () {
+                    els.customerDetailsPanel.classList.remove('needs-attention');
+                }, 1200);
+            }
+
+            if (target && target.scrollIntoView) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+
+            if (field && field.focus) {
+                window.setTimeout(function () {
+                    if (shouldFocusValidationField()) {
+                        field.focus({ preventScroll: true });
+                    }
+                }, 350);
+            }
+        }
+
+        function shouldFocusValidationField() {
+            return !window.matchMedia || !window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+        }
+
+        function normalizeCustomerPhone(value) {
+            var digits = String(value || '').replace(/\D/g, '');
+
+            if (digits.indexOf('9725') === 0 && digits.length === 12) {
+                return '0' + digits.slice(3);
+            }
+
+            return digits;
+        }
+
+        function isValidCustomerPhone(phone) {
+            return /^05\d{8}$/.test(phone);
+        }
+
+        function getPhoneValidationMessage() {
+            var rawPhone = String(els.phoneInput.value || '').trim();
+            var phone = normalizeCustomerPhone(rawPhone);
+
+            if (!rawPhone) {
+                return 'יש למלא מספר טלפון.';
+            }
+
+            if (!isValidCustomerPhone(phone)) {
+                return 'מספר הטלפון הנייד אינו תקין. הזינו מספר שמתחיל ב-05 ובו 10 ספרות.';
+            }
+
             return '';
+        }
+
+        function validatePhoneField(options) {
+            var message = getPhoneValidationMessage();
+
+            if (options && options.allowEmpty && !String(els.phoneInput.value || '').trim()) {
+                message = '';
+            }
+
+            els.phoneError.textContent = message;
+            els.phoneError.classList.toggle('show', Boolean(message));
+            els.phoneInput.classList.toggle('is-invalid-field', Boolean(message));
+            els.phoneInput.setAttribute('aria-invalid', message ? 'true' : 'false');
+
+            return message;
         }
 
         function resetProducts() {
@@ -2296,7 +3101,9 @@
             });
 
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
-                row.classList.remove('is-selected', 'is-invalid');
+                row.removeAttribute('data-added-order');
+                row.classList.remove('is-invalid', 'just-added');
+                updateRowState(row);
             });
 
             renderSummary();
@@ -2315,6 +3122,7 @@
         function showMessage(text, type) {
             els.message.textContent = text || '';
             els.message.className = text ? 'message show ' + type : 'message';
+            updateMobileSummaryMetrics();
         }
 
         function getErrorMessage(error) {
@@ -2337,10 +3145,6 @@
             return Math.abs(value - Math.round(value)) < 0.000001;
         }
 
-        function isHalfStep(value) {
-            return Math.abs(value * 2 - Math.round(value * 2)) < 0.000001;
-        }
-
         function getUnitType(value) {
             var normalized = String(value || '')
                 .trim()
@@ -2357,16 +3161,6 @@
         function calculateLineEstimate(mode, quantity, product) {
             var priceUnitType = getUnitType(product.priceUnit || product.unit);
             var price = Number(product.price || 0);
-
-            if (mode === 'kg' && priceUnitType === 'kg') {
-                return {
-                    total: roundMoney(quantity * price),
-                    estimatedWeightKg: null,
-                    estimatedWeightPerUnitKg: null,
-                    isEstimatedPrice: true,
-                    isEstimatedWeight: false
-                };
-            }
 
             if (mode === 'unit' && priceUnitType === 'unit') {
                 return {

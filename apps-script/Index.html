@@ -1592,31 +1592,15 @@
 
     function renderProduct(product, categoryName) {
       var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
-      var isKg = product.unitType === 'kg';
 
       return [
-        '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="' + (isKg ? 'kg' : 'unit') + '">',
+        '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
         '<div class="product-name">',
         '<strong>' + escapeHtml(product.name) + '</strong>',
         '<span class="price">' + escapeHtml(price) + '</span>',
         '</div>',
-        isKg ? renderKgControls(product) : renderUnitControls(product),
+        renderUnitControls(product),
         '</article>'
-      ].join('');
-    }
-
-    function renderKgControls(product) {
-      return [
-        '<div class="amount-line">',
-        '<div class="segment" role="group" aria-label="יחידת הזמנה">',
-        '<button type="button" class="active" data-mode-button="kg">ק״ג</button>',
-        '<button type="button" data-mode-button="unit">יחידות</button>',
-        '</div>',
-        '<label class="number-wrap">',
-        '<input class="quantity-input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="0" data-product-id="' + escapeAttr(product.id) + '">',
-        '<span class="suffix">ק״ג</span>',
-        '</label>',
-        '</div>'
       ].join('');
     }
 
@@ -1636,6 +1620,7 @@
         return;
       }
 
+      mode = 'unit';
       row.setAttribute('data-mode', mode);
 
       row.querySelectorAll('[data-mode-button]').forEach(function (button) {
@@ -1645,18 +1630,12 @@
       var input = row.querySelector('.quantity-input');
       var suffix = row.querySelector('.suffix');
 
-      if (mode === 'unit') {
-        input.step = '1';
-        input.inputMode = 'numeric';
-        suffix.textContent = 'יחידות';
+      input.step = '1';
+      input.inputMode = 'numeric';
+      suffix.textContent = 'יחידות';
 
-        if (input.value && !isWholeNumber(Number(input.value))) {
-          input.value = '';
-        }
-      } else {
-        input.step = '0.5';
-        input.inputMode = 'decimal';
-        suffix.textContent = 'ק״ג';
+      if (input.value && !isWholeNumber(Number(input.value))) {
+        input.value = '';
       }
 
       updateRowState(row);
@@ -1724,12 +1703,6 @@
           return;
         }
 
-        if (mode === 'kg' && !isHalfStep(quantity)) {
-          result.errors.push(product.name + ': משקל חייב להיות במספר שלם או חצי.');
-          row.classList.add('is-invalid');
-          return;
-        }
-
         var canEstimate = canEstimateItem(mode, product.priceUnit || product.unit);
         var estimatedLineTotal = canEstimate
           ? roundMoney(quantity * Number(product.price || 0))
@@ -1746,7 +1719,7 @@
           name: product.name,
           mode: mode,
           quantity: quantity,
-          unitLabel: mode === 'kg' ? 'ק״ג' : 'יחידות',
+          unitLabel: 'יחידות',
           estimatedLineTotal: estimatedLineTotal
         });
 
@@ -1932,10 +1905,6 @@
 
     function isWholeNumber(value) {
       return Math.abs(value - Math.round(value)) < 0.000001;
-    }
-
-    function isHalfStep(value) {
-      return Math.abs(value * 2 - Math.round(value * 2)) < 0.000001;
     }
 
     function getUnitType(value) {
