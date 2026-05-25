@@ -143,17 +143,16 @@ async function runSmokeTest(baseUrl, executablePath) {
 
       const image = row.querySelector('.product-image');
       const note = row.querySelector('.product-note');
-      const unitButton = row.querySelector('[data-mode-button="unit"]');
       const input = row.querySelector('.quantity-input');
       const estimate = row.querySelector('[data-row-estimate]');
+      const modeButtons = row.querySelectorAll('[data-mode-button]');
 
       const noteHiddenBefore = note.classList.contains('hidden');
 
       input.value = '1';
       input.dispatchEvent(new Event('input', { bubbles: true }));
-      const kgEstimateText = estimate.textContent;
+      const singleUnitEstimateText = estimate.textContent;
 
-      unitButton.click();
       input.value = '2';
       input.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -168,7 +167,8 @@ async function runSmokeTest(baseUrl, executablePath) {
 
       return {
         estimateText: estimate.textContent,
-        kgEstimateText,
+        singleUnitEstimateText,
+        modeButtonCount: modeButtons.length,
         unitPricedEstimateText: unitPricedEstimate.textContent,
         noteHiddenBefore,
         noteHiddenAfter: note.classList.contains('hidden'),
@@ -179,6 +179,10 @@ async function runSmokeTest(baseUrl, executablePath) {
 
     if (!result.imageLoaded) {
       throw new Error('Product image did not load.');
+    }
+
+    if (result.modeButtonCount !== 0) {
+      throw new Error('Expected kg/unit mode buttons to be hidden.');
     }
 
     if (!result.noteHiddenBefore || result.noteHiddenAfter) {
@@ -193,8 +197,8 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected row estimate to use estimated total wording, got: ' + result.estimateText);
     }
 
-    if (!result.kgEstimateText.includes('סכום משוער') || !result.kgEstimateText.includes('₪10')) {
-      throw new Error('Expected kg-priced row to use estimated total wording, got: ' + result.kgEstimateText);
+    if (!result.singleUnitEstimateText.includes('סכום משוער') || !result.singleUnitEstimateText.includes('₪1.5')) {
+      throw new Error('Expected kg-priced row to use unit estimate wording, got: ' + result.singleUnitEstimateText);
     }
 
     if (!result.unitPricedEstimateText.includes('סכום: ₪15') || result.unitPricedEstimateText.includes('סכום משוער')) {
