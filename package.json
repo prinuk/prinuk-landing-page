@@ -3,7 +3,8 @@
   "scripts": {
     "lint": "node scripts/lint.js",
     "build": "node scripts/build.js",
-    "test": "node scripts/smoke-order.js",
+    "test": "node scripts/test-email-toggle.js && node scripts/smoke-order.js",
+    "test:email": "node scripts/test-email-toggle.js",
     "test:smoke": "node scripts/smoke-order.js"
   },
   "engines": {
@@ -11,6 +12,7 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",
+    "@vercel/edge-config": "^1.4.3",
     "googleapis": "^144.0.0",
     "puppeteer-core": "^23.11.1",
     "resend": "^4.8.0"

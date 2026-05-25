@@ -245,6 +245,21 @@ Apps Script נשאר שימושי לתפריטים, ארכיון וכלים יד
 - מיילים, PDF הזמנה, Telegram ודפי ליקוט מטופלים ב-Vercel עבור הזמנות חדשות
 - מחירון ה-PDF נוצר אוטומטית ב-Vercel מתוך גיליון "מוצרים" על בסיס תבנית המחירון
 
+### Edge Config לשליחת מיילים
+
+שליחת מיילים דרך Resend נשלטת בזמן ריצה דרך Vercel Edge Config, כדי לאפשר כיבוי/הדלקה בלי redeploy.
+
+המפתחות הנדרשים:
+
+```json
+{
+  "sendEmailsProduction": true,
+  "sendEmailsPreview": false
+}
+```
+
+ב-Production נקרא `sendEmailsProduction`. ב-Preview ובפיתוח נקרא `sendEmailsPreview`. כל ערך שאינו `true`, כולל ערך חסר או שגיאת קריאה מ-Edge Config, מכבה שליחת מיילים.
+
 ---
 
 ## מבנה הפרויקט
