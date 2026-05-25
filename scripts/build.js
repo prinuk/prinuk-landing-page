@@ -34,6 +34,7 @@ const SAMPLE_PRODUCTS = [
   ['נבטים עבים', 'ירקות', 'יחידות', 'יחידות', '7'],
   ['סלק בוואקום', 'ירקות', 'יחידות', 'יחידות', '10'],
   ['חסה לאליק', 'ירקות', 'יחידות', 'יחידות', '8'],
+  ['כרוב לבן', 'ירקות', 'יחידות', 'יחידות', '9'],
   ['שומר', 'ירקות', 'יחידות', 'ק״ג', '8'],
 ];
 
@@ -104,6 +105,7 @@ function validateProductImages() {
   assert(byName['נבטים עבים'].imageUrl === '/assets/produce/thick-sprouts.jpg', 'Thick sprouts image match failed.');
   assert(byName['סלק בוואקום'].imageUrl === '/assets/produce/vacuum-beet.jpg', 'Vacuum beet image match failed.');
   assert(byName['חסה לאליק'].imageUrl === '/assets/produce/lettuce-lalik.jpg', 'Lalik lettuce image match failed.');
+  assert(byName['כרוב לבן'].imageUrl === '/assets/produce/white-cabbage.jpg', 'White cabbage image match failed.');
   assert(byName['שומר'].estimatedUnitWeightKg === 0.25, 'Missing fennel unit weight estimate.');
   assert(byName['שומר'].imageUrl === '/assets/produce/fennel.jpg', 'Fennel image match failed.');
 
