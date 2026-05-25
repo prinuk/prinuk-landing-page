@@ -64,19 +64,24 @@
     </script>
     <style>
         :root {
-            --bg: #132820;
+            --bg: #eef7f1;
             --surface: #ffffff;
-            --ink: #1e2528;
-            --muted: #667074;
-            --line: #d9ded6;
-            --accent: #1f7a5a;
-            --accent-dark: #165a43;
-            --accent-soft: #e5f2ec;
-            --amber: #a86216;
-            --danger: #a33232;
-            --shadow: 0 12px 30px rgba(10, 22, 18, 0.16);
+            --surface-tint: #f7fbff;
+            --ink: #17242f;
+            --muted: #68767f;
+            --line: #dce7df;
+            --accent: #0c4c9c;
+            --accent-dark: #07306b;
+            --accent-soft: #e8f2ff;
+            --fresh: #1d9b68;
+            --fresh-soft: #e8f7ef;
+            --fruit: #ec6f4a;
+            --amber: #b46e16;
+            --danger: #b33636;
+            --shadow: 0 14px 34px rgba(22, 43, 56, 0.12);
+            --shadow-soft: 0 8px 22px rgba(22, 43, 56, 0.08);
             --radius: 8px;
-            --mobile-summary-height: 98px;
+            --mobile-summary-height: 112px;
         }
 
         * {
@@ -89,10 +94,7 @@
 
         body {
             margin: 0;
-            background:
-                linear-gradient(145deg, rgba(31, 122, 90, 0.35) 0%, rgba(31, 122, 90, 0) 38%),
-                linear-gradient(24deg, rgba(168, 98, 22, 0.18) 0%, rgba(168, 98, 22, 0) 30%),
-                var(--bg);
+            background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 44%, #f6f4ec 100%);
             color: var(--ink);
             font-family: Arial, Helvetica, sans-serif;
             line-height: 1.45;
@@ -118,11 +120,11 @@
         .shell {
             width: min(1180px, calc(100% - 16px));
             margin: 0 auto;
-            padding: 14px 0 24px;
+            padding: 12px 0 24px;
         }
 
         .bsd-mark {
-            color: rgba(238, 247, 241, 0.82);
+            color: rgba(23, 36, 47, 0.58);
             font-size: 13px;
             font-weight: 700;
             line-height: 1;
@@ -135,8 +137,13 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 16px;
-            color: #f7fbf8;
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(12, 76, 156, 0.12);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-soft);
         }
 
         .brand {
@@ -152,12 +159,12 @@
         }
 
         .brand-logo {
-            width: 72px;
-            height: 72px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             object-fit: contain;
-            background: transparent;
-            border: 0;
+            background: #f5f9ff;
+            border: 1px solid rgba(12, 76, 156, 0.14);
         }
 
         h1,
@@ -171,6 +178,7 @@
             margin-bottom: 2px;
             font-size: 30px;
             line-height: 1.12;
+            color: var(--accent-dark);
         }
 
         h2 {
@@ -179,7 +187,7 @@
         }
 
         .source {
-            color: rgba(225, 239, 230, 0.82);
+            color: var(--muted);
             font-size: 14px;
         }
 
@@ -205,7 +213,7 @@
         }
 
         .panel {
-            padding: 14px;
+            padding: 16px;
         }
 
         .summary {
@@ -484,51 +492,62 @@
         }
 
         .product-list {
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--line);
-            border-radius: var(--radius);
-            overflow: hidden;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
         }
 
         .product-row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(260px, 330px);
-            gap: 14px;
+            grid-template-columns: 1fr;
+            gap: 12px;
             align-items: center;
-            min-height: 70px;
+            min-height: 190px;
             padding: 12px;
             background: #fff;
-            border-bottom: 1px solid var(--line);
+            border: 1px solid var(--category-border-color, var(--line));
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-soft);
+            transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
         }
 
-        .product-row:last-child {
-            border-bottom: 0;
+        .product-row:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(22, 43, 56, 0.12);
         }
 
         .product-row.is-selected {
-            background: #f8fcf9;
+            background: linear-gradient(180deg, #ffffff 0%, var(--category-soft-color, var(--fresh-soft)) 100%);
+            border-color: var(--category-color, var(--accent));
+            box-shadow: 0 16px 32px rgba(12, 76, 156, 0.14);
         }
 
         .product-row.is-invalid {
             background: #fff8f8;
+            border-color: var(--danger);
+        }
+
+        .product-row.just-added {
+            animation: item-added 480ms ease;
         }
 
         .product-info {
             display: grid;
-            grid-template-columns: 76px minmax(0, 1fr);
+            grid-template-columns: 88px minmax(0, 1fr);
             gap: 12px;
             align-items: center;
             min-width: 0;
         }
 
         .product-image-wrap {
-            width: 76px;
-            height: 76px;
-            border: 1px solid var(--category-border-color, var(--line));
+            position: relative;
+            width: 88px;
+            height: 88px;
+            border: 1px solid rgba(12, 76, 156, 0.08);
             border-radius: 8px;
             overflow: hidden;
-            background: var(--category-soft-color, #f5f7f4);
+            background: var(--surface-tint);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.78);
         }
 
         .product-image {
@@ -540,6 +559,34 @@
             background: #fff;
         }
 
+        .product-image-placeholder {
+            display: grid;
+            place-items: center;
+            color: var(--category-strong-color, var(--accent-dark));
+            font-size: 14px;
+            font-weight: 900;
+            background: var(--category-soft-color, var(--fresh-soft));
+        }
+
+        .selected-badge {
+            position: absolute;
+            top: 6px;
+            inset-inline-end: 6px;
+            display: grid;
+            min-width: 26px;
+            height: 26px;
+            place-items: center;
+            padding: 0 7px;
+            color: #fff;
+            background: var(--accent);
+            border: 2px solid #fff;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1;
+            box-shadow: 0 8px 18px rgba(12, 76, 156, 0.25);
+        }
+
         .product-name {
             display: flex;
             flex-direction: column;
@@ -548,8 +595,18 @@
         }
 
         .product-name strong {
-            font-size: 17px;
+            color: var(--accent-dark);
+            font-size: 18px;
+            line-height: 1.25;
             overflow-wrap: anywhere;
+        }
+
+        .product-name::after {
+            display: block;
+            width: min(220px, 100%);
+            margin-top: 4px;
+            border-bottom: 3px dotted rgba(12, 76, 156, 0.32);
+            content: "";
         }
 
         .price {
@@ -578,7 +635,7 @@
 
         .amount-line {
             display: grid;
-            grid-template-columns: 116px minmax(0, 1fr);
+            grid-template-columns: 1fr;
             gap: 8px;
             align-items: center;
         }
@@ -612,13 +669,13 @@
 
         .number-wrap {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: 48px minmax(54px, 1fr) 48px auto;
             align-items: center;
             border: 1px solid var(--category-border-color, var(--line));
             border-radius: 7px;
             overflow: hidden;
             background: #fff;
-            min-height: 42px;
+            min-height: 48px;
         }
 
         .number-wrap:focus-within {
@@ -630,13 +687,54 @@
             border: 0;
             border-radius: 0;
             box-shadow: none;
-            min-height: 40px;
+            min-height: 46px;
+            padding: 0 8px;
             text-align: center;
-            font-weight: 800;
+            font-size: 18px;
+            font-weight: 900;
+            appearance: textfield;
+            -moz-appearance: textfield;
         }
 
         .number-wrap input:focus {
             box-shadow: none;
+        }
+
+        .number-wrap input::-webkit-outer-spin-button,
+        .number-wrap input::-webkit-inner-spin-button {
+            margin: 0;
+            appearance: none;
+        }
+
+        .quantity-button {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            min-height: 46px;
+            place-items: center;
+            border: 0;
+            background: var(--category-soft-color, var(--accent-soft));
+            color: var(--category-strong-color, var(--accent-dark));
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1;
+            transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+
+        .quantity-button:hover,
+        .quantity-button:focus-visible {
+            background: var(--category-color, var(--accent));
+            color: var(--category-text-color, #fff);
+        }
+
+        .quantity-button:active {
+            transform: scale(0.94);
+        }
+
+        .quantity-button:disabled {
+            cursor: default;
+            opacity: 0.42;
+            transform: none;
         }
 
         .suffix {
@@ -647,7 +745,7 @@
             justify-content: center;
             padding: 0 10px;
             background: var(--category-soft-color, #eef2ea);
-            border-right: 1px solid var(--category-border-color, var(--line));
+            border-inline-start: 1px solid var(--category-border-color, var(--line));
             color: var(--category-strong-color, var(--accent-dark));
             font-weight: 800;
             white-space: nowrap;
@@ -822,6 +920,24 @@
             color: var(--danger);
         }
 
+        .cart-toggle {
+            display: none;
+            width: 100%;
+            min-height: 48px;
+            border: 1px solid rgba(12, 76, 156, 0.22);
+            border-radius: 7px;
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .cart-toggle:hover,
+        .cart-toggle:focus-visible {
+            border-color: var(--accent);
+            background: #f8fbff;
+        }
+
         .message {
             display: none;
             border-radius: 7px;
@@ -849,6 +965,64 @@
             color: var(--accent-dark);
             font-size: 16px;
             line-height: 1.5;
+        }
+
+        .cart-feedback {
+            position: fixed;
+            inset-inline-end: 18px;
+            bottom: 18px;
+            z-index: 1001;
+            max-width: min(320px, calc(100vw - 32px));
+            padding: 12px 14px;
+            color: #fff;
+            background: var(--accent-dark);
+            border-radius: 8px;
+            box-shadow: 0 18px 40px rgba(7, 48, 107, 0.28);
+            font-size: 14px;
+            font-weight: 900;
+            line-height: 1.35;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(12px);
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .cart-feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .summary.bump {
+            animation: cart-bump 420ms ease;
+        }
+
+        @keyframes item-added {
+            0% {
+                transform: scale(1);
+            }
+
+            45% {
+                transform: scale(1.015);
+                box-shadow: 0 18px 36px rgba(29, 155, 104, 0.18);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes cart-bump {
+            0% {
+                transform: scale(1);
+            }
+
+            45% {
+                transform: scale(1.025);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
         .notice-modal {
@@ -929,19 +1103,21 @@
             }
 
             .summary {
-                position: static;
+                position: fixed;
+                inset-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+                bottom: calc(8px + env(safe-area-inset-bottom));
+                top: auto;
+                z-index: 80;
+                max-height: min(78dvh, 620px);
+                overflow: hidden;
+                padding: 10px;
                 border-radius: 8px;
-                z-index: auto;
-                height: auto;
-                max-height: none;
-                overflow: visible;
-                padding: 12px;
-                box-shadow: var(--shadow);
-                transition: none;
+                box-shadow: 0 18px 42px rgba(7, 48, 107, 0.22);
+                transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
             }
 
             .shell {
-                padding-bottom: calc(16px + env(safe-area-inset-bottom));
+                padding-bottom: calc(var(--mobile-summary-height) + 28px + env(safe-area-inset-bottom));
             }
 
             .summary h2,
@@ -950,14 +1126,33 @@
                 display: none;
             }
 
+            .summary.is-open {
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .summary.is-open h2 {
+                display: block;
+            }
+
+            .summary.is-open .summary-items {
+                display: flex;
+                max-height: min(42dvh, 360px);
+                margin-bottom: 12px;
+            }
+
             .submit-row {
                 display: grid;
-                grid-template-columns: auto minmax(160px, 1fr);
+                grid-template-columns: minmax(92px, 0.8fr) minmax(90px, 0.75fr) minmax(126px, 1fr);
                 align-items: center;
                 gap: 10px;
                 border-top: 0;
                 padding-top: 0;
                 width: 100%;
+            }
+
+            .cart-toggle {
+                display: block;
             }
 
             .message {
@@ -989,16 +1184,23 @@
                 min-height: 52px;
             }
 
+            .cart-feedback {
+                inset-inline: 12px;
+                bottom: calc(var(--mobile-summary-height) + 18px + env(safe-area-inset-bottom));
+                max-width: none;
+            }
+
             body.is-text-editing .summary {
-                pointer-events: auto;
-                transform: none;
+                opacity: 0.34;
+                pointer-events: none;
+                transform: translateY(calc(100% - 8px));
             }
         }
 
         @media (max-width: 720px) {
             .shell {
                 width: 100%;
-                padding: 8px 6px calc(14px + env(safe-area-inset-bottom));
+                padding: 8px 6px calc(var(--mobile-summary-height) + 28px + env(safe-area-inset-bottom));
             }
 
             h1 {
@@ -1141,7 +1343,8 @@
             }
 
             .product-list {
-                border-radius: 7px;
+                grid-template-columns: 1fr;
+                gap: 10px;
             }
 
             .product-row {
@@ -1151,13 +1354,13 @@
             }
 
             .product-info {
-                grid-template-columns: 66px minmax(0, 1fr);
+                grid-template-columns: 76px minmax(0, 1fr);
                 gap: 10px;
             }
 
             .product-image-wrap {
-                width: 66px;
-                height: 66px;
+                width: 76px;
+                height: 76px;
             }
 
             .product-name strong {
@@ -1174,7 +1377,7 @@
             }
 
             .amount-line {
-                grid-template-columns: 112px minmax(0, 1fr);
+                grid-template-columns: 1fr;
                 gap: 8px;
             }
 
@@ -1195,24 +1398,29 @@
             .suffix {
                 min-width: 72px;
             }
+
+            .summary .reset-order {
+                display: none;
+            }
+
+            .summary.is-open .reset-order {
+                display: block;
+            }
         }
 
         @media (max-width: 420px) {
             .product-info {
-                grid-template-columns: 58px minmax(0, 1fr);
+                grid-template-columns: 68px minmax(0, 1fr);
             }
 
             .product-image-wrap {
-                width: 58px;
-                height: 58px;
-            }
-
-            .amount-line {
-                grid-template-columns: 1fr;
+                width: 68px;
+                height: 68px;
             }
 
             .suffix {
-                min-width: 82px;
+                min-width: 66px;
+                padding: 0 8px;
             }
 
             .summary {
@@ -1221,16 +1429,24 @@
             }
 
             .submit-row {
-                grid-template-columns: auto minmax(170px, 1fr);
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
                 gap: 7px;
+            }
+
+            .summary-meta {
+                grid-column: 1 / -1;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                min-width: 0;
             }
 
             .count {
                 text-align: right;
             }
 
-            .summary-meta {
-                min-width: 92px;
+            .submit {
+                min-height: 50px;
             }
         }
     </style>
@@ -1262,6 +1478,15 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <section class="panel">
+                    <div class="products-head">
+                        <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
+                        <input id="searchInput" type="search" placeholder="חיפוש מוצר">
+                    </div>
+                    <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
+                    <div id="productsRoot" class="loading">טוען מוצרים...</div>
+                </section>
+
                 <section class="panel">
                     <h2>פרטי הזמנה</h2>
                     <div class="fields">
@@ -1334,14 +1559,6 @@
                     </label>
                 </section>
 
-                <section class="panel">
-                    <div class="products-head">
-                        <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
-                        <input id="searchInput" type="search" placeholder="חיפוש מוצר">
-                    </div>
-                    <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
-                    <div id="productsRoot" class="loading">טוען מוצרים...</div>
-                </section>
             </main>
 
             <aside class="summary" aria-live="polite">
@@ -1354,6 +1571,7 @@
                         <div id="summaryCount" class="count">0 מוצרים</div>
                         <div id="summaryTotal" class="summary-total">סכום משוער: ₪0</div>
                     </div>
+                    <button id="cartToggleButton" class="cart-toggle" type="button" aria-expanded="false" aria-controls="summaryItems">סל קניות</button>
                     <button id="submitButton" class="submit" type="submit">שליחת הזמנה</button>
                     <button id="resetOrderButton" class="reset-order" type="button">איפוס הזמנה</button>
                     <div id="message" class="message"></div>
@@ -1365,6 +1583,7 @@
                 </div>
             </aside>
         </form>
+        <div id="cartFeedback" class="cart-feedback" role="status" aria-live="polite"></div>
     </div>
 
     <script>
@@ -1383,27 +1602,28 @@
         var productAddSequence = 0;
         var pendingScrollRestore = true;
         var scrollSaveTimer = null;
+        var cartFeedbackTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
 
         var CATEGORY_COLORS = {
             'ירקות': {
-                color: '#2A523e',
-                soft: '#e6eee9',
-                border: '#cbd8cf',
-                strong: '#2A523e'
+                color: '#1d9b68',
+                soft: '#e8f7ef',
+                border: '#bde3ce',
+                strong: '#0d6544'
             },
             'עלים': {
-                color: '#97A994',
-                soft: '#eef2ec',
-                border: '#d8dfd5',
-                strong: '#4f5f4c'
+                color: '#8caf4f',
+                soft: '#f0f7e4',
+                border: '#d8e8b9',
+                strong: '#516b1e'
             },
             'פירות': {
-                color: '#D97A53',
-                soft: '#fbede7',
-                border: '#efcbbb',
-                strong: '#9a4f32'
+                color: '#ec6f4a',
+                soft: '#fff0ea',
+                border: '#f4c6b8',
+                strong: '#a64225'
             }
         };
 
@@ -1426,9 +1646,12 @@
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             submitButton: document.getElementById('submitButton'),
             resetOrderButton: document.getElementById('resetOrderButton'),
+            cartToggleButton: document.getElementById('cartToggleButton'),
+            summaryPanel: document.querySelector('.summary'),
             summaryItems: document.getElementById('summaryItems'),
             summaryCount: document.getElementById('summaryCount'),
             summaryTotal: document.getElementById('summaryTotal'),
+            cartFeedback: document.getElementById('cartFeedback'),
             message: document.getElementById('message')
         };
 
@@ -1443,6 +1666,7 @@
             }
         });
         els.resetOrderButton.addEventListener('click', resetOrder);
+        els.cartToggleButton.addEventListener('click', toggleCartSummary);
         els.marketNoticeAccept.addEventListener('click', acceptMarketNotice);
         els.brandLogo.addEventListener('error', function () {
             useDefaultBrandLogo();
@@ -1473,9 +1697,11 @@
             if (event.target.matches('.quantity-input')) {
                 var row = event.target.closest('.product-row');
                 var wasSelected = row && row.classList.contains('is-selected');
+                normalizeQuantityInput(event.target);
                 updateRowState(row);
                 renderSummary();
                 if (!wasSelected && row && row.classList.contains('is-selected')) {
+                    showItemFeedback(row);
                     scrollSummaryToLatestItem();
                 }
             } else if (event.target.matches('.product-note-input')) {
@@ -1484,6 +1710,13 @@
         });
 
         els.productsRoot.addEventListener('click', function (event) {
+            var quantityButton = event.target.closest('[data-quantity-action]');
+
+            if (quantityButton) {
+                adjustQuantity(quantityButton.closest('.product-row'), quantityButton.getAttribute('data-quantity-action'));
+                return;
+            }
+
             var button = event.target.closest('[data-mode-button]');
 
             if (!button) {
@@ -1984,10 +2217,10 @@
 
         function getCategoryStyle(categoryName) {
             var palette = CATEGORY_COLORS[String(categoryName || '').trim()] || {
-                color: '#1f7a5a',
-                soft: '#e5f2ec',
-                border: '#d7e5db',
-                strong: '#165a43'
+                color: '#0c4c9c',
+                soft: '#e8f2ff',
+                border: '#c9ddf7',
+                strong: '#07306b'
             };
             var color = palette.color;
             var textColor = color.toLowerCase() === '#97a994' ? '#1e2528' : '#ffffff';
@@ -2022,14 +2255,21 @@
 
         function renderProductImage(product) {
             var imageUrl = String(product.imageUrl || '').trim();
+            var badge = '<span class="selected-badge" data-selected-badge hidden>0</span>';
 
             if (!imageUrl) {
-                return '';
+                return [
+                    '<div class="product-image-wrap product-image-placeholder">',
+                    '<span aria-hidden="true">טרי</span>',
+                    badge,
+                    '</div>'
+                ].join('');
             }
 
             return [
                 '<div class="product-image-wrap">',
                 '<img class="product-image" src="' + escapeAttr(imageUrl) + '" loading="lazy" decoding="async" alt="' + escapeAttr(product.name) + '">',
+                badge,
                 '</div>'
             ].join('');
         }
@@ -2045,14 +2285,66 @@
         }
 
         function renderUnitControls(product) {
+            var productName = escapeAttr(product.name);
+
             return [
                 '<div class="amount-line single">',
-                '<label class="number-wrap">',
-                '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" data-product-id="' + escapeAttr(product.id) + '">',
+                '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
+                '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
+                '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
+                '<button class="quantity-button" type="button" data-quantity-action="increase" aria-label="הוספת כמות עבור ' + productName + '">+</button>',
                 '<span class="suffix">יחידות</span>',
-                '</label>',
+                '</div>',
                 '</div>'
             ].join('');
+        }
+
+        function normalizeQuantityInput(input) {
+            var value = String(input && input.value || '').trim();
+
+            if (!value) {
+                return;
+            }
+
+            var quantity = Number(value);
+
+            if (!isFinite(quantity) || quantity < 0) {
+                input.value = '';
+            }
+        }
+
+        function adjustQuantity(row, action) {
+            if (!row) {
+                return;
+            }
+
+            var input = row.querySelector('.quantity-input');
+
+            if (!input) {
+                return;
+            }
+
+            var current = Number(input.value || 0);
+
+            if (!isFinite(current) || current < 0) {
+                current = 0;
+            }
+
+            current = Math.round(current);
+
+            var next = action === 'increase'
+                ? current + 1
+                : Math.max(0, current - 1);
+
+            input.value = next > 0 ? String(next) : '';
+            updateRowState(row);
+            renderSummary();
+            saveOrderDraft();
+
+            if (action === 'increase') {
+                showItemFeedback(row);
+                scrollSummaryToLatestItem();
+            }
         }
 
         function setProductMode(row, mode) {
@@ -2070,6 +2362,10 @@
             var input = row.querySelector('.quantity-input');
             var suffix = row.querySelector('.suffix');
 
+            if (!input || !suffix) {
+                return;
+            }
+
             input.step = '1';
             input.inputMode = 'numeric';
             suffix.textContent = 'יחידות';
@@ -2079,6 +2375,12 @@
             }
 
             updateRowState(row);
+        }
+
+        function syncQuantityControls(row, quantity) {
+            row.querySelectorAll('[data-quantity-action="decrease"]').forEach(function (button) {
+                button.disabled = !(quantity > 0);
+            });
         }
 
         function toggleDeliveryFields() {
@@ -2195,8 +2497,9 @@
 
             if (!collected.items.length) {
                 els.summaryItems.innerHTML = '<div class="muted">עוד לא נבחרו מוצרים</div>';
-                els.summaryCount.textContent = '0 מוצרים';
+                els.summaryCount.textContent = formatItemCountText(0);
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
+                updateCartToggleState(0);
                 return;
             }
 
@@ -2219,8 +2522,29 @@
                 ].join('');
             }).join('');
 
-            els.summaryCount.textContent = collected.items.length + ' מוצרים';
+            els.summaryCount.textContent = formatItemCountText(collected.items.length);
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
+            updateCartToggleState(collected.items.length);
+        }
+
+        function formatItemCountText(count) {
+            if (!count) {
+                return '0 מוצרים';
+            }
+
+            if (count === 1) {
+                return 'פריט אחד';
+            }
+
+            return count + ' פריטים';
+        }
+
+        function updateCartToggleState(itemCount) {
+            if (!els.cartToggleButton || els.cartToggleButton.getAttribute('aria-expanded') === 'true') {
+                return;
+            }
+
+            els.cartToggleButton.textContent = itemCount ? 'סל (' + itemCount + ')' : 'סל קניות';
         }
 
         function updateRowState(row) {
@@ -2233,6 +2557,7 @@
             var quantity = Number(input.value || 0);
             var isSelected = quantity > 0;
             var note = row.querySelector('.product-note');
+            var badge = row.querySelector('[data-selected-badge]');
 
             row.classList.toggle('is-selected', isSelected);
 
@@ -2247,6 +2572,12 @@
                 note.classList.toggle('hidden', !isSelected);
             }
 
+            if (badge) {
+                badge.textContent = isSelected ? formatQuantity(quantity) : '0';
+                badge.hidden = !isSelected;
+            }
+
+            syncQuantityControls(row, quantity);
             updateRowEstimate(row, product, quantity);
         }
 
@@ -2254,6 +2585,64 @@
             window.setTimeout(function () {
                 els.summaryItems.scrollTop = els.summaryItems.scrollHeight;
             }, 0);
+        }
+
+        function showItemFeedback(row) {
+            if (!row) {
+                return;
+            }
+
+            var product = productById[row.getAttribute('data-product-id')];
+            var productName = product && product.name ? product.name : 'המוצר';
+
+            row.classList.remove('just-added');
+            row.offsetWidth;
+            row.classList.add('just-added');
+            window.setTimeout(function () {
+                row.classList.remove('just-added');
+            }, 520);
+
+            if (els.summaryPanel) {
+                els.summaryPanel.classList.remove('bump');
+                els.summaryPanel.offsetWidth;
+                els.summaryPanel.classList.add('bump');
+                window.setTimeout(function () {
+                    els.summaryPanel.classList.remove('bump');
+                }, 460);
+            }
+
+            if (!els.cartFeedback) {
+                return;
+            }
+
+            els.cartFeedback.textContent = productName + ' נוסף לסל';
+            els.cartFeedback.classList.add('show');
+
+            if (cartFeedbackTimer) {
+                window.clearTimeout(cartFeedbackTimer);
+            }
+
+            cartFeedbackTimer = window.setTimeout(function () {
+                els.cartFeedback.classList.remove('show');
+            }, 1600);
+        }
+
+        function toggleCartSummary() {
+            var isOpen = !(els.summaryPanel && els.summaryPanel.classList.contains('is-open'));
+            setCartSummaryOpen(isOpen);
+        }
+
+        function setCartSummaryOpen(isOpen) {
+            if (!els.summaryPanel || !els.cartToggleButton) {
+                return;
+            }
+
+            els.summaryPanel.classList.toggle('is-open', Boolean(isOpen));
+            els.cartToggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            els.cartToggleButton.textContent = isOpen ? 'סגירת סל' : 'סל קניות';
+            if (!isOpen) {
+                updateCartToggleState(collectItems().items.length);
+            }
         }
 
         function resetOrder() {
@@ -2292,6 +2681,7 @@
             clearOrderDraft();
             validatePhoneField({ allowEmpty: true });
             renderSummary();
+            setCartSummaryOpen(false);
             showMessage('', '');
             window.scrollTo(0, 0);
             saveScrollPosition();
@@ -2491,7 +2881,9 @@
             });
 
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
-                row.classList.remove('is-selected', 'is-invalid');
+                row.removeAttribute('data-added-order');
+                row.classList.remove('is-invalid', 'just-added');
+                updateRowState(row);
             });
 
             renderSummary();
