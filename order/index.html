@@ -775,6 +775,22 @@
             opacity: 0.7;
         }
 
+        .reset-order {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            background: #fff;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .reset-order:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
         .message {
             display: none;
             border-radius: 7px;
@@ -914,6 +930,10 @@
             }
 
             .message {
+                grid-column: 1 / -1;
+            }
+
+            .reset-order {
                 grid-column: 1 / -1;
             }
 
@@ -1300,6 +1320,7 @@
                         <div id="summaryTotal" class="summary-total">סכום משוער: ₪0</div>
                     </div>
                     <button id="submitButton" class="submit" type="submit">שליחת הזמנה</button>
+                    <button id="resetOrderButton" class="reset-order" type="button">איפוס הזמנה</button>
                     <div id="message" class="message"></div>
                 </div>
                 <div class="summary-ad" aria-label="פרסומת פרינוּק">
@@ -1324,7 +1345,11 @@
         var productById = {};
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
+        var productAddSequence = 0;
+        var pendingScrollRestore = true;
+        var scrollSaveTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
+        var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -1363,6 +1388,7 @@
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             submitButton: document.getElementById('submitButton'),
+            resetOrderButton: document.getElementById('resetOrderButton'),
             summaryItems: document.getElementById('summaryItems'),
             summaryCount: document.getElementById('summaryCount'),
             summaryTotal: document.getElementById('summaryTotal'),
@@ -1373,6 +1399,7 @@
         els.form.addEventListener('input', saveOrderDraft);
         els.form.addEventListener('change', saveOrderDraft);
         els.form.addEventListener('submit', submitOrder);
+        els.resetOrderButton.addEventListener('click', resetOrder);
         els.marketNoticeAccept.addEventListener('click', acceptMarketNotice);
         els.brandLogo.addEventListener('error', function () {
             useDefaultBrandLogo();
@@ -1381,6 +1408,9 @@
         document.addEventListener('focusout', handleTextEditingBlur);
         window.addEventListener('pageshow', handleNoticeViewportChange);
         window.addEventListener('resize', handleNoticeViewportChange);
+        window.addEventListener('scroll', scheduleScrollSave, { passive: true });
+        window.addEventListener('pagehide', saveScrollPosition);
+        window.addEventListener('beforeunload', saveScrollPosition);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', handleNoticeViewportChange);
         }
@@ -1398,8 +1428,13 @@
 
         els.productsRoot.addEventListener('input', function (event) {
             if (event.target.matches('.quantity-input')) {
-                updateRowState(event.target.closest('.product-row'));
+                var row = event.target.closest('.product-row');
+                var wasSelected = row && row.classList.contains('is-selected');
+                updateRowState(row);
                 renderSummary();
+                if (!wasSelected && row && row.classList.contains('is-selected')) {
+                    scrollSummaryToLatestItem();
+                }
             } else if (event.target.matches('.product-note-input')) {
                 renderSummary();
             }
@@ -1467,12 +1502,14 @@
                     var quantity = String(quantityInput && quantityInput.value || '').trim();
                     var note = String(noteInput && noteInput.value || '').trim();
                     var mode = row.getAttribute('data-mode') || 'unit';
+                    var addedOrder = Number(row.getAttribute('data-added-order') || 0);
 
                     if (quantity || mode !== getDefaultProductMode(id)) {
                         products[id] = {
                             mode: mode,
                             quantity: quantity,
-                            note: quantity ? note : ''
+                            note: quantity ? note : '',
+                            addedOrder: quantity ? addedOrder : 0
                         };
                     }
                 });
@@ -1537,6 +1574,12 @@
 
                 var quantityInput = row.querySelector('.quantity-input');
                 var noteInput = row.querySelector('.product-note-input');
+                var addedOrder = Number(item.addedOrder || 0);
+
+                if (addedOrder > 0) {
+                    row.setAttribute('data-added-order', String(addedOrder));
+                    productAddSequence = Math.max(productAddSequence, addedOrder);
+                }
 
                 if (quantityInput) {
                     quantityInput.value = item.quantity || '';
@@ -1548,6 +1591,43 @@
 
                 updateRowState(row);
             });
+        }
+
+        function saveScrollPosition() {
+            var scrollTop = getPageScrollTop();
+
+            try {
+                window.sessionStorage.setItem(ORDER_SCROLL_STORAGE_KEY, String(scrollTop));
+            } catch (error) { }
+        }
+
+        function scheduleScrollSave() {
+            if (scrollSaveTimer) {
+                return;
+            }
+
+            scrollSaveTimer = window.setTimeout(function () {
+                scrollSaveTimer = null;
+                saveScrollPosition();
+            }, 150);
+        }
+
+        function restoreScrollPosition() {
+            if (!pendingScrollRestore) {
+                return;
+            }
+
+            pendingScrollRestore = false;
+
+            try {
+                var scrollTop = Number(window.sessionStorage.getItem(ORDER_SCROLL_STORAGE_KEY) || 0);
+
+                if (scrollTop > 0) {
+                    window.setTimeout(function () {
+                        window.scrollTo(0, scrollTop);
+                    }, 0);
+                }
+            } catch (error) { }
         }
 
         function setInputValue(id, value) {
@@ -1765,6 +1845,7 @@
 
             restoreOrderDraft();
             renderSummary();
+            restoreScrollPosition();
         }
 
         function switchCategory(name) {
@@ -2046,6 +2127,7 @@
                     name: product.name,
                     mode: mode,
                     quantity: quantity,
+                    addedOrder: Number(row.getAttribute('data-added-order') || 0),
                     note: note,
                     unitLabel: 'יחידות',
                     estimatedLineTotal: estimatedLineTotal,
@@ -2056,6 +2138,10 @@
                 });
 
                 updateRowState(row);
+            });
+
+            result.items.sort(function (a, b) {
+                return (a.addedOrder || 0) - (b.addedOrder || 0);
             });
 
             return result;
@@ -2107,11 +2193,64 @@
 
             row.classList.toggle('is-selected', isSelected);
 
+            if (isSelected && !row.getAttribute('data-added-order')) {
+                productAddSequence++;
+                row.setAttribute('data-added-order', String(productAddSequence));
+            } else if (!isSelected) {
+                row.removeAttribute('data-added-order');
+            }
+
             if (note) {
                 note.classList.toggle('hidden', !isSelected);
             }
 
             updateRowEstimate(row, product, quantity);
+        }
+
+        function scrollSummaryToLatestItem() {
+            window.setTimeout(function () {
+                els.summaryItems.scrollTop = els.summaryItems.scrollHeight;
+            }, 0);
+        }
+
+        function resetOrder() {
+            var hasOrder = collectItems().items.length > 0
+                || els.form.querySelector('#fullName').value
+                || els.form.querySelector('#phone').value
+                || els.form.querySelector('#customerEmail').value
+                || els.form.querySelector('#address').value
+                || els.form.querySelector('#floor').value
+                || els.form.querySelector('#apartment').value
+                || els.form.querySelector('#notes').value;
+
+            if (hasOrder && !window.confirm('לאפס את ההזמנה? כל הפריטים והפרטים שהוזנו יימחקו.')) {
+                return;
+            }
+
+            els.form.reset();
+            productAddSequence = 0;
+            els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
+                row.removeAttribute('data-added-order');
+                setProductMode(row, 'unit');
+                var quantityInput = row.querySelector('.quantity-input');
+                var noteInput = row.querySelector('.product-note-input');
+
+                if (quantityInput) {
+                    quantityInput.value = '';
+                }
+
+                if (noteInput) {
+                    noteInput.value = '';
+                }
+
+                updateRowState(row);
+            });
+            toggleDeliveryFields();
+            clearOrderDraft();
+            renderSummary();
+            showMessage('', '');
+            window.scrollTo(0, 0);
+            saveScrollPosition();
         }
 
         function updateRowEstimate(row, product, quantity) {

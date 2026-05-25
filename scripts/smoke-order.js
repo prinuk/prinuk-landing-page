@@ -165,6 +165,8 @@ async function runSmokeTest(baseUrl, executablePath) {
       unitPricedInput.value = '3';
       unitPricedInput.dispatchEvent(new Event('input', { bubbles: true }));
 
+      const summaryNames = [...document.querySelectorAll('.summary-line strong')].map(item => item.textContent);
+
       return {
         estimateText: estimate.textContent,
         singleUnitEstimateText,
@@ -173,6 +175,7 @@ async function runSmokeTest(baseUrl, executablePath) {
         noteHiddenBefore,
         noteHiddenAfter: note.classList.contains('hidden'),
         imageLoaded: image.complete && image.naturalWidth > 0,
+        summaryNames,
         summaryTotal: document.getElementById('summaryTotal').textContent,
       };
     });
@@ -207,6 +210,29 @@ async function runSmokeTest(baseUrl, executablePath) {
 
     if (!result.summaryTotal.includes('₪18')) {
       throw new Error('Expected summary total to include ₪18, got: ' + result.summaryTotal);
+    }
+
+    if (result.summaryNames.join('|') !== 'עגבניה איכותית|שום קלוף') {
+      throw new Error('Expected summary items in add order, got: ' + result.summaryNames.join('|'));
+    }
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.reload({ waitUntil: 'networkidle0', timeout: 15000 });
+    await page.waitForSelector('.product-row', { timeout: 10000 });
+    await page.waitForFunction(() => window.pageYOffset > 100, { timeout: 5000 });
+
+    page.on('dialog', dialog => dialog.accept());
+    await page.click('#resetOrderButton');
+
+    const resetResult = await page.evaluate(() => ({
+      summaryCount: document.getElementById('summaryCount').textContent,
+      filledQuantities: [...document.querySelectorAll('.quantity-input')]
+        .filter(input => String(input.value || '').trim()).length,
+      draft: window.localStorage.getItem('prinukOrderDraft:v1'),
+    }));
+
+    if (resetResult.summaryCount !== '0 מוצרים' || resetResult.filledQuantities !== 0 || resetResult.draft) {
+      throw new Error('Expected reset button to clear order, got: ' + JSON.stringify(resetResult));
     }
   } finally {
     await browser.close();
