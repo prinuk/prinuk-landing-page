@@ -40,7 +40,7 @@ async function runCase(name, options) {
 
   if (options.expectedCalls) {
     const payload = fakeResend.calls[0];
-    assert.strictEqual(payload.from, 'פרינוק <orders@prinuk.co.il>', name + ': unexpected sender');
+    assert.strictEqual(payload.from, 'פרינוּק <orders@prinuk.co.il>', name + ': unexpected sender');
     assert.strictEqual(payload.replyTo, 'prinuk10@gmail.com', name + ': unexpected reply-to');
   } else {
     assert.strictEqual(result.success, true, name + ': skipped email should be successful');

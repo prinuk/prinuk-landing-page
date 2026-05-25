@@ -53,7 +53,7 @@ function buildCatalog() {
 
   return {
     settings: {
-      title: 'פרינוק - בדיקת הזמנה',
+      title: 'פרינוּק - בדיקת הזמנה',
       pickupText: 'בדיקת איסוף',
       contactPhone: '0535234975',
       contactEmail: 'prinuk10@gmail.com',

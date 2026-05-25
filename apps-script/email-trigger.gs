@@ -272,8 +272,8 @@ function sendBusinessNotificationWithRetryLimit_(settings, orderData, normalized
   if (isInvalidCustomerEmailError_(result.error)) {
     var businessInvalidTelegram = trySendEmailProblemTelegramAlert_(settings, orderData, normalizedItems, 'business', result.error || '');
     return {
-      status: 'כתובת מייל פרינוק לא תקינה',
-      error: (result.error || 'לא נשלח: כתובת המייל של פרינוק אינה תקינה.') + formatTelegramAlertNote_(businessInvalidTelegram)
+      status: 'כתובת מייל פרינוּק לא תקינה',
+      error: (result.error || 'לא נשלח: כתובת המייל של פרינוּק אינה תקינה.') + formatTelegramAlertNote_(businessInvalidTelegram)
     };
   }
 
@@ -287,7 +287,7 @@ function sendBusinessNotificationWithRetryLimit_(settings, orderData, normalized
 
   return {
     status: retryCount >= 3 ? 'נכשל סופית' : 'נכשל',
-    error: 'ניסיון ' + retryCount + '/3: ' + (result.error || 'שליחת מייל פרינוק נכשלה.') + fallbackNote
+    error: 'ניסיון ' + retryCount + '/3: ' + (result.error || 'שליחת מייל פרינוּק נכשלה.') + fallbackNote
   };
 }
 
