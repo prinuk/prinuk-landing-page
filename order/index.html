@@ -311,10 +311,25 @@
             color: var(--amber);
         }
 
-        .billing-notice {
+        .billing-notice,
+        .quality-notice {
             border: 1px solid #d7e5db;
             background: var(--accent-soft);
             color: var(--accent-dark);
+        }
+
+        .quality-notice {
+            display: block;
+            line-height: 1.5;
+        }
+
+        .quality-notice strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .quality-notice p {
+            margin: 0;
         }
 
         .pickup-info {
@@ -1209,10 +1224,9 @@
     <div id="marketNoticeModal" class="notice-modal hidden" role="dialog" aria-modal="true"
         aria-labelledby="marketNoticeTitle">
         <div class="notice-dialog">
-            <h2 id="marketNoticeTitle">לקוחות יקרים,</h2>
-            <p>שוק הפירות והירקות הוא דינמי מאוד. כדי להבטיח שתקבלו תמיד אך ורק את הסחורה הטרייה והאיכותית ביותר, ייתכנו
-                שינויים זמניים במלאי או במחירים.</p>
-            <p>בכל מקרה של שינוי בהזמנתכם, ניצור עמכם קשר לעדכון ואישור לפני המשלוח.</p>
+            <h2 id="marketNoticeTitle">חשוב לנו שתדעו:</h2>
+            <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו.</p>
+            <p>במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
             <button id="marketNoticeAccept" class="submit" type="button">אישור והמשך להזמנה</button>
         </div>
     </div>
@@ -1276,6 +1290,10 @@
                     </div>
                     <div class="billing-notice">
                         הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
+                    </div>
+                    <div class="quality-notice">
+                        <strong>חשוב לנו שתדעו:</strong>
+                        <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
