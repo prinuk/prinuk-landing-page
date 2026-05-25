@@ -26,8 +26,13 @@ const STATIC_ENTRIES = [
 const SAMPLE_PRODUCTS = [
   ['שם', 'מחלקה', 'יחידה', 'יחידת מחיר', 'מחיר'],
   ['תפו״א לבן שק (כ4 ק״ג)', 'ירקות', 'יחידות', 'ק״ג', '8'],
+  ['תפו״א אדום מיוחד דוד משה שק (כ1.7 ק״ג)', 'ירקות', 'יחידות', 'ק״ג', '9'],
+  ['תפוח אדמה בייבי גורמה', 'ירקות', 'יחידות', 'ק״ג', '12'],
   ['עגבניות שרי צהוב (סלסלה)', 'ירקות', 'יחידות', 'ק״ג', '20'],
+  ['שסק', 'פירות', 'יחידות', 'ק״ג', '18'],
   ['תפוח פינק ליידי', 'פירות', 'יחידות', 'ק״ג', '12'],
+  ['נבטים עבים', 'ירקות', 'יחידות', 'יחידות', '7'],
+  ['סלק בוואקום', 'ירקות', 'יחידות', 'יחידות', '10'],
   ['שומר', 'ירקות', 'יחידות', 'ק״ג', '8'],
 ];
 
@@ -90,10 +95,15 @@ function validateProductImages() {
   const byName = Object.fromEntries(products.map(product => [product.name, product]));
 
   assert(byName['תפו״א לבן שק (כ4 ק״ג)'].estimatedUnitWeightKg === 4, 'Missing potato unit weight estimate.');
+  assert(byName['תפו״א אדום מיוחד דוד משה שק (כ1.7 ק״ג)'].imageUrl === '/assets/produce/potato-red-david-moshe.jpg', 'David Moshe red potato image match failed.');
+  assert(byName['תפוח אדמה בייבי גורמה'].imageUrl === '/assets/produce/gourmet-baby-potatoes.jpg', 'Gourmet baby potato image match failed.');
   assert(byName['עגבניות שרי צהוב (סלסלה)'].imageUrl === '/assets/produce/cherry-tomatoes-yellow.jpg', 'Cherry tomato image match failed.');
+  assert(byName['שסק'].imageUrl === '/assets/produce/loquat.jpg', 'Loquat image match failed.');
   assert(byName['תפוח פינק ליידי'].imageUrl === '/assets/produce/apple-pink-lady.jpg', 'Pink Lady image match failed.');
+  assert(byName['נבטים עבים'].imageUrl === '/assets/produce/thick-sprouts.jpg', 'Thick sprouts image match failed.');
+  assert(byName['סלק בוואקום'].imageUrl === '/assets/produce/vacuum-beet.jpg', 'Vacuum beet image match failed.');
   assert(byName['שומר'].estimatedUnitWeightKg === 0.25, 'Missing fennel unit weight estimate.');
-  assert(byName['שומר'].imageUrl === '', 'Products without an image should not use a fallback image.');
+  assert(byName['שומר'].imageUrl === '/assets/produce/fennel.jpg', 'Fennel image match failed.');
 
   products.forEach(product => {
     if (product.imageUrl && product.imageUrl.startsWith('/assets/produce/')) {
