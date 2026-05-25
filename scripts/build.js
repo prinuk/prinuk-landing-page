@@ -29,6 +29,7 @@ const SAMPLE_PRODUCTS = [
   ['תפו״א אדום מיוחד דוד משה שק (כ1.7 ק״ג)', 'ירקות', 'יחידות', 'ק״ג', '9'],
   ['תפוח אדמה בייבי גורמה', 'ירקות', 'יחידות', 'ק״ג', '12'],
   ['עגבניות שרי צהוב (סלסלה)', 'ירקות', 'יחידות', 'ק״ג', '20'],
+  ['עגבניות שרי כתום (סלסלה)', 'ירקות', 'יחידות', 'ק״ג', '20'],
   ['שסק', 'פירות', 'יחידות', 'ק״ג', '18'],
   ['תפוח פינק ליידי', 'פירות', 'יחידות', 'ק״ג', '12'],
   ['נבטים עבים', 'ירקות', 'יחידות', 'יחידות', '7'],
@@ -38,6 +39,7 @@ const SAMPLE_PRODUCTS = [
   ['שומר', 'ירקות', 'יחידות', 'ק״ג', '8'],
   ['זוקיני', 'ירקות', 'יחידות', 'ק״ג', '10'],
   ['פלפל חלפיניו', 'ירקות', 'יחידות', 'יחידות', '5'],
+  ['פלפל צ׳ילי', 'ירקות', 'יחידות', 'יחידות', '5'],
   ['רימון', 'פירות', 'יחידות', 'יחידות', '8'],
   ['עלי בייבי', 'ירקות', 'יחידות', 'יחידות', '10'],
   ['לוף', 'ירקות', 'יחידות', 'ק״ג', '10'],
@@ -117,6 +119,7 @@ function validateProductImages() {
   assert(byName['תפו״א אדום מיוחד דוד משה שק (כ1.7 ק״ג)'].imageUrl === '/assets/produce/potato-red-david-moshe.jpg', 'David Moshe red potato image match failed.');
   assert(byName['תפוח אדמה בייבי גורמה'].imageUrl === '/assets/produce/gourmet-baby-potatoes.jpg', 'Gourmet baby potato image match failed.');
   assert(byName['עגבניות שרי צהוב (סלסלה)'].imageUrl === '/assets/produce/cherry-tomatoes-yellow.jpg', 'Cherry tomato image match failed.');
+  assert(byName['עגבניות שרי כתום (סלסלה)'].imageUrl === '/assets/produce/cherry-tomatoes-orange.jpg', 'Orange cherry tomato image match failed.');
   assert(byName['שסק'].imageUrl === '/assets/produce/loquat.jpg', 'Loquat image match failed.');
   assert(byName['תפוח פינק ליידי'].imageUrl === '/assets/produce/apple-pink-lady.jpg', 'Pink Lady image match failed.');
   assert(byName['נבטים עבים'].imageUrl === '/assets/produce/thick-sprouts.jpg', 'Thick sprouts image match failed.');
@@ -128,6 +131,7 @@ function validateProductImages() {
   assert(byName['זוקיני'].estimatedUnitWeightKg === 0.1, 'Missing zucchini unit weight estimate.');
   assert(byName['זוקיני'].imageUrl === '/assets/produce/zucchini.jpg', 'Zucchini image match failed.');
   assert(byName['פלפל חלפיניו'].imageUrl === '/assets/produce/jalapeno-pepper.jpg', 'Jalapeno pepper image match failed.');
+  assert(byName['פלפל צ׳ילי'].imageUrl === '/assets/produce/chili-pepper.jpg', 'Chili pepper image match failed.');
   assert(byName['רימון'].imageUrl === '/assets/produce/pomegranate.jpg', 'Pomegranate image match failed.');
   assert(byName['עלי בייבי'].imageUrl === '/assets/produce/baby-leaves.jpg', 'Baby leaves image match failed.');
   assert(byName['לוף'].estimatedUnitWeightKg === 0.4, 'Missing leek unit weight estimate.');
