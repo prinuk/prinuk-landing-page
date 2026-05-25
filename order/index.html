@@ -1795,17 +1795,20 @@
         document.addEventListener('focusout', handleTextEditingBlur);
         window.addEventListener('pageshow', handleNoticeViewportChange);
         window.addEventListener('resize', handleNoticeViewportChange);
+        window.addEventListener('resize', updateMobileSummaryMetrics);
         window.addEventListener('scroll', scheduleScrollSave, { passive: true });
         window.addEventListener('pagehide', saveScrollPosition);
         window.addEventListener('beforeunload', saveScrollPosition);
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', handleNoticeViewportChange);
+            window.visualViewport.addEventListener('resize', updateMobileSummaryMetrics);
         }
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
         showMarketNoticeIfNeeded();
         restoreOrderDraft();
         loadCatalog();
+        updateMobileSummaryMetrics();
 
         document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
             input.addEventListener('change', function () {
@@ -2616,6 +2619,7 @@
                 els.summaryCount.textContent = formatItemCountText(0);
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
                 updateCartToggleState(0);
+                updateMobileSummaryMetrics();
                 return;
             }
 
@@ -2641,6 +2645,21 @@
             els.summaryCount.textContent = formatItemCountText(collected.items.length);
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
             updateCartToggleState(collected.items.length);
+            updateMobileSummaryMetrics();
+        }
+
+        function updateMobileSummaryMetrics() {
+            if (!els.summaryPanel) {
+                return;
+            }
+
+            window.requestAnimationFrame(function () {
+                var height = Math.ceil(els.summaryPanel.getBoundingClientRect().height);
+
+                if (height > 0) {
+                    document.documentElement.style.setProperty('--mobile-summary-height', height + 'px');
+                }
+            });
         }
 
         function formatItemCountText(count) {
@@ -2759,6 +2778,7 @@
             if (!isOpen) {
                 updateCartToggleState(collectItems().items.length);
             }
+            updateMobileSummaryMetrics();
         }
 
         function resetOrder() {
@@ -3072,6 +3092,7 @@
         function showMessage(text, type) {
             els.message.textContent = text || '';
             els.message.className = text ? 'message show ' + type : 'message';
+            updateMobileSummaryMetrics();
         }
 
         function getErrorMessage(error) {
