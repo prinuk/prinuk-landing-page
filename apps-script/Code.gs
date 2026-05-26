@@ -71,6 +71,8 @@ function onOpen() {
     .addItem('רענן מוצרים מחישוב מחירים', 'refreshProductsFromPricingFile')
     .addItem('צור PDF מחירון', 'createPriceListPdf')
     .addItem('צור PDF מחירון בעמוד אחד', 'createOnePagePriceListPdf')
+    .addItem('צור PDF מחירון ירקות', 'createVegetablesPriceListPdf')
+    .addItem('צור PDF מחירון פירות', 'createFruitsPriceListPdf')
     .addItem('צור PDF מחירון עלים', 'createLeavesPriceListPdf')
     .addItem('צור PDF מחירון מיוחדים', 'createSpecialsPriceListPdf')
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
@@ -188,6 +190,20 @@ function createOnePagePriceListPdf() {
   runCompactPriceListMenu_(
     { columns: 4, landscape: true, titleSuffix: 'בעמוד אחד', fileLabel: 'מחירון-עמוד-אחד' },
     'המחירון בעמוד אחד נוצר'
+  );
+}
+
+function createVegetablesPriceListPdf() {
+  runCompactPriceListMenu_(
+    { columns: 2, autoFit: true, maxFont: 48, category: 'ירקות', titleSuffix: 'ירקות', fileLabel: 'מחירון-ירקות' },
+    'מחירון הירקות נוצר'
+  );
+}
+
+function createFruitsPriceListPdf() {
+  runCompactPriceListMenu_(
+    { columns: 2, autoFit: true, maxFont: 48, category: 'פירות', titleSuffix: 'פירות', fileLabel: 'מחירון-פירות' },
+    'מחירון הפירות נוצר'
   );
 }
 
