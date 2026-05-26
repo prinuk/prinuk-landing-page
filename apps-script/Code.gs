@@ -4,6 +4,7 @@ var PRINOK_CONFIG = {
   SETTINGS_SHEET_NAME: 'הגדרות',
   ORDERS_SHEET_NAME: 'הזמנות',
   ORDER_ITEMS_SHEET_NAME: 'פריטי הזמנות',
+  SIGN_LIST_SHEET_NAME: 'רשימה לשלטים',
   PICKING_SHEET_NAME: 'דפי ליקוט',
   ARCHIVE_SPREADSHEET_NAME: 'ארכיון הזמנות פרינוּק',
   PDF_LOGO_FILE_NAME: 'prinuk-logo-for-pdf.jpg',
@@ -2394,12 +2395,17 @@ function createPrintableOrderFormPdf_() {
 
 function createProductSignsPdf_() {
   var ss = getSpreadsheet_();
-  var productSheet = getProductSheet_(ss);
-  var settings = getSettings_(ss, productSheet);
-  var products = readProducts_(productSheet);
+  var settings = getSettings_(ss, getProductSheet_(ss));
+  var signSheet = ss.getSheetByName(PRINOK_CONFIG.SIGN_LIST_SHEET_NAME);
+
+  if (!signSheet) {
+    throw new Error('לא נמצא גיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
+  }
+
+  var products = readSignList_(signSheet);
 
   if (!products.length) {
-    throw new Error('אין מוצרים פעילים ליצירת שלטי מוצרים.');
+    throw new Error('אין מוצרים עם מחיר בגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
   }
 
   var html = buildProductSignsPdfHtml_(products);
@@ -2420,8 +2426,44 @@ function createProductSignsPdf_() {
   };
 }
 
-// One A4 page per two products (half a page each): big bold white name on
-// a dark background, then the price with its billing unit (ק״ג / יחידה).
+// Reads the רשימה לשלטים sheet (name / price / unit, detected by header).
+// Rows without a name or without a positive price are skipped.
+function readSignList_(sheet) {
+  var values = sheet.getDataRange().getValues();
+
+  if (values.length < 2) {
+    return [];
+  }
+
+  var columns = buildColumnMap_(values[0]);
+  var items = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var name = String(row[columns.name] || '').trim();
+    var price = parsePrice_(row[columns.price]);
+    var unit = String(row[columns.unit] || '').trim();
+    var priceUnit = columns.priceUnit !== null
+      ? String(row[columns.priceUnit] || '').trim() || unit
+      : unit;
+
+    if (!name || !price || price <= 0) {
+      continue;
+    }
+
+    items.push({
+      name: name,
+      price: price,
+      priceUnit: priceUnit || unit,
+      priceDisplay: formatPrice_(price)
+    });
+  }
+
+  return items;
+}
+
+// One A4 page per two products (half a page each): big bold black name,
+// then the price with its billing unit (ק״ג / יחידה), in a framed box.
 function buildProductSignsPdfHtml_(products) {
   var pages = [];
 
@@ -2430,9 +2472,9 @@ function buildProductSignsPdfHtml_(products) {
 
     cells += products[i + 1]
       ? buildProductSignCell_(products[i + 1])
-      : '<div class="sign"></div>';
+      : '<div class="sign empty"></div>';
 
-    pages.push('<div class="page"><div class="frame">' + cells + '</div></div>');
+    pages.push('<div class="page">' + cells + '</div>');
   }
 
   return [
@@ -2443,12 +2485,12 @@ function buildProductSignsPdfHtml_(products) {
     '<style>',
     '@page{size:A4;margin:0;}',
     '*{box-sizing:border-box;margin:0;padding:0;}',
-    'html,body{background:#2b2b2b;}',
-    'body{font-family:Arial,Helvetica,sans-serif;color:#ffffff;}',
-    '.page{width:210mm;height:297mm;background:#2b2b2b;padding:9mm;page-break-after:always;}',
+    'html,body{background:#ffffff;}',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#000000;}',
+    '.page{width:210mm;height:297mm;background:#ffffff;padding:9mm;page-break-after:always;display:flex;flex-direction:column;gap:9mm;}',
     '.page:last-child{page-break-after:auto;}',
-    '.frame{height:100%;border:3px solid #6f6f6f;border-radius:6px;display:flex;flex-direction:column;}',
-    '.sign{flex:1 1 50%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12mm 14mm;}',
+    '.sign{flex:1 1 50%;min-height:0;border:3px solid #000000;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12mm 14mm;}',
+    '.sign.empty{border:0;}',
     '.sign .name{font-size:76px;font-weight:900;line-height:1.12;word-break:break-word;}',
     '.sign .price{font-size:76px;font-weight:900;line-height:1.12;margin-top:9mm;}',
     '</style>',
