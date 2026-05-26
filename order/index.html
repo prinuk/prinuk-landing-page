@@ -1241,18 +1241,30 @@
             }
 
             .summary.is-open {
-                overflow: auto;
-                -webkit-overflow-scrolling: touch;
+                top: max(8px, env(safe-area-inset-top));
+                max-height: none;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
             }
 
             .summary.is-open h2 {
                 display: block;
+                flex: 0 0 auto;
             }
 
             .summary.is-open .summary-items {
                 display: flex;
-                max-height: min(62dvh, 540px);
+                flex: 1 1 auto;
+                min-height: 0;
+                max-height: none;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
                 margin-bottom: 12px;
+            }
+
+            .summary.is-open .submit-row {
+                flex: 0 0 auto;
             }
 
             .submit-row {
