@@ -195,28 +195,28 @@ function createOnePagePriceListPdf() {
 
 function createVegetablesPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 2, autoFit: true, maxFont: 48, category: 'ירקות', titleSuffix: 'ירקות', fileLabel: 'מחירון-ירקות' },
+    { columns: 1, autoFit: true, category: 'ירקות', titleSuffix: 'ירקות', fileLabel: 'מחירון-ירקות' },
     'מחירון הירקות נוצר'
   );
 }
 
 function createFruitsPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 2, autoFit: true, maxFont: 48, category: 'פירות', titleSuffix: 'פירות', fileLabel: 'מחירון-פירות' },
+    { columns: 1, autoFit: true, category: 'פירות', titleSuffix: 'פירות', fileLabel: 'מחירון-פירות' },
     'מחירון הפירות נוצר'
   );
 }
 
 function createLeavesPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 1, autoFit: true, maxFont: 64, category: 'עלים', titleSuffix: 'עלים', fileLabel: 'מחירון-עלים' },
+    { columns: 1, autoFit: true, category: 'עלים', titleSuffix: 'עלים', fileLabel: 'מחירון-עלים' },
     'מחירון העלים נוצר'
   );
 }
 
 function createSpecialsPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 1, autoFit: true, maxFont: 64, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
+    { columns: 1, autoFit: true, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
     'מחירון המיוחדים נוצר'
   );
 }
@@ -2851,6 +2851,21 @@ function createCompactPriceListPdf_(opts) {
   };
 }
 
+// Largest row font (px) that keeps every product on one line and the whole
+// list on a single page, for the given orientation. Conservative usable
+// dimensions leave a safety margin so it never spills to a second page.
+function compactAutoFitFont_(itemCount, categoryCount, columns, maxLineChars, landscape) {
+  var usableHeight = landscape ? 560 : 900;
+  var pageWidthPx = landscape ? 1047 : 718;
+  var usableWidth = pageWidthPx / Math.max(columns, 1) - 28;
+  var perColumn = Math.ceil(itemCount / Math.max(columns, 1));
+  var linesTallest = perColumn + Math.min(categoryCount, perColumn);
+  var heightFont = Math.floor((usableHeight / Math.max(linesTallest, 1) - 8) / 1.25);
+  var widthFont = Math.floor(usableWidth / (Math.max(maxLineChars, 1) * 0.6));
+
+  return Math.max(16, Math.min(90, heightFont, widthFont));
+}
+
 function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
   opts = opts || {};
   var columns = opts.columns || 2;
@@ -2888,11 +2903,27 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
   var headerFont = 18;
 
   if (opts.autoFit) {
-    var usableHeight = opts.landscape ? 560 : 900;
-    var perCol = Math.ceil(entries.length / Math.max(columns, 1));
-    var linesTallest = perCol + Math.min(categories.length, perCol);
-    fontSize = Math.max(16, Math.min(opts.maxFont || 40, Math.floor((usableHeight / Math.max(linesTallest, 1) - 8) / 1.35)));
-    headerFont = Math.round(fontSize * 1.12) + 2;
+    // Pick the orientation + font that makes the text as large as possible
+    // while (a) fitting one page and (b) keeping each product on one row.
+    var maxChars = 1;
+    entries.forEach(function(entry) {
+      var lineChars = String(entry.product.name).length + String(formatPriceListPrice_(entry.product)).length + 2;
+      if (lineChars > maxChars) {
+        maxChars = lineChars;
+      }
+    });
+
+    var portraitFont = compactAutoFitFont_(entries.length, categories.length, columns, maxChars, false);
+    var landscapeFont = compactAutoFitFont_(entries.length, categories.length, columns, maxChars, true);
+
+    if (landscapeFont > portraitFont) {
+      opts.landscape = true;
+      fontSize = landscapeFont;
+    } else {
+      fontSize = portraitFont;
+    }
+
+    headerFont = Math.round(fontSize * 1.1);
   }
 
   return [
@@ -2913,7 +2944,7 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
     'h3{margin:12px 0 5px;font-size:' + headerFont + 'px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:4px;}',
     'h3:first-child{margin-top:0;}',
     '.row{display:flex;justify-content:space-between;gap:8px;font-size:' + fontSize + 'px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
-    '.row .pname{font-weight:bold;overflow-wrap:anywhere;}',
+    '.row .pname{font-weight:bold;overflow-wrap:anywhere;white-space:' + (opts.autoFit ? 'nowrap' : 'normal') + ';}',
     '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
     '</style>',
     '</head>',
