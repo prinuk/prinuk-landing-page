@@ -1834,6 +1834,7 @@
         var cartFeedbackTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
+        var KG_STEP = 0.5;
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -1967,6 +1968,7 @@
             var row = button.closest('.product-row');
             setProductMode(row, button.getAttribute('data-mode-button'));
             renderSummary();
+            saveOrderDraft();
         });
 
         els.summaryItems.addEventListener('click', function (event) {
@@ -2539,9 +2541,20 @@
 
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
+            var allowKg = getUnitType(product.unit) === 'kg';
+
+            var toggle = allowKg
+                ? [
+                    '<div class="segment" role="group" aria-label="אופן הזמנה עבור ' + productName + '">',
+                    '<button class="active" type="button" data-mode-button="unit" aria-pressed="true">יחידות</button>',
+                    '<button type="button" data-mode-button="kg" aria-pressed="false">ק״ג</button>',
+                    '</div>'
+                ].join('')
+                : '';
 
             return [
-                '<div class="amount-line single">',
+                '<div class="amount-line' + (allowKg ? '' : ' single') + '">',
+                toggle,
                 '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
                 '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
                 '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
@@ -2577,18 +2590,23 @@
                 return;
             }
 
+            var mode = row.getAttribute('data-mode') || 'unit';
+            var step = mode === 'kg' ? KG_STEP : 1;
             var current = Number(input.value || 0);
 
             if (!isFinite(current) || current < 0) {
                 current = 0;
             }
 
-            current = Math.round(current);
+            if (mode !== 'kg') {
+                current = Math.round(current);
+            }
 
             var next = action === 'increase'
-                ? current + 1
-                : Math.max(0, current - 1);
+                ? current + step
+                : Math.max(0, current - step);
 
+            next = roundWeight(next);
             input.value = next > 0 ? String(next) : '';
             updateRowState(row);
             renderSummary();
@@ -2613,24 +2631,29 @@
                 return;
             }
 
+            var mode = row.getAttribute('data-mode') || 'unit';
+            var step = mode === 'kg' ? KG_STEP : 1;
             var current = Number(input.value || 0);
 
             if (!isFinite(current) || current < 0) {
                 current = 0;
             }
 
-            current = Math.round(current);
+            if (mode !== 'kg') {
+                current = Math.round(current);
+            }
 
             var next;
 
             if (action === 'increase') {
-                next = current + 1;
+                next = current + step;
             } else if (action === 'decrease') {
-                next = Math.max(0, current - 1);
+                next = Math.max(0, current - step);
             } else {
                 next = 0;
             }
 
+            next = roundWeight(next);
             input.value = next > 0 ? String(next) : '';
             updateRowState(row);
             renderSummary();
@@ -2642,11 +2665,18 @@
                 return;
             }
 
-            mode = 'unit';
+            // kg is only selectable on rows that expose the toggle
+            // (items whose sale unit is ק״ג); everything else stays units.
+            var hasKgOption = !!row.querySelector('[data-mode-button="kg"]');
+            if (mode !== 'kg' || !hasKgOption) {
+                mode = 'unit';
+            }
             row.setAttribute('data-mode', mode);
 
             row.querySelectorAll('[data-mode-button]').forEach(function (button) {
-                button.classList.toggle('active', button.getAttribute('data-mode-button') === mode);
+                var isActive = button.getAttribute('data-mode-button') === mode;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
 
             var input = row.querySelector('.quantity-input');
@@ -2656,12 +2686,18 @@
                 return;
             }
 
-            input.step = '1';
-            input.inputMode = 'numeric';
-            suffix.textContent = 'יחידות';
+            if (mode === 'kg') {
+                input.step = String(KG_STEP);
+                input.inputMode = 'decimal';
+                suffix.textContent = 'ק״ג';
+            } else {
+                input.step = '1';
+                input.inputMode = 'numeric';
+                suffix.textContent = 'יחידות';
 
-            if (input.value && !isWholeNumber(Number(input.value))) {
-                input.value = '';
+                if (input.value && !isWholeNumber(Number(input.value))) {
+                    input.value = '';
+                }
             }
 
             updateRowState(row);
@@ -2764,7 +2800,7 @@
                     quantity: quantity,
                     addedOrder: Number(row.getAttribute('data-added-order') || 0),
                     note: note,
-                    unitLabel: 'יחידות',
+                    unitLabel: mode === 'kg' ? 'ק״ג' : 'יחידות',
                     estimatedLineTotal: estimatedLineTotal,
                     estimatedWeightKg: lineEstimate.estimatedWeightKg,
                     estimatedWeightPerUnitKg: lineEstimate.estimatedWeightPerUnitKg,
@@ -3331,6 +3367,16 @@
         function calculateLineEstimate(mode, quantity, product) {
             var priceUnitType = getUnitType(product.priceUnit || product.unit);
             var price = Number(product.price || 0);
+
+            if (mode === 'kg' && priceUnitType === 'kg') {
+                return {
+                    total: roundMoney(quantity * price),
+                    estimatedWeightKg: null,
+                    estimatedWeightPerUnitKg: null,
+                    isEstimatedPrice: false,
+                    isEstimatedWeight: false
+                };
+            }
 
             if (mode === 'unit' && priceUnitType === 'unit') {
                 return {
