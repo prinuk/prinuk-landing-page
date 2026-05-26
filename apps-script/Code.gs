@@ -186,7 +186,7 @@ function createPrintableOrderFormPdf() {
 
 function createOnePagePriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 3, titleSuffix: 'בעמוד אחד', fileLabel: 'מחירון-עמוד-אחד' },
+    { columns: 4, landscape: true, titleSuffix: 'בעמוד אחד', fileLabel: 'מחירון-עמוד-אחד' },
     'המחירון בעמוד אחד נוצר'
   );
 }
@@ -2872,18 +2872,18 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
     '<head>',
     '<meta charset="UTF-8">',
     '<style>',
-    '@page{size:A4;margin:10mm;}',
+    '@page{size:' + (opts.landscape ? '297mm 210mm' : 'A4') + ';margin:10mm;}',
     'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:0;line-height:1.25;}',
     getDocumentHeaderCss_(),
     '.doc-header{margin-bottom:10px;padding-bottom:8px;}',
     '.doc-logo{width:60px;height:60px;}',
     '.doc-copy h1{font-size:22px;}',
     'table.cols{width:100%;border-collapse:collapse;table-layout:fixed;}',
-    'td.col{vertical-align:top;width:' + colWidth + '%;padding:0 7px;border-inline-start:1px solid #e6e9e1;}',
+    'td.col{vertical-align:top;width:' + colWidth + '%;padding:0 10px;border-inline-start:1px solid #e6e9e1;}',
     'td.col:first-child{border-inline-start:0;}',
-    'h3{margin:9px 0 4px;font-size:13px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:3px;}',
+    'h3{margin:12px 0 5px;font-size:18px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:4px;}',
     'h3:first-child{margin-top:0;}',
-    '.row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row{display:flex;justify-content:space-between;gap:8px;font-size:16px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
     '.row .pname{font-weight:bold;overflow-wrap:anywhere;}',
     '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
     '</style>',
