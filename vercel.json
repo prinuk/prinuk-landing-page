@@ -31,12 +31,12 @@
       "destination": "/order/index.html"
     },
     {
-      "source": "/:path((?!api/|order/|assets/).*)",
+      "source": "/:path((?!api/|order/|assets/|_vercel/).*)",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
       "destination": "/order/:path*"
     },
     {
-      "source": "/:path((?!api/|order/|assets/).*)",
+      "source": "/:path((?!api/|order/|assets/|_vercel/).*)",
       "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
       "destination": "/order/:path*"
     }

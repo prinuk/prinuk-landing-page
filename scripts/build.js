@@ -78,13 +78,15 @@ function findLocalReferences(file) {
     if (
       ref.startsWith('/') &&
       !ref.startsWith('/api/') &&
+      !ref.startsWith('/_vercel/') &&
       !ref.startsWith('//')
     ) {
       refs.push(ref.slice(1));
     } else if (
       !ref.includes(':') &&
       !ref.startsWith('#') &&
-      !ref.startsWith('/api/')
+      !ref.startsWith('/api/') &&
+      !ref.startsWith('/_vercel/')
     ) {
       refs.push(path.normalize(path.join(path.dirname(file), ref)));
     }
