@@ -826,9 +826,9 @@
         .summary-line {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 10px;
-            align-items: start;
-            padding-bottom: 10px;
+            gap: 4px 10px;
+            align-items: center;
+            padding-bottom: 8px;
             border-bottom: 1px solid #edf0ea;
             font-size: 14px;
         }
@@ -2779,7 +2779,7 @@
                     '<button type="button" class="summary-remove" data-cart-action="remove" aria-label="הסרת ' + escapeAttr(item.name) + ' מהסל">✕</button>',
                     '</div>',
                     item.note ? '<span class="summary-note">הערה: ' + escapeHtml(item.note) + '</span>' : '',
-                    item.isEstimatedWeight ? '<span class="summary-note">משקל משוער: כ-' + escapeHtml(formatQuantity(item.estimatedWeightKg)) + ' ק״ג לפי כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
+                    item.isEstimatedWeight ? '<span class="summary-note">משקל משוער: כ-' + escapeHtml(formatQuantity(item.estimatedWeightKg)) + ' ק״ג</span>' : '',
                     '<span class="' + priceClass + '">' + escapeHtml(estimateText) + '</span>',
                     '</div>'
                 ].join('');
