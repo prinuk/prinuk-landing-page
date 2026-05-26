@@ -71,6 +71,7 @@ function onOpen() {
     .addItem('צור PDF מחירון', 'createPriceListPdf')
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
     .addItem('צור PDF טופס הזמנה', 'createPrintableOrderFormPdf')
+    .addItem('צור PDF שלטי מוצרים', 'createProductSignsPdf')
     .addItem('רענן דפי ליקוט', 'refreshPickingSheets')
     .addItem('סיכום משקל מוערך', 'refreshWeightSummary')
     .addSeparator()
@@ -175,6 +176,19 @@ function createPrintableOrderFormPdf() {
 
   try {
     SpreadsheetApp.getUi().alert('טופס ההזמנה נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (error) {
+  }
+}
+
+function createProductSignsPdf() {
+  var result = createProductSignsPdf_();
+  var message = 'שלטי המוצרים נוצרו בהצלחה: ' + result.fileName + '\n' + result.url;
+
+  Logger.log(message);
+  getSpreadsheet_().toast('שלטי המוצרים נוצרו ונשמרו בדרייב.', 'פרינוּק', 8);
+
+  try {
+    SpreadsheetApp.getUi().alert('שלטי המוצרים נוצרו', message, SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (error) {
   }
 }
@@ -2339,6 +2353,86 @@ function createPrintableOrderFormPdf_() {
     url: file.getUrl(),
     productCount: products.length
   };
+}
+
+function createProductSignsPdf_() {
+  var ss = getSpreadsheet_();
+  var productSheet = getProductSheet_(ss);
+  var settings = getSettings_(ss, productSheet);
+  var products = readProducts_(productSheet);
+
+  if (!products.length) {
+    throw new Error('אין מוצרים פעילים ליצירת שלטי מוצרים.');
+  }
+
+  var html = buildProductSignsPdfHtml_(products);
+  var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
+  var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
+  var fileName = 'שלטי-מוצרים-פרינוּק' + salePart + '-' + timestamp + '.pdf';
+  var pdf = Utilities
+    .newBlob(html, 'text/html', 'product-signs.html')
+    .getAs('application/pdf')
+    .setName(fileName);
+  var file = createDriveFileNearSpreadsheet_(ss, pdf);
+
+  return {
+    fileName: file.getName(),
+    url: file.getUrl(),
+    productCount: products.length
+  };
+}
+
+// One A4 page per two products (half a page each): big bold white name on
+// a dark background, then the price with its billing unit (ק״ג / יחידה).
+function buildProductSignsPdfHtml_(products) {
+  var pages = [];
+
+  for (var i = 0; i < products.length; i += 2) {
+    var cells = buildProductSignCell_(products[i]);
+
+    cells += products[i + 1]
+      ? buildProductSignCell_(products[i + 1])
+      : '<div class="sign"></div>';
+
+    pages.push('<div class="page"><div class="frame">' + cells + '</div></div>');
+  }
+
+  return [
+    '<!doctype html>',
+    '<html dir="rtl" lang="he">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    '@page{size:A4;margin:0;}',
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'html,body{background:#2b2b2b;}',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#ffffff;}',
+    '.page{width:210mm;height:297mm;background:#2b2b2b;padding:9mm;page-break-after:always;}',
+    '.page:last-child{page-break-after:auto;}',
+    '.frame{height:100%;border:3px solid #6f6f6f;border-radius:6px;display:flex;flex-direction:column;}',
+    '.sign{flex:1 1 50%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12mm 14mm;}',
+    '.sign .name{font-size:76px;font-weight:900;line-height:1.12;word-break:break-word;}',
+    '.sign .price{font-size:76px;font-weight:900;line-height:1.12;margin-top:9mm;}',
+    '</style>',
+    '</head>',
+    '<body>',
+    pages.join(''),
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function buildProductSignCell_(product) {
+  var unitLabel = getUnitType_(product.priceUnit) === 'kg' ? 'ק״ג' : 'יחידה';
+  var priceLine = product.priceDisplay + ' ש״ח ' + unitLabel;
+
+  return [
+    '<div class="sign">',
+    '<div class="name">', escapeHtml_(product.name), '</div>',
+    '<div class="price">', escapeHtml_(priceLine), '</div>',
+    '</div>'
+  ].join('');
 }
 
 function buildPrintableOrderFormPdfHtml_(settings, categories, productCount) {
