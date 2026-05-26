@@ -679,24 +679,43 @@
         .segment {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            border: 1px solid var(--category-border-color, var(--line));
-            border-radius: 7px;
-            overflow: hidden;
-            background: var(--category-soft-color, #f5f7f4);
-            min-height: 42px;
+            gap: 3px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 3px;
+            background: #f1f4ef;
+            min-height: 40px;
         }
 
         .segment button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
             border: 0;
+            border-radius: 999px;
             background: transparent;
-            color: var(--category-strong-color, var(--muted));
+            color: var(--muted);
             font-weight: 800;
-            padding: 8px;
+            font-size: 13px;
+            padding: 6px 8px;
+            transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
         }
 
         .segment button.active {
-            background: var(--category-color, var(--accent));
-            color: var(--category-text-color, #fff);
+            background: #fff;
+            color: var(--accent-dark);
+            box-shadow: 0 1px 3px rgba(22, 43, 56, 0.16);
+        }
+
+        .segment .kg-price {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--muted);
+        }
+
+        .segment button.active .kg-price {
+            color: var(--accent);
         }
 
         .number-wrap {
@@ -1966,7 +1985,9 @@
             }
 
             var row = button.closest('.product-row');
-            setProductMode(row, button.getAttribute('data-mode-button'));
+            var targetMode = button.getAttribute('data-mode-button');
+            convertQuantityForModeSwitch(row, targetMode);
+            setProductMode(row, targetMode);
             renderSummary();
             saveOrderDraft();
         });
@@ -2542,12 +2563,16 @@
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
             var allowKg = getUnitType(product.unit) === 'kg';
+            var kgPriced = getUnitType(product.priceUnit || product.unit) === 'kg';
+            var kgHint = (allowKg && kgPriced)
+                ? '<span class="kg-price">₪' + escapeHtml(String(product.priceDisplay)) + '</span>'
+                : '';
 
             var toggle = allowKg
                 ? [
                     '<div class="segment" role="group" aria-label="אופן הזמנה עבור ' + productName + '">',
                     '<button class="active" type="button" data-mode-button="unit" aria-pressed="true">יחידות</button>',
-                    '<button type="button" data-mode-button="kg" aria-pressed="false">ק״ג</button>',
+                    '<button type="button" data-mode-button="kg" aria-pressed="false"><span>ק״ג</span>' + kgHint + '</button>',
                     '</div>'
                 ].join('')
                 : '';
@@ -2658,6 +2683,55 @@
             updateRowState(row);
             renderSummary();
             saveOrderDraft();
+        }
+
+        // When the customer flips a row between units and kg, keep the
+        // amount meaningful instead of silently reusing the number:
+        // convert through the per-unit weight estimate (nearest 0.5 kg,
+        // or nearest whole unit). With no estimate to convert through,
+        // clear the field so they re-enter the amount in the new unit.
+        function convertQuantityForModeSwitch(row, targetMode) {
+            if (!row) {
+                return;
+            }
+
+            var currentMode = row.getAttribute('data-mode') || 'unit';
+
+            if (currentMode === targetMode) {
+                return;
+            }
+
+            var input = row.querySelector('.quantity-input');
+
+            if (!input) {
+                return;
+            }
+
+            var value = Number(input.value || 0);
+
+            if (!isFinite(value) || value <= 0) {
+                return;
+            }
+
+            var product = productById[row.getAttribute('data-product-id')];
+            var estPerUnit = product ? getEstimatedUnitWeightKg(product) : 0;
+
+            if (!estPerUnit) {
+                input.value = '';
+                return;
+            }
+
+            if (targetMode === 'kg') {
+                var kg = roundToHalf(value * estPerUnit);
+                input.value = String(kg > 0 ? kg : KG_STEP);
+            } else {
+                var units = Math.round(value / estPerUnit);
+                input.value = String(units > 0 ? units : 1);
+            }
+        }
+
+        function roundToHalf(value) {
+            return Math.round(Number(value || 0) * 2) / 2;
         }
 
         function setProductMode(row, mode) {

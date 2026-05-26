@@ -242,6 +242,8 @@ async function runSmokeTest(baseUrl, executablePath) {
       row.querySelector('[data-mode-button="kg"]').click();
 
       const input = row.querySelector('.quantity-input');
+      const convertedValue = input.value; // 2 units × 0.15 kg ≈ 0.3 → 0.5
+
       input.value = '1.5';
       input.dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -249,12 +251,17 @@ async function runSmokeTest(baseUrl, executablePath) {
         mode: row.getAttribute('data-mode'),
         step: input.step,
         suffix: row.querySelector('.suffix').textContent,
+        convertedValue,
         estimateText: row.querySelector('[data-row-estimate]').textContent,
       };
     });
 
     if (kgResult.mode !== 'kg' || kgResult.step !== '0.5' || kgResult.suffix !== 'ק״ג') {
       throw new Error('Expected kg mode with 0.5 step and ק״ג suffix, got: ' + JSON.stringify(kgResult));
+    }
+
+    if (kgResult.convertedValue !== '0.5') {
+      throw new Error('Expected 2 units to convert to 0.5 kg on switch, got: ' + kgResult.convertedValue);
     }
 
     if (!kgResult.estimateText.includes('סכום: ₪15') || kgResult.estimateText.includes('משוער')) {
