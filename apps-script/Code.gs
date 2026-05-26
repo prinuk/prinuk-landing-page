@@ -69,6 +69,9 @@ function onOpen() {
     .addItem('הכן גיליונות הזמנות', 'setupPrinokOrderSheets')
     .addItem('רענן מוצרים מחישוב מחירים', 'refreshProductsFromPricingFile')
     .addItem('צור PDF מחירון', 'createPriceListPdf')
+    .addItem('צור PDF מחירון בעמוד אחד', 'createOnePagePriceListPdf')
+    .addItem('צור PDF מחירון עלים', 'createLeavesPriceListPdf')
+    .addItem('צור PDF מחירון מיוחדים', 'createSpecialsPriceListPdf')
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
     .addItem('צור PDF טופס הזמנה', 'createPrintableOrderFormPdf')
     .addItem('צור PDF שלטי מוצרים', 'createProductSignsPdf')
@@ -176,6 +179,40 @@ function createPrintableOrderFormPdf() {
 
   try {
     SpreadsheetApp.getUi().alert('טופס ההזמנה נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (error) {
+  }
+}
+
+function createOnePagePriceListPdf() {
+  runCompactPriceListMenu_(
+    { columns: 3, titleSuffix: 'בעמוד אחד', fileLabel: 'מחירון-עמוד-אחד' },
+    'המחירון בעמוד אחד נוצר'
+  );
+}
+
+function createLeavesPriceListPdf() {
+  runCompactPriceListMenu_(
+    { columns: 2, category: 'עלים', titleSuffix: 'עלים', fileLabel: 'מחירון-עלים' },
+    'מחירון העלים נוצר'
+  );
+}
+
+function createSpecialsPriceListPdf() {
+  runCompactPriceListMenu_(
+    { columns: 2, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
+    'מחירון המיוחדים נוצר'
+  );
+}
+
+function runCompactPriceListMenu_(opts, alertTitle) {
+  var result = createCompactPriceListPdf_(opts);
+  var message = result.fileName + '\n' + result.url;
+
+  Logger.log(message);
+  getSpreadsheet_().toast('המחירון נוצר ונשמר בדרייב.', 'פרינוּק', 8);
+
+  try {
+    SpreadsheetApp.getUi().alert(alertTitle, message, SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (error) {
   }
 }
@@ -2717,6 +2754,129 @@ function buildPriceListPdfHtml_(settings, categories, productCount) {
 function formatPriceListPrice_(product) {
   var priceUnit = product.priceUnit || product.unit || '';
   return formatMoney_(product.price) + (priceUnit ? ' ל-' + priceUnit : '');
+}
+
+// Compact, single-page price list. opts: { columns, category, titleSuffix, fileLabel }
+function createCompactPriceListPdf_(opts) {
+  opts = opts || {};
+  var ss = getSpreadsheet_();
+  var productSheet = getProductSheet_(ss);
+  var settings = getSettings_(ss, productSheet);
+  var products = readProducts_(productSheet);
+
+  if (opts.category) {
+    products = products.filter(function(product) {
+      return product.department === opts.category;
+    });
+  }
+
+  if (!products.length) {
+    throw new Error('אין מוצרים' + (opts.category ? ' בקטגוריה ' + opts.category : '') + ' ליצירת מחירון.');
+  }
+
+  var categories = groupProducts_(products);
+  var html = buildCompactPriceListHtml_(settings, categories, products.length, opts);
+  var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
+  var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
+  var fileName = (opts.fileLabel || 'מחירון') + '-פרינוּק' + salePart + '-' + timestamp + '.pdf';
+  var pdf = Utilities
+    .newBlob(html, 'text/html', 'price-list.html')
+    .getAs('application/pdf')
+    .setName(fileName);
+  var file = createDriveFileNearSpreadsheet_(ss, pdf);
+
+  return {
+    fileName: file.getName(),
+    url: file.getUrl(),
+    productCount: products.length
+  };
+}
+
+function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
+  opts = opts || {};
+  var columns = opts.columns || 2;
+  var title = settings.title || PRINOK_CONFIG.DEFAULT_FORM_TITLE;
+  var saleName = settings.saleName || '';
+  var generatedAt = formatDateTime_(new Date());
+  var headTitle = 'מחירון' + (opts.titleSuffix ? ' ' + opts.titleSuffix : '') + ' - ' + title;
+
+  // Flatten products in category order, then split evenly across columns.
+  var entries = [];
+  categories.forEach(function(category) {
+    category.products.forEach(function(product) {
+      entries.push({ cat: category.name, product: product });
+    });
+  });
+
+  var perColumn = Math.ceil(entries.length / columns);
+  var columnCells = [];
+
+  for (var c = 0; c < columns; c++) {
+    var slice = entries.slice(c * perColumn, (c + 1) * perColumn);
+
+    if (!slice.length) {
+      continue;
+    }
+
+    columnCells.push('<td class="col">' + renderCompactPriceColumn_(slice) + '</td>');
+  }
+
+  var colWidth = Math.floor(100 / Math.max(columnCells.length, 1));
+
+  return [
+    '<!doctype html>',
+    '<html dir="rtl" lang="he">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    '@page{size:A4;margin:10mm;}',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:0;line-height:1.25;}',
+    getDocumentHeaderCss_(),
+    '.doc-header{margin-bottom:10px;padding-bottom:8px;}',
+    '.doc-logo{width:60px;height:60px;}',
+    '.doc-copy h1{font-size:22px;}',
+    'table.cols{width:100%;border-collapse:collapse;table-layout:fixed;}',
+    'td.col{vertical-align:top;width:' + colWidth + '%;padding:0 7px;border-inline-start:1px solid #e6e9e1;}',
+    'td.col:first-child{border-inline-start:0;}',
+    'h3{margin:9px 0 4px;font-size:13px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:3px;}',
+    'h3:first-child{margin-top:0;}',
+    '.row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row .pname{font-weight:bold;overflow-wrap:anywhere;}',
+    '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
+    '</style>',
+    '</head>',
+    '<body>',
+    buildDocumentHeaderHtml_(settings, headTitle, [
+      saleName ? 'מכירה: ' + saleName : '',
+      productCount + ' מוצרים',
+      'נוצר בתאריך: ' + generatedAt
+    ]),
+    '<table class="cols"><tr>', columnCells.join(''), '</tr></table>',
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+function renderCompactPriceColumn_(entries) {
+  var html = [];
+  var currentCat = null;
+
+  entries.forEach(function(entry) {
+    if (entry.cat !== currentCat) {
+      currentCat = entry.cat;
+      html.push('<h3>' + escapeHtml_(currentCat) + '</h3>');
+    }
+
+    html.push(
+      '<div class="row">' +
+      '<span class="pname">' + escapeHtml_(entry.product.name) + '</span>' +
+      '<span class="pprice">' + escapeHtml_(formatPriceListPrice_(entry.product)) + '</span>' +
+      '</div>'
+    );
+  });
+
+  return html.join('');
 }
 
 function createDriveFileNearSpreadsheet_(ss, blob) {
