@@ -864,6 +864,61 @@
             overflow-wrap: anywhere;
         }
 
+        .summary-controls {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .summary-step,
+        .summary-remove {
+            display: grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            line-height: 1;
+            font-weight: 900;
+            transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+        }
+
+        .summary-step {
+            background: var(--fresh-soft);
+            color: var(--fresh);
+            font-size: 20px;
+        }
+
+        .summary-step:hover,
+        .summary-step:focus-visible {
+            background: var(--fresh);
+            color: #fff;
+        }
+
+        .summary-remove {
+            background: #fdecec;
+            border-color: #f3cfcf;
+            color: var(--danger);
+            font-size: 14px;
+        }
+
+        .summary-remove:hover,
+        .summary-remove:focus-visible {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .summary-step:active,
+        .summary-remove:active {
+            transform: scale(0.92);
+        }
+
+        .summary-line .summary-quantity {
+            min-width: 52px;
+            text-align: center;
+        }
+
         .summary-meta {
             display: flex;
             flex-direction: column;
@@ -1881,6 +1936,22 @@
             renderSummary();
         });
 
+        els.summaryItems.addEventListener('click', function (event) {
+            var actionButton = event.target.closest('[data-cart-action]');
+
+            if (!actionButton) {
+                return;
+            }
+
+            var line = actionButton.closest('[data-product-id]');
+
+            if (!line) {
+                return;
+            }
+
+            adjustCartItem(line.getAttribute('data-product-id'), actionButton.getAttribute('data-cart-action'));
+        });
+
         function readOrderDraft() {
             try {
                 var rawDraft = window.localStorage.getItem(ORDER_DRAFT_STORAGE_KEY);
@@ -2496,6 +2567,43 @@
             }
         }
 
+        function adjustCartItem(id, action) {
+            var row = els.productsRoot.querySelector('[data-product-id="' + cssEscape(id) + '"]');
+
+            if (!row) {
+                return;
+            }
+
+            var input = row.querySelector('.quantity-input');
+
+            if (!input) {
+                return;
+            }
+
+            var current = Number(input.value || 0);
+
+            if (!isFinite(current) || current < 0) {
+                current = 0;
+            }
+
+            current = Math.round(current);
+
+            var next;
+
+            if (action === 'increase') {
+                next = current + 1;
+            } else if (action === 'decrease') {
+                next = Math.max(0, current - 1);
+            } else {
+                next = 0;
+            }
+
+            input.value = next > 0 ? String(next) : '';
+            updateRowState(row);
+            renderSummary();
+            saveOrderDraft();
+        }
+
         function setProductMode(row, mode) {
             if (!row) {
                 return;
@@ -2662,9 +2770,14 @@
                     : 'summary-price';
 
                 return [
-                    '<div class="summary-line">',
+                    '<div class="summary-line" data-product-id="' + escapeAttr(item.id) + '">',
                     '<strong>' + escapeHtml(item.name) + '</strong>',
+                    '<div class="summary-controls">',
+                    '<button type="button" class="summary-step" data-cart-action="decrease" aria-label="הפחתת כמות עבור ' + escapeAttr(item.name) + '">−</button>',
                     '<span class="summary-quantity">' + formatQuantity(item.quantity) + ' ' + escapeHtml(item.unitLabel) + '</span>',
+                    '<button type="button" class="summary-step" data-cart-action="increase" aria-label="הוספת כמות עבור ' + escapeAttr(item.name) + '">+</button>',
+                    '<button type="button" class="summary-remove" data-cart-action="remove" aria-label="הסרת ' + escapeAttr(item.name) + ' מהסל">✕</button>',
+                    '</div>',
                     item.note ? '<span class="summary-note">הערה: ' + escapeHtml(item.note) + '</span>' : '',
                     item.isEstimatedWeight ? '<span class="summary-note">משקל משוער: כ-' + escapeHtml(formatQuantity(item.estimatedWeightKg)) + ' ק״ג לפי כ-' + escapeHtml(formatQuantity(item.estimatedWeightPerUnitKg)) + ' ק״ג ליחידה. החיוב הסופי לפי שקילה בפועל.</span>' : '',
                     '<span class="' + priceClass + '">' + escapeHtml(estimateText) + '</span>',
