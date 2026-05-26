@@ -940,9 +940,10 @@
         }
 
         .summary-ad {
-            flex: 0 1 auto;
-            min-height: 0;
-            overflow: hidden;
+            /* All-or-nothing: never shrink/clip the ad. JS hides it
+               entirely when the full image can't fit without starving
+               the cart items. */
+            flex: 0 0 auto;
             margin-top: 14px;
             padding-top: 14px;
             border-top: 1px solid var(--line);
@@ -1797,7 +1798,7 @@
                     <button id="resetOrderButton" class="reset-order" type="button">איפוס הזמנה</button>
                     <div id="message" class="message"></div>
                 </div>
-                <div class="summary-ad" aria-label="פרסומת פרינוּק">
+                <div id="summaryAd" class="summary-ad" aria-label="פרסומת פרינוּק">
                     <img src="/assets/prinuk-order-ad.jpg"
                         loading="lazy" decoding="async"
                         alt="פרינוּק - המכירה השבועית, מבחר פירות וירקות טריים ואיכותיים">
@@ -1871,6 +1872,7 @@
             cartToggleButton: document.getElementById('cartToggleButton'),
             summaryPanel: document.querySelector('.summary'),
             summaryItems: document.getElementById('summaryItems'),
+            summaryAd: document.getElementById('summaryAd'),
             summaryCount: document.getElementById('summaryCount'),
             summaryTotal: document.getElementById('summaryTotal'),
             cartFeedback: document.getElementById('cartFeedback'),
@@ -1898,6 +1900,13 @@
         window.addEventListener('pageshow', handleNoticeViewportChange);
         window.addEventListener('resize', handleNoticeViewportChange);
         window.addEventListener('resize', updateMobileSummaryMetrics);
+        window.addEventListener('resize', updateSummaryAdFit);
+        if (els.summaryAd) {
+            var summaryAdImg = els.summaryAd.querySelector('img');
+            if (summaryAdImg) {
+                summaryAdImg.addEventListener('load', updateSummaryAdFit);
+            }
+        }
         window.addEventListener('scroll', scheduleScrollSave, { passive: true });
         window.addEventListener('pagehide', saveScrollPosition);
         window.addEventListener('beforeunload', saveScrollPosition);
@@ -2775,6 +2784,7 @@
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
                 updateCartToggleState(0);
                 updateMobileSummaryMetrics();
+                updateSummaryAdFit();
                 return;
             }
 
@@ -2806,6 +2816,29 @@
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
             updateCartToggleState(collected.items.length);
             updateMobileSummaryMetrics();
+            updateSummaryAdFit();
+        }
+
+        // Show the summary ad at full size only when the whole image fits
+        // without forcing the cart items to scroll; otherwise hide it
+        // completely so a half-clipped image is never shown. Only applies
+        // to the wide layout where the ad lives in the fixed summary column
+        // (on narrow screens the stylesheet hides the ad already).
+        function updateSummaryAdFit() {
+            var ad = els.summaryAd;
+            var items = els.summaryItems;
+            if (!ad || !items) {
+                return;
+            }
+
+            if (!window.matchMedia('(min-width: 901px)').matches) {
+                ad.style.display = '';
+                return;
+            }
+
+            ad.style.display = '';
+            var itemsFit = items.scrollHeight <= items.clientHeight + 1;
+            ad.style.display = itemsFit ? '' : 'none';
         }
 
         function updateMobileSummaryMetrics() {
