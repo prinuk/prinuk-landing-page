@@ -193,14 +193,14 @@ function createOnePagePriceListPdf() {
 
 function createLeavesPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 2, category: 'עלים', titleSuffix: 'עלים', fileLabel: 'מחירון-עלים' },
+    { columns: 1, autoFit: true, maxFont: 64, category: 'עלים', titleSuffix: 'עלים', fileLabel: 'מחירון-עלים' },
     'מחירון העלים נוצר'
   );
 }
 
 function createSpecialsPriceListPdf() {
   runCompactPriceListMenu_(
-    { columns: 2, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
+    { columns: 1, autoFit: true, maxFont: 64, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
     'מחירון המיוחדים נוצר'
   );
 }
@@ -2866,6 +2866,19 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
 
   var colWidth = Math.floor(100 / Math.max(columnCells.length, 1));
 
+  // Scale the font to fill the page when asked (short category lists),
+  // bigger when there are fewer items. Otherwise use a fixed readable size.
+  var fontSize = 16;
+  var headerFont = 18;
+
+  if (opts.autoFit) {
+    var usableHeight = opts.landscape ? 560 : 900;
+    var perCol = Math.ceil(entries.length / Math.max(columns, 1));
+    var linesTallest = perCol + Math.min(categories.length, perCol);
+    fontSize = Math.max(16, Math.min(opts.maxFont || 40, Math.floor((usableHeight / Math.max(linesTallest, 1) - 8) / 1.35)));
+    headerFont = Math.round(fontSize * 1.12) + 2;
+  }
+
   return [
     '<!doctype html>',
     '<html dir="rtl" lang="he">',
@@ -2881,9 +2894,9 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
     'table.cols{width:100%;border-collapse:collapse;table-layout:fixed;}',
     'td.col{vertical-align:top;width:' + colWidth + '%;padding:0 10px;border-inline-start:1px solid #e6e9e1;}',
     'td.col:first-child{border-inline-start:0;}',
-    'h3{margin:12px 0 5px;font-size:18px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:4px;}',
+    'h3{margin:12px 0 5px;font-size:' + headerFont + 'px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:4px;}',
     'h3:first-child{margin-top:0;}',
-    '.row{display:flex;justify-content:space-between;gap:8px;font-size:16px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row{display:flex;justify-content:space-between;gap:8px;font-size:' + fontSize + 'px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
     '.row .pname{font-weight:bold;overflow-wrap:anywhere;}',
     '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
     '</style>',
