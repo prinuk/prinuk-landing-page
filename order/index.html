@@ -940,7 +940,9 @@
         }
 
         .summary-ad {
-            flex: 0 0 auto;
+            flex: 0 1 auto;
+            min-height: 0;
+            overflow: hidden;
             margin-top: 14px;
             padding-top: 14px;
             border-top: 1px solid var(--line);
@@ -950,6 +952,9 @@
             display: block;
             width: 100%;
             height: auto;
+            max-height: 150px;
+            object-fit: contain;
+            object-position: center;
             border: 1px solid var(--line);
             border-radius: 7px;
             box-shadow: 0 10px 22px rgba(31, 37, 40, 0.08);
