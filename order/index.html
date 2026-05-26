@@ -708,16 +708,6 @@
             box-shadow: 0 1px 3px rgba(22, 43, 56, 0.16);
         }
 
-        .segment .kg-price {
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--muted);
-        }
-
-        .segment button.active .kg-price {
-            color: var(--accent);
-        }
-
         .number-wrap {
             display: grid;
             grid-template-columns: 48px minmax(54px, 1fr) 48px auto;
@@ -2563,16 +2553,12 @@
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
             var allowKg = getUnitType(product.unit) === 'kg';
-            var kgPriced = getUnitType(product.priceUnit || product.unit) === 'kg';
-            var kgHint = (allowKg && kgPriced)
-                ? '<span class="kg-price">₪' + escapeHtml(String(product.priceDisplay)) + '</span>'
-                : '';
 
             var toggle = allowKg
                 ? [
                     '<div class="segment" role="group" aria-label="אופן הזמנה עבור ' + productName + '">',
                     '<button class="active" type="button" data-mode-button="unit" aria-pressed="true">יחידות</button>',
-                    '<button type="button" data-mode-button="kg" aria-pressed="false"><span>ק״ג</span>' + kgHint + '</button>',
+                    '<button type="button" data-mode-button="kg" aria-pressed="false">ק״ג</button>',
                     '</div>'
                 ].join('')
                 : '';
