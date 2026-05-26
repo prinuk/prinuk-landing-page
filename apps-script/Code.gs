@@ -72,6 +72,7 @@ function onOpen() {
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
     .addItem('צור PDF טופס הזמנה', 'createPrintableOrderFormPdf')
     .addItem('רענן דפי ליקוט', 'refreshPickingSheets')
+    .addItem('סיכום משקל מוערך', 'refreshWeightSummary')
     .addSeparator()
     .addItem('העבר הזמנות לארכיון ונקה', 'archiveOrdersAndClear')
     .addItem('בדיקת קטלוג', 'logPrinokCatalog')
@@ -240,6 +241,158 @@ function refreshPickingSheets() {
   });
 
   Logger.log('דפי הליקוט רועננו בהצלחה.');
+}
+
+// Build a "סיכום משקל" tab: total estimated weight per product across all
+// rows in פריטי הזמנות. Only items priced by the kilo have a weight; for
+// those, the calculated sum already embeds the weight (sum = weight × price),
+// so the weight is recovered as sum ÷ price — which is exact when the item
+// was ordered by ק״ג and the estimate when it was ordered by units. Items
+// priced per unit have no weight and are skipped.
+var WEIGHT_SUMMARY_SHEET_NAME = 'סיכום משקל';
+
+function refreshWeightSummary() {
+  var ss = getSpreadsheet_();
+  var orderItemsSheet = ss.getSheetByName(PRINOK_CONFIG.ORDER_ITEMS_SHEET_NAME);
+  var ui = SpreadsheetApp.getUi();
+
+  if (!orderItemsSheet || orderItemsSheet.getLastRow() < 2) {
+    ui.alert('אין עדיין פריטי הזמנות לסיכום משקל.');
+    return;
+  }
+
+  var items = readTable_(orderItemsSheet);
+  var byProduct = {};
+  var order = [];
+
+  items.forEach(function(item) {
+    var name = String(item['מוצר'] || '').trim();
+
+    if (!name) {
+      return;
+    }
+
+    // Weight only applies to items priced by the kilo.
+    if (getUnitType_(item['יחידת מחיר']) !== 'kg') {
+      return;
+    }
+
+    var quantity = parseQuantity_(item['כמות']);
+
+    if (!isFinite(quantity) || quantity <= 0) {
+      return;
+    }
+
+    if (!byProduct[name]) {
+      byProduct[name] = {
+        name: name,
+        department: String(item['מחלקה'] || '').trim(),
+        weightKg: 0,
+        lines: 0,
+        unknownUnits: 0
+      };
+      order.push(name);
+    }
+
+    var agg = byProduct[name];
+    agg.lines++;
+
+    if (getUnitType_(item['יחידת הזמנה']) === 'kg') {
+      // Ordered by weight: the quantity is already in kilograms.
+      agg.weightKg += quantity;
+      return;
+    }
+
+    // Ordered by units on a kg-priced item: recover the estimated weight
+    // from the calculated sum (sum = estimated weight × price).
+    var sum = parsePrice_(item['סכום מחושב']);
+    var price = parsePrice_(item['מחיר מהגיליון']);
+
+    if (isFinite(sum) && sum > 0 && isFinite(price) && price > 0) {
+      agg.weightKg += sum / price;
+    } else {
+      // No estimate was available for this item — flag it for manual weighing.
+      agg.unknownUnits += quantity;
+    }
+  });
+
+  var rows = order.map(function(name) {
+    return byProduct[name];
+  });
+
+  rows.sort(function(a, b) {
+    if (a.department !== b.department) {
+      return a.department < b.department ? -1 : 1;
+    }
+    return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0);
+  });
+
+  var COLS = 5;
+  var headers = ['מוצר', 'מחלקה', 'משקל מוערך (ק״ג)', 'שורות הזמנה', 'הערה'];
+  var output = [];
+  var totalWeight = 0;
+
+  rows.forEach(function(r) {
+    var weight = Math.round(r.weightKg * 100) / 100;
+    totalWeight += weight;
+
+    var note = r.unknownUnits > 0
+      ? ('כולל ' + formatAmount_(r.unknownUnits) + ' יח׳ ללא הערכת משקל — לשקול ידנית')
+      : '';
+
+    output.push([r.name, r.department, weight, r.lines, note]);
+  });
+
+  totalWeight = Math.round(totalWeight * 100) / 100;
+
+  var sheet = ss.getSheetByName(WEIGHT_SUMMARY_SHEET_NAME) || ss.insertSheet(WEIGHT_SUMMARY_SHEET_NAME);
+  sheet.getDataRange().breakApart();
+  sheet.clear();
+  applySheetDirection_(sheet);
+
+  sheet.getRange(1, 1, 1, COLS).setValues([['סיכום משקל מוערך', '', '', '', '']]);
+  sheet.getRange(1, 1, 1, COLS).merge()
+    .setFontWeight('bold')
+    .setFontSize(16)
+    .setHorizontalAlignment('center')
+    .setBackground('#e5f2ec');
+
+  var subtitle = 'עודכן: ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+    + ' · המשקלים מוערכים. פריטים שתומחרו לפי יחידה אינם נכללים.';
+  sheet.getRange(2, 1, 1, COLS).setValues([[subtitle, '', '', '', '']]);
+  sheet.getRange(2, 1, 1, COLS).merge()
+    .setHorizontalAlignment('center')
+    .setFontColor('#667074');
+
+  sheet.getRange(3, 1, 1, COLS).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#f1f4ef');
+
+  if (output.length) {
+    sheet.getRange(4, 1, output.length, COLS).setValues(output);
+
+    var totalRow = 4 + output.length;
+    sheet.getRange(totalRow, 1, 1, COLS).setValues([['סה״כ', '', totalWeight, '', '']]);
+    sheet.getRange(totalRow, 1, 1, COLS)
+      .setFontWeight('bold')
+      .setBackground('#e5f2ec');
+  } else {
+    sheet.getRange(4, 1, 1, COLS).setValues([['אין פריטים לפי משקל בהזמנות.', '', '', '', '']]);
+  }
+
+  sheet.setFrozenRows(3);
+  sheet.setColumnWidth(1, 240);
+  sheet.setColumnWidth(2, 110);
+  sheet.setColumnWidth(3, 140);
+  sheet.setColumnWidth(4, 110);
+  sheet.setColumnWidth(5, 300);
+
+  ui.alert('סיכום המשקל עודכן', 'סוכמו ' + rows.length + ' מוצרים לפי משקל, סה״כ כ-' + totalWeight + ' ק״ג.', ui.ButtonSet.OK);
+}
+
+function formatAmount_(value) {
+  var rounded = Math.round(value * 100) / 100;
+  return isWholeNumber_(rounded) ? String(Math.round(rounded)) : String(rounded);
 }
 
 function normalizeCustomerPhone_(value) {
