@@ -75,6 +75,7 @@ function onOpen() {
     .addItem('צור PDF מחירון פירות', 'createFruitsPriceListPdf')
     .addItem('צור PDF מחירון עלים', 'createLeavesPriceListPdf')
     .addItem('צור PDF מחירון מיוחדים', 'createSpecialsPriceListPdf')
+    .addItem('צור PDF מחירון לפי קטגוריות', 'createAllCategoriesPriceListPdf')
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
     .addItem('צור PDF טופס הזמנה', 'createPrintableOrderFormPdf')
     .addItem('צור PDF שלטי מוצרים', 'createProductSignsPdf')
@@ -219,6 +220,19 @@ function createSpecialsPriceListPdf() {
     { columns: 1, autoFit: true, category: 'מיוחדים', titleSuffix: 'מיוחדים', fileLabel: 'מחירון-מיוחדים' },
     'מחירון המיוחדים נוצר'
   );
+}
+
+function createAllCategoriesPriceListPdf() {
+  var result = createAllCategoriesPriceListPdf_();
+  var message = result.fileName + '\n' + result.url;
+
+  Logger.log(message);
+  getSpreadsheet_().toast('המחירון לפי קטגוריות נוצר ונשמר בדרייב.', 'פרינוּק', 8);
+
+  try {
+    SpreadsheetApp.getUi().alert('מחירון לפי קטגוריות נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (error) {
+  }
 }
 
 function runCompactPriceListMenu_(opts, alertTitle) {
@@ -2849,6 +2863,94 @@ function createCompactPriceListPdf_(opts) {
     url: file.getUrl(),
     productCount: products.length
   };
+}
+
+function createAllCategoriesPriceListPdf_() {
+  var ss = getSpreadsheet_();
+  var productSheet = getProductSheet_(ss);
+  var settings = getSettings_(ss, productSheet);
+  var products = readProducts_(productSheet);
+
+  if (!products.length) {
+    throw new Error('אין מוצרים פעילים ליצירת מחירון.');
+  }
+
+  var categories = groupProducts_(products);
+  var html = buildAllCategoriesPriceListHtml_(settings, categories);
+  var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
+  var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
+  var fileName = 'מחירון-קטגוריות-פרינוּק' + salePart + '-' + timestamp + '.pdf';
+  var pdf = Utilities
+    .newBlob(html, 'text/html', 'category-price-list.html')
+    .getAs('application/pdf')
+    .setName(fileName);
+  var file = createDriveFileNearSpreadsheet_(ss, pdf);
+
+  return {
+    fileName: file.getName(),
+    url: file.getUrl(),
+    productCount: products.length
+  };
+}
+
+// One portrait page per category, each maximized: the largest font that
+// keeps the category on its page with every product on a single row.
+function buildAllCategoriesPriceListHtml_(settings, categories) {
+  var title = settings.title || PRINOK_CONFIG.DEFAULT_FORM_TITLE;
+  var saleName = settings.saleName || '';
+
+  var sections = categories.map(function(category) {
+    var maxChars = 1;
+    category.products.forEach(function(product) {
+      var lineChars = String(product.name).length + String(formatPriceListPrice_(product)).length + 2;
+      if (lineChars > maxChars) {
+        maxChars = lineChars;
+      }
+    });
+
+    var fontSize = compactAutoFitFont_(category.products.length, 1, 1, maxChars, false);
+
+    var rows = category.products.map(function(product) {
+      return '<div class="row"><span class="pname">' + escapeHtml_(product.name) +
+        '</span><span class="pprice">' + escapeHtml_(formatPriceListPrice_(product)) + '</span></div>';
+    }).join('');
+
+    return [
+      '<section class="page" style="font-size:' + fontSize + 'px;">',
+      buildDocumentHeaderHtml_(settings, 'מחירון ' + category.name + ' - ' + title, [
+        saleName ? 'מכירה: ' + saleName : '',
+        category.products.length + ' מוצרים'
+      ]),
+      rows,
+      '</section>'
+    ].join('');
+  }).join('');
+
+  return [
+    '<!doctype html>',
+    '<html dir="rtl" lang="he">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    '@page{size:A4;margin:10mm;}',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:0;line-height:1.25;}',
+    getDocumentHeaderCss_(),
+    '.doc-header{margin-bottom:10px;padding-bottom:8px;}',
+    '.doc-logo{width:56px;height:56px;}',
+    '.doc-copy h1{font-size:22px;}',
+    '.page{page-break-after:always;}',
+    '.page:last-child{page-break-after:auto;}',
+    '.row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row .pname{font-weight:bold;white-space:nowrap;}',
+    '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
+    '</style>',
+    '</head>',
+    '<body>',
+    sections,
+    '</body>',
+    '</html>'
+  ].join('');
 }
 
 // Largest row font (px) that keeps every product on one line and the whole
