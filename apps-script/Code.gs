@@ -2913,7 +2913,7 @@ function buildAllCategoriesPriceListHtml_(settings, categories) {
 
     var rows = category.products.map(function(product) {
       return '<div class="row"><span class="pname">' + escapeHtml_(product.name) +
-        '</span><span class="pprice">' + escapeHtml_(formatPriceListPrice_(product)) + '</span></div>';
+        '</span><span class="leader"></span><span class="pprice">' + escapeHtml_(formatPriceListPrice_(product)) + '</span></div>';
     }).join('');
 
     return [
@@ -2941,8 +2941,9 @@ function buildAllCategoriesPriceListHtml_(settings, categories) {
     '.doc-copy h1{font-size:22px;}',
     '.page{page-break-after:always;}',
     '.page:last-child{page-break-after:auto;}',
-    '.row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row{display:flex;align-items:flex-end;gap:8px;padding:4px 0;}',
     '.row .pname{font-weight:bold;white-space:nowrap;}',
+    '.row .leader{flex:1 1 auto;min-width:16px;border-bottom:2px dotted #aab2a0;margin-bottom:0.22em;}',
     '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
     '</style>',
     '</head>',
@@ -3045,8 +3046,9 @@ function buildCompactPriceListHtml_(settings, categories, productCount, opts) {
     'td.col:first-child{border-inline-start:0;}',
     'h3{margin:12px 0 5px;font-size:' + headerFont + 'px;color:#165a43;border-bottom:1px solid #1f7a5a;padding-bottom:4px;}',
     'h3:first-child{margin-top:0;}',
-    '.row{display:flex;justify-content:space-between;gap:8px;font-size:' + fontSize + 'px;padding:3px 0;border-bottom:1px solid #f0f2ec;}',
+    '.row{display:flex;align-items:flex-end;gap:8px;font-size:' + fontSize + 'px;padding:4px 0;}',
     '.row .pname{font-weight:bold;overflow-wrap:anywhere;white-space:' + (opts.autoFit ? 'nowrap' : 'normal') + ';}',
+    '.row .leader{flex:1 1 auto;min-width:16px;border-bottom:2px dotted #aab2a0;margin-bottom:0.22em;}',
     '.row .pprice{white-space:nowrap;color:#165a43;font-weight:bold;}',
     '</style>',
     '</head>',
@@ -3075,6 +3077,7 @@ function renderCompactPriceColumn_(entries) {
     html.push(
       '<div class="row">' +
       '<span class="pname">' + escapeHtml_(entry.product.name) + '</span>' +
+      '<span class="leader"></span>' +
       '<span class="pprice">' + escapeHtml_(formatPriceListPrice_(entry.product)) + '</span>' +
       '</div>'
     );
