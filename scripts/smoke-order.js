@@ -132,6 +132,24 @@ async function runSmokeTest(baseUrl, executablePath) {
 
     await page.waitForSelector('.product-row', { timeout: 10000 });
 
+    const stickyHeaderResult = await page.evaluate(async () => {
+      window.scrollTo(0, 600);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const header = document.querySelector('.store-header');
+      const result = {
+        scrollY: window.scrollY,
+        top: header.getBoundingClientRect().top,
+      };
+
+      window.scrollTo(0, 0);
+      return result;
+    });
+
+    if (stickyHeaderResult.scrollY < 100 || Math.abs(stickyHeaderResult.top) > 1) {
+      throw new Error('Expected store header to remain sticky after scroll, got: ' + JSON.stringify(stickyHeaderResult));
+    }
+
     const phoneValidationResult = await page.evaluate(() => {
       const phone = document.getElementById('phone');
       const phoneError = document.getElementById('phoneError');
