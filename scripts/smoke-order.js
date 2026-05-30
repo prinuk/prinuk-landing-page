@@ -195,6 +195,8 @@ async function runSmokeTest(baseUrl, executablePath) {
         imageLoaded: image.complete && image.naturalWidth > 0,
         summaryNames,
         summaryTotal: document.getElementById('summaryTotal').textContent,
+        freeDeliveryNow: document.getElementById('freeDeliveryTrack').getAttribute('aria-valuenow'),
+        freeDeliveryText: document.getElementById('freeDeliveryMessage').textContent,
       };
     });
 
@@ -228,6 +230,10 @@ async function runSmokeTest(baseUrl, executablePath) {
 
     if (!result.summaryTotal.includes('₪18')) {
       throw new Error('Expected summary total to include ₪18, got: ' + result.summaryTotal);
+    }
+
+    if (result.freeDeliveryNow !== '9' || !result.freeDeliveryText.includes('₪182')) {
+      throw new Error('Expected free-delivery progress for ₪18 subtotal, got: ' + JSON.stringify(result));
     }
 
     if (result.summaryNames.join('|') !== 'עגבניה איכותית|שום קלוף') {

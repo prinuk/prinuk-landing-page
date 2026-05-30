@@ -1777,6 +1777,107 @@
             letter-spacing: 0.14em;
         }
 
+        .sale-strip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            margin-bottom: 10px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            color: #f8f3e8;
+            background: var(--accent-dark);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-align: center;
+        }
+
+        .weekly-sale-intro {
+            position: relative;
+            overflow: hidden;
+            padding: 28px 24px 24px;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background:
+                radial-gradient(circle at 8% 18%, rgba(182, 93, 69, 0.16), transparent 30%),
+                linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(238, 243, 233, 0.96));
+            box-shadow: var(--shadow-soft);
+        }
+
+        .weekly-sale-intro::after {
+            position: absolute;
+            inset-inline-end: -42px;
+            bottom: -52px;
+            width: 150px;
+            height: 150px;
+            border: 1px solid rgba(46, 90, 57, 0.15);
+            border-radius: 50%;
+            content: "";
+        }
+
+        .catalog-eyebrow,
+        .summary-kicker {
+            margin: 0;
+            color: var(--amber);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.11em;
+        }
+
+        .weekly-sale-intro h2 {
+            position: relative;
+            margin: 8px 0 4px;
+            font-size: clamp(34px, 5vw, 52px);
+            line-height: 1.05;
+        }
+
+        .weekly-sale-intro p:last-child {
+            position: relative;
+            max-width: 640px;
+            margin: 0;
+            color: var(--muted);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .catalog-panel {
+            padding-top: 0;
+        }
+
+        .catalog-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 9;
+            margin: 0 -18px 18px;
+            padding: 15px 18px 11px;
+            border-bottom: 1px solid var(--line);
+            border-radius: 18px 18px 0 0;
+            background: rgba(255, 253, 248, 0.94);
+            backdrop-filter: blur(12px);
+        }
+
+        .catalog-toolbar .products-head {
+            margin-bottom: 12px;
+        }
+
+        .catalog-toolbar h3 {
+            margin: 0;
+            color: var(--accent-dark);
+            font-family: "Frank Ruhl Libre", serif;
+            font-size: 24px;
+        }
+
+        .catalog-toolbar input {
+            border-radius: 999px;
+            background: var(--surface);
+        }
+
+        .catalog-toolbar .category-nav {
+            position: static;
+            margin-bottom: 0;
+        }
+
         .panel,
         .summary {
             background: rgba(255, 253, 248, 0.94);
@@ -1908,6 +2009,44 @@
             font-size: 27px;
         }
 
+        .summary-kicker {
+            margin-bottom: 3px;
+        }
+
+        .free-delivery-progress {
+            flex: 0 0 auto;
+            margin: 0 0 12px;
+            padding: 10px 0 0;
+            border-top: 1px solid rgba(27, 42, 32, 0.1);
+        }
+
+        .free-delivery-track {
+            height: 7px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(46, 90, 57, 0.13);
+        }
+
+        .free-delivery-fill {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent), #d59d43);
+            transition: width 260ms ease;
+        }
+
+        .free-delivery-message {
+            margin-top: 7px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .free-delivery-progress.is-complete .free-delivery-message {
+            color: var(--accent);
+        }
+
         .summary-line {
             border-color: rgba(27, 42, 32, 0.1);
         }
@@ -1944,6 +2083,48 @@
                 border-radius: 16px;
             }
 
+            .sale-strip {
+                min-height: 30px;
+                margin-bottom: 8px;
+                padding: 6px 10px;
+                border-radius: 12px;
+                font-size: 12px;
+            }
+
+            .weekly-sale-intro {
+                padding: 18px 15px 16px;
+                border-radius: 16px;
+            }
+
+            .weekly-sale-intro h2 {
+                margin-top: 6px;
+                font-size: 32px;
+            }
+
+            .weekly-sale-intro p:last-child {
+                font-size: 14px;
+                line-height: 1.45;
+            }
+
+            .catalog-toolbar {
+                margin: 0 -10px 14px;
+                padding: 12px 10px 9px;
+                border-radius: 16px 16px 0 0;
+            }
+
+            .catalog-toolbar h3 {
+                font-size: 21px;
+            }
+
+            .catalog-toolbar .category-nav {
+                flex-wrap: nowrap;
+                margin: 0 -10px;
+                padding: 0 10px 2px;
+                overflow-x: auto;
+                border-bottom: 0;
+                background: transparent;
+            }
+
             .brand-logo {
                 width: 62px;
                 height: 62px;
@@ -1960,6 +2141,20 @@
             .summary {
                 border-radius: 18px 18px 0 0;
                 border-color: var(--line);
+            }
+
+            .summary .summary-kicker,
+            .summary .free-delivery-progress {
+                display: none;
+            }
+
+            .summary.is-open .summary-kicker,
+            .summary.is-open .free-delivery-progress {
+                display: block;
+            }
+
+            .summary.is-open {
+                background: var(--surface);
             }
         }
     </style>
@@ -1988,6 +2183,7 @@
 
     <div class="shell">
         <div class="bsd-mark">בס״ד</div>
+        <div class="sale-strip">משלוח חינם בקנייה מעל 200 ש״ח · הזמנה שבועית של תוצרת טרייה ואיכותית</div>
         <header class="topbar">
             <div class="brand">
                 <p class="brand-eyebrow">טרי · איכותי · בכשרות מהודרת</p>
@@ -2002,6 +2198,12 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
+                    <p class="catalog-eyebrow">מבחר טרי, מתעדכן מדי שבוע · כל יום רביעי</p>
+                    <h2 id="weeklySaleTitle">המכירה השבועית</h2>
+                    <p>בחרו מוצרים, הגדירו כמות ושלחו את ההזמנה בקלות. הסכום מתעדכן בזמן הבחירה.</p>
+                </section>
+
                 <section class="panel order-info-panel" aria-labelledby="orderInfoTitle">
                     <h2 id="orderInfoTitle">מה חשוב לדעת לפני שמזמינים</h2>
                     <div class="delivery-note">
@@ -2026,12 +2228,14 @@
                     </div>
                 </section>
 
-                <section class="panel">
-                    <div class="products-head">
-                        <h2 style="margin-bottom: 0;">בחירת פירות וירקות</h2>
-                        <input id="searchInput" type="search" placeholder="חיפוש מוצר">
+                <section class="panel catalog-panel">
+                    <div class="catalog-toolbar">
+                        <div class="products-head">
+                            <h3>בחירת פירות וירקות</h3>
+                            <input id="searchInput" type="search" placeholder="חיפוש מוצר" aria-label="חיפוש מוצר">
+                        </div>
+                        <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
                     </div>
-                    <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
                     <div id="productsRoot" class="loading">טוען מוצרים...</div>
                 </section>
 
@@ -2090,9 +2294,17 @@
             </main>
 
             <aside class="summary" aria-live="polite">
+                <p class="summary-kicker">הסל שלכם</p>
                 <h2>סיכום הזמנה</h2>
                 <div id="summaryItems" class="summary-items">
                     <div class="muted">עוד לא נבחרו מוצרים</div>
+                </div>
+                <div id="freeDeliveryProgress" class="free-delivery-progress">
+                    <div id="freeDeliveryTrack" class="free-delivery-track" role="progressbar"
+                        aria-label="התקדמות למשלוח חינם" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <span id="freeDeliveryFill" class="free-delivery-fill"></span>
+                    </div>
+                    <div id="freeDeliveryMessage" class="free-delivery-message">משלוח חינם בקנייה מעל ₪200</div>
                 </div>
                 <div class="submit-row">
                     <div class="summary-meta">
@@ -2134,6 +2346,7 @@
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var KG_STEP = 0.5;
+        var FREE_DELIVERY_THRESHOLD = 200;
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -2182,6 +2395,10 @@
             summaryAd: document.getElementById('summaryAd'),
             summaryCount: document.getElementById('summaryCount'),
             summaryTotal: document.getElementById('summaryTotal'),
+            freeDeliveryProgress: document.getElementById('freeDeliveryProgress'),
+            freeDeliveryTrack: document.getElementById('freeDeliveryTrack'),
+            freeDeliveryFill: document.getElementById('freeDeliveryFill'),
+            freeDeliveryMessage: document.getElementById('freeDeliveryMessage'),
             cartFeedback: document.getElementById('cartFeedback'),
             message: document.getElementById('message')
         };
@@ -2716,6 +2933,7 @@
             els.summaryItems.innerHTML = '<div class="muted">' + escapeHtml(message) + '</div>';
             els.summaryCount.textContent = '';
             els.summaryTotal.textContent = '';
+            els.freeDeliveryProgress.classList.add('hidden');
             els.form.querySelectorAll('input, textarea, button[type="submit"]').forEach(function (control) {
                 control.disabled = true;
             });
@@ -2726,6 +2944,7 @@
             els.form.querySelectorAll('input, textarea, button[type="submit"]').forEach(function (control) {
                 control.disabled = false;
             });
+            els.freeDeliveryProgress.classList.remove('hidden');
             els.submitButton.textContent = 'שלח הזמנה';
         }
 
@@ -3175,6 +3394,7 @@
                 els.summaryItems.innerHTML = '<div class="muted">עוד לא נבחרו מוצרים</div>';
                 els.summaryCount.textContent = formatItemCountText(0);
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
+                updateFreeDeliveryProgress(0);
                 updateCartToggleState(0);
                 updateMobileSummaryMetrics();
                 updateSummaryAdFit();
@@ -3207,9 +3427,28 @@
 
             els.summaryCount.textContent = formatItemCountText(collected.items.length);
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
+            updateFreeDeliveryProgress(collected.estimatedTotal);
             updateCartToggleState(collected.items.length);
             updateMobileSummaryMetrics();
             updateSummaryAdFit();
+        }
+
+        function updateFreeDeliveryProgress(estimatedTotal) {
+            var total = Math.max(0, Number(estimatedTotal) || 0);
+            var remaining = Math.max(0, roundMoney(FREE_DELIVERY_THRESHOLD - total));
+            var percentage = Math.min(100, Math.round((total / FREE_DELIVERY_THRESHOLD) * 100));
+
+            els.freeDeliveryFill.style.width = percentage + '%';
+            els.freeDeliveryTrack.setAttribute('aria-valuenow', String(percentage));
+            els.freeDeliveryProgress.classList.toggle('is-complete', remaining === 0);
+
+            if (!total) {
+                els.freeDeliveryMessage.textContent = 'משלוח חינם בקנייה מעל ₪' + FREE_DELIVERY_THRESHOLD;
+            } else if (remaining > 0) {
+                els.freeDeliveryMessage.textContent = 'עוד ₪' + formatMoney(remaining) + ' למשלוח חינם';
+            } else {
+                els.freeDeliveryMessage.textContent = 'הגעתם למשלוח חינם';
+            }
         }
 
         // Show the summary ad at full size only when the whole image fits
