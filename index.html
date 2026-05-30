@@ -3,193 +3,255 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="פרינוּק - המכירה השבועית של פירות וירקות טריים ואיכותיים בירושלים.">
+    <meta name="description" content="פרינוּק - המכירה השבועית של פירות וירקות טריים ואיכותיים בירושלים. הזמנה פשוטה ומשלוח חינם בקנייה מעל 200 ש״ח.">
+    <meta property="og:title" content="פרינוּק - המכירה השבועית">
+    <meta property="og:description" content="מבחר מוקפד של פירות וירקות טריים ואיכותיים, בכל יום רביעי.">
     <meta name="facebook-domain-verification" content="77benw0c2kw7jsc21ruoqdjidk8f5i">
     <title>פרינוּק - המכירה השבועית</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <header class="hero" id="top">
-      <nav class="site-nav" aria-label="ניווט ראשי">
-        <a class="brand" href="#top" aria-label="פרינוּק - ראש העמוד">
-          <span class="brand-mark">פ</span>
-          <span class="brand-text">פרינוּק</span>
+    <div class="announcement">
+      <div class="wrap announcement-inner">
+        <span>משלוח חינם בקנייה מעל 200 ש״ח</span>
+        <span>המכירה השבועית · בכל יום רביעי</span>
+        <span>בכשרות מהודרת</span>
+      </div>
+    </div>
+
+    <header class="site-header" id="top">
+      <div class="wrap header-inner">
+        <a class="wordmark" href="#top" aria-label="פרינוּק - ראש העמוד">
+          <img src="assets/prinuk-logo-round.png" width="64" height="64" alt="לוגו פרינוּק">
+          <span>
+            <strong>פרינוּק</strong>
+            <small>מעדניית פירות וירקות</small>
+          </span>
         </a>
 
-        <div class="nav-actions" aria-label="פעולות מהירות">
-          <a class="icon-button" href="tel:+972535234975" aria-label="התקשרו">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/>
-            </svg>
-          </a>
-          <a class="button small light" href="https://wa.me/972535234975" target="_blank" rel="noopener">וואטסאפ</a>
-        </div>
-      </nav>
+        <nav class="main-nav" aria-label="ניווט ראשי">
+          <a href="#top">בית</a>
+          <a href="https://order.prinuk.co.il/">המכירה השבועית</a>
+          <a href="#about">הסיפור שלנו</a>
+          <a href="#contact">צרו קשר</a>
+        </nav>
 
-      <div class="hero-content">
-        <p class="kicker">המכירה השבועית בירושלים</p>
-        <h1>פרינוּק</h1>
-        <p class="lead">פירות וירקות טריים, מסודרים ויפים לשולחן של כל השבוע.</p>
-
-        <div class="hero-actions">
-          <a class="button primary" href="#order">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm10 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM3 3h2l2.1 10.5a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.5L21 6H6"/>
-            </svg>
-            להזמנה מהירה
-          </a>
-          <a class="button ghost" href="https://maps.google.com/?q=%D7%94%D7%A8%D7%91%20%D7%A2%D7%95%D7%96%D7%99%D7%90%D7%9C%20101%20%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            הרב עוזיאל 101
-          </a>
-        </div>
+        <a class="button primary header-order" href="https://order.prinuk.co.il/">
+          להזמנה
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/>
+          </svg>
+        </a>
       </div>
-
-      <aside class="sale-card" aria-label="פרטי המכירה">
-        <div>
-          <span>יום קבוע</span>
-          <strong>רביעי</strong>
-        </div>
-        <div>
-          <span>שעות פתיחה</span>
-          <strong>10:00-19:00</strong>
-        </div>
-        <div class="sale-alert">
-          <span>השבוע עקב החג</span>
-          <strong>ביום שלישי</strong>
-        </div>
-      </aside>
     </header>
 
     <main>
-      <section class="intro-section" aria-labelledby="intro-title">
-        <div class="section-title">
-          <p class="eyebrow">מה קונים אצלנו</p>
-          <h2 id="intro-title">מבחר טרי לשבוע, בלי להתרוצץ בין דוכנים</h2>
-        </div>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">טרי · איכותי · בכשרות מהודרת</p>
+            <h1 id="hero-title">פירות וירקות <em>במיטב הטבע</em> עד הדלת</h1>
+            <p class="lead">מבחר מוקפד של פירות וירקות טריים ואיכותיים, שמגיע אליכם באריזה מסודרת. הזמנה אונליין פשוטה בכל שבוע.</p>
+            <div class="hero-actions">
+              <a class="button primary large" href="https://order.prinuk.co.il/">
+                למכירה השבועית
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14m-6-6 6 6-6 6"/>
+                </svg>
+              </a>
+              <a class="button ghost large" href="#about">הסיפור שלנו</a>
+            </div>
+          </div>
 
-        <div class="produce-list" aria-label="קטגוריות תוצרת">
+          <div class="hero-visual" aria-label="מבחר פירות וירקות טריים">
+            <img src="assets/produce-photo-bg.png" alt="מבחר עשיר של פירות וירקות טריים">
+            <div class="kosher-seal">
+              <span>★</span>
+              בכשרות מהודרת
+            </div>
+            <div class="selection-badge">
+              <span class="leaf-icon"></span>
+              <div>
+                <strong>נבחר בקפידה</strong>
+                <small>מבחר טרי מדי שבוע</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="values-section" aria-label="למה מזמינים מפרינוּק">
+        <div class="wrap values-grid">
           <article>
-            <span class="produce-dot red"></span>
-            <h3>פירות עונה</h3>
-            <p>תפוחים, ענבים, בננות, הדרים ועוד מבחר מתחלף לפי הסחורה הטובה של השבוע.</p>
+            <span class="value-icon leaf-icon"></span>
+            <h2>טרי ואיכותי</h2>
+            <p>מבחר מוקפד של פירות וירקות במיטב האיכות.</p>
           </article>
           <article>
-            <span class="produce-dot green"></span>
-            <h3>ירקות טריים</h3>
-            <p>מלפפונים, עגבניות, פלפלים, גזרים, ירוקים וירקות בסיס לבית.</p>
+            <span class="value-icon">★</span>
+            <h2>בכשרות מהודרת</h2>
+            <p>תוצרת שמתאימה בנחת לשולחן המשפחתי.</p>
           </article>
           <article>
-            <span class="produce-dot gold"></span>
-            <h3>כשרות מהודרת</h3>
-            <p>מכירה מסודרת למשפחות שרוצות לקנות בנחת, באיכות טובה ובשירות אישי.</p>
+            <span class="value-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zm11 3h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+            </span>
+            <h2>משלוח חינם מעל 200 ש״ח</h2>
+            <p>עד הדלת, באריזה מסודרת ומוקפדת.</p>
+          </article>
+          <article>
+            <span class="value-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4m0-1V4.5a1.5 1.5 0 0 1 3 0V10m0-1.5a1.5 1.5 0 0 1 3 0V14c0 3-2 6-6 6s-6-2-7-5l-1-3a1.5 1.5 0 0 1 2.7-1.2L7 12"/></svg>
+            </span>
+            <h2>בחירה אישית</h2>
+            <p>בוחרים בשבילכם רק את הטוב ביותר.</p>
           </article>
         </div>
       </section>
 
-      <section class="highlight-band" aria-labelledby="highlight-title">
-        <div>
-          <p class="eyebrow">מגיעים או מזמינים</p>
-          <h2 id="highlight-title">המכירה פתוחה עד הערב, ואפשר לסגור הזמנה בוואטסאפ</h2>
-        </div>
-        <p>משלוחים חינם בקנייה מעל 200 ש"ח. אפשר גם להגיע למכירה ברחוב הרב עוזיאל 101, ירושלים.</p>
-      </section>
+      <section class="section categories-section" aria-labelledby="categories-title">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">הקטגוריות שלנו</p>
+              <h2 id="categories-title">מה מתחשק לכם השבוע?</h2>
+            </div>
+            <a class="text-link" href="https://order.prinuk.co.il/">
+              לכל המוצרים
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+            </a>
+          </div>
 
-      <section class="order-section" id="order" aria-labelledby="order-title">
-        <div class="order-copy">
-          <p class="eyebrow">הזמנה מהירה</p>
-          <h2 id="order-title">כתבו רשימה קצרה, ואנחנו נכין לכם הודעת וואטסאפ</h2>
-          <div class="contact-list" aria-label="פרטי העסק">
-            <a href="tel:+972535234975">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/>
-              </svg>
-              053-5234975
+          <div class="category-grid">
+            <a class="category-card" href="https://order.prinuk.co.il/">
+              <img src="assets/produce/apple-pink-lady.jpg" alt="פירות">
+              <span><strong>פירות</strong><small>מתוקים, עסיסיים ובמיטב האיכות</small></span>
             </a>
-            <a href="mailto:prinuk10@gmail.com">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 4h16v16H4z"/>
-                <path d="m4 7 8 6 8-6"/>
-              </svg>
-              prinuk10@gmail.com
+            <a class="category-card" href="https://order.prinuk.co.il/">
+              <img src="assets/produce/tomato.jpg" alt="ירקות">
+              <span><strong>ירקות</strong><small>טריים ומובחרים לכל ארוחה</small></span>
             </a>
-            <a href="https://maps.google.com/?q=%D7%94%D7%A8%D7%91%20%D7%A2%D7%95%D7%96%D7%99%D7%90%D7%9C%20101%20%D7%99%D7%A8%D7%95%D7%A9%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              הרב עוזיאל 101, ירושלים
+            <a class="category-card" href="https://order.prinuk.co.il/">
+              <img src="assets/produce/basil.jpg" alt="עלים ותבלינים">
+              <span><strong>עלים ותבלינים</strong><small>ריחניים ורעננים למטבח</small></span>
             </a>
           </div>
         </div>
+      </section>
 
-        <form class="order-form" id="orderForm">
-          <label>
-            <span>שם</span>
-            <input type="text" name="name" autocomplete="name" placeholder="השם שלך">
-          </label>
-          <label>
-            <span>טלפון לחזרה</span>
-            <input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="050-0000000">
-          </label>
-          <label>
-            <span>מה תרצו להזמין?</span>
-            <textarea name="items" rows="5" placeholder="לדוגמה: מלפפונים, עגבניות, תפוחים, ענבים..."></textarea>
-          </label>
-          <label>
-            <span>אופן קבלה</span>
-            <select name="method">
-              <option value="איסוף מהמכירה">איסוף מהמכירה</option>
-              <option value="בירור משלוח">בירור משלוח</option>
-            </select>
-          </label>
-          <button class="button primary full" type="submit">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 11.5a8.4 8.4 0 0 1-12.2 7.4L3 20l1.1-5.6A8.5 8.5 0 1 1 21 11.5Z"/>
-              <path d="M9.5 8.5c.2-.5.4-.6.7-.6h.5c.2 0 .4.1.5.4l.7 1.6c.1.3.1.5-.1.7l-.5.6c.7 1.2 1.6 2.1 2.8 2.7l.7-.5c.2-.2.5-.2.7-.1l1.5.7c.3.2.4.4.4.7v.4c0 .4-.2.6-.6.8-.7.4-2.8.4-5.1-1.8-2.2-2.2-2.5-4.4-2.2-5.1Z"/>
-            </svg>
-            שליחה בוואטסאפ
-          </button>
-          <p class="form-note" id="formNote" aria-live="polite"></p>
-        </form>
+      <section class="weekly-section" aria-labelledby="weekly-title">
+        <div class="wrap">
+          <div class="weekly-card">
+            <div>
+              <p class="eyebrow">המכירה השבועית</p>
+              <h2 id="weekly-title">כל יום רביעי, מבחר איכותי במחירים טובים</h2>
+              <p>בכל שבוע אנחנו פותחים את ההזמנה עם מבחר טרי ועדכני. בחרו מוצרים, כמויות ואופן קבלה בכמה צעדים פשוטים.</p>
+            </div>
+            <a class="button gold large" href="https://order.prinuk.co.il/">
+              להזמנה השבועית
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section story-section" id="about" aria-labelledby="story-title">
+        <div class="wrap story-grid">
+          <div class="story-photo">
+            <img src="assets/produce-photo-bg.png" alt="פירות וירקות מסודרים במבחר עשיר">
+          </div>
+          <div>
+            <p class="eyebrow">הסיפור שלנו</p>
+            <h2 id="story-title">טריות היא לא סיסמה. היא הרגל.</h2>
+            <p>פרינוּק נולדה מתוך אהבה פשוטה לפרי וירק טוב. בכל שבוע אנחנו בוחרים מבחר איכותי של פירות, ירקות ועלים ומרכזים אותו להזמנה אחת נוחה וברורה.</p>
+            <p>אפשר לבצע הזמנה מלאה באתר, או לשלוח לנו רשימה קצרה בוואטסאפ ונשמח לעזור.</p>
+            <div class="story-contact">
+              <a href="tel:+972535234975">053-5234975</a>
+              <span>הרב עוזיאל 101, ירושלים</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="quick-order-section" id="contact" aria-labelledby="quick-order-title">
+        <div class="wrap quick-order-grid">
+          <div>
+            <p class="eyebrow">הזמנה מהירה בוואטסאפ</p>
+            <h2 id="quick-order-title">מעדיפים לכתוב רשימה קצרה?</h2>
+            <p>מלאו את הפרטים, ואנחנו נכין עבורכם הודעת וואטסאפ מסודרת. להזמנה מלאה עם מחירים וכמויות, עברו למכירה השבועית.</p>
+            <a class="text-link" href="https://order.prinuk.co.il/">למעבר להזמנה המלאה</a>
+          </div>
+
+          <form class="quick-form" id="orderForm">
+            <label>
+              <span>שם</span>
+              <input type="text" name="name" autocomplete="name" placeholder="השם שלכם">
+            </label>
+            <label>
+              <span>טלפון לחזרה</span>
+              <input type="tel" name="phone" autocomplete="tel" inputmode="tel" placeholder="050-0000000">
+            </label>
+            <label>
+              <span>מה תרצו להזמין?</span>
+              <textarea name="items" rows="4" placeholder="לדוגמה: מלפפונים, עגבניות, תפוחים..."></textarea>
+            </label>
+            <label>
+              <span>אופן קבלה</span>
+              <select name="method">
+                <option value="איסוף מהמכירה">איסוף מהמכירה</option>
+                <option value="בירור משלוח">בירור משלוח</option>
+              </select>
+            </label>
+            <button class="button primary full" type="submit">
+              שליחה בוואטסאפ
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3Zm0 2a7 7 0 1 1-3.6 13l-.3-.2-2.3.6.6-2.2-.2-.3A7 7 0 0 1 12 5Z"/></svg>
+            </button>
+            <p class="form-note" id="formNote" aria-live="polite"></p>
+          </form>
+        </div>
       </section>
 
       <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
-        <div class="privacy-panel">
+        <div class="wrap privacy-card">
           <p class="eyebrow">פרטיות</p>
-          <h2 id="privacy-title">הפרטים שלכם נשמרים רק לטיפול בהזמנה</h2>
-          <div class="privacy-grid">
-            <article>
-              <h3>מה אנחנו מקבלים?</h3>
-              <p>שם, טלפון, אופן קבלה ורשימת המוצרים שכתבתם בטופס ההזמנה.</p>
-            </article>
-            <article>
-              <h3>למה זה משמש?</h3>
-              <p>רק כדי לחזור אליכם, לאשר פרטים, להכין את ההזמנה ולתאם איסוף או משלוח.</p>
-            </article>
-            <article>
-              <h3>שירותים חיצוניים</h3>
-              <p>בלחיצה על שליחה בוואטסאפ נפתחת הודעה ב-WhatsApp, ולכן השימוש שם כפוף גם למדיניות שלהם.</p>
-            </article>
-          </div>
-          <p class="privacy-note">לבקשת עדכון או מחיקת פרטים אפשר לפנות לכתובת prinuk10@gmail.com או לטלפון 053-5234975.</p>
+          <h2 id="privacy-title">הפרטים שלכם משמשים רק לטיפול בהזמנה</h2>
+          <p>בלחיצה על שליחה בוואטסאפ נפתחת הודעה מוכנה ב-WhatsApp. לבקשת עדכון או מחיקת פרטים אפשר לפנות אלינו במייל או בטלפון.</p>
         </div>
       </section>
     </main>
 
-    <footer class="footer">
-      <strong>פרינוּק - המכירה השבועית</strong>
-      <span>שם העסק הרשמי: מרדכי יצחק פרץ</span>
-      <span>052-7890044</span>
-      <span>prinuk10@gmail.com</span>
-      <a href="#privacy">פרטיות</a>
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div>
+          <a class="wordmark footer-wordmark" href="#top">
+            <img src="assets/prinuk-logo-round.png" width="72" height="72" alt="">
+            <span><strong>פרינוּק</strong><small>המכירה השבועית</small></span>
+          </a>
+          <p>מעדניית הפירות והירקות של המשפחה. טרי, איכותי ובכשרות מהודרת.</p>
+        </div>
+        <div>
+          <h2>צרו קשר</h2>
+          <a href="tel:+972535234975">053-5234975</a>
+          <a href="mailto:prinuk10@gmail.com">prinuk10@gmail.com</a>
+          <span>הרב עוזיאל 101, ירושלים</span>
+        </div>
+        <div>
+          <h2>קישורים</h2>
+          <a href="https://order.prinuk.co.il/">המכירה השבועית</a>
+          <a href="#about">הסיפור שלנו</a>
+          <a href="#privacy">פרטיות</a>
+        </div>
+      </div>
+      <div class="wrap footer-bottom">
+        <span>© 2026 פרינוּק · כל הזכויות שמורות</span>
+        <span>שם העסק הרשמי: מרדכי יצחק פרץ</span>
+      </div>
     </footer>
 
     <script src="script.js"></script>
-    <!-- Vercel Web Analytics -->
     <script defer src="/_vercel/insights/script.js"></script>
   </body>
 </html>
