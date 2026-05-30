@@ -1566,8 +1566,8 @@ function updateBusinessEmailStatus_(ordersSheet, orderRowNumber, result) {
   };
 
   var headers = getOrderHeaders_();
-  var statusColumn = headers.indexOf('סטטוס מייל פרינוק') + 1;
-  var errorColumn = headers.indexOf('שגיאת מייל פרינוק') + 1;
+  var statusColumn = headers.indexOf('סטטוס מייל פרינוּק') + 1;
+  var errorColumn = headers.indexOf('שגיאת מייל פרינוּק') + 1;
 
   if (statusColumn > 0) {
     ordersSheet.getRange(orderRowNumber, statusColumn).setValue(result.status || '');
@@ -1585,8 +1585,8 @@ function updateTelegramStatus_(ordersSheet, orderRowNumber, result) {
   };
 
   var headers = getOrderHeaders_();
-  var statusColumn = headers.indexOf('סטטוס טלגרם פרינוק') + 1;
-  var errorColumn = headers.indexOf('שגיאת טלגרם פרינוק') + 1;
+  var statusColumn = headers.indexOf('סטטוס טלגרם פרינוּק') + 1;
+  var errorColumn = headers.indexOf('שגיאת טלגרם פרינוּק') + 1;
 
   if (statusColumn > 0) {
     ordersSheet.getRange(orderRowNumber, statusColumn).setValue(result.status || '');
@@ -3638,10 +3638,10 @@ function getOrderHeaders_() {
     'אימייל לקוח',
     'סטטוס מייל לקוח',
     'שגיאת מייל לקוח',
-    'סטטוס מייל פרינוק',
-    'שגיאת מייל פרינוק',
-    'סטטוס טלגרם פרינוק',
-    'שגיאת טלגרם פרינוק'
+    'סטטוס מייל פרינוּק',
+    'שגיאת מייל פרינוּק',
+    'סטטוס טלגרם פרינוּק',
+    'שגיאת טלגרם פרינוּק'
   ];
 }
 

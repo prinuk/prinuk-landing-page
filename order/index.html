@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="description" content="פרינוּק - הזמנה שבועית של פירות וירקות טריים ואיכותיים בירושלים.">
+    <title>פרינוּק - הזמנה שבועית</title>
     <script>
         (function () {
             var NOTICE_STORAGE_KEY = 'prinukMarketNoticeAccepted:v1';
@@ -1767,6 +1769,14 @@
             font-weight: 700;
         }
 
+        .brand-eyebrow {
+            margin: 0;
+            color: var(--amber);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+        }
+
         .panel,
         .summary {
             background: rgba(255, 253, 248, 0.94);
@@ -1980,6 +1990,7 @@
         <div class="bsd-mark">בס״ד</div>
         <header class="topbar">
             <div class="brand">
+                <p class="brand-eyebrow">טרי · איכותי · בכשרות מהודרת</p>
                 <div class="brand-title-row">
                     <img id="brandLogo" class="brand-logo" alt="פרינוּק"
                         src="/assets/prinuk-logo-round.png">
@@ -2079,7 +2090,7 @@
             </main>
 
             <aside class="summary" aria-live="polite">
-                <h2>סיכום</h2>
+                <h2>סיכום הזמנה</h2>
                 <div id="summaryItems" class="summary-items">
                     <div class="muted">עוד לא נבחרו מוצרים</div>
                 </div>
@@ -2089,7 +2100,7 @@
                         <div id="summaryTotal" class="summary-total">סכום משוער: ₪0</div>
                     </div>
                     <button id="cartToggleButton" class="cart-toggle" type="button" aria-expanded="false" aria-controls="summaryItems">סל קניות</button>
-                    <button id="submitButton" class="submit" type="submit">שליחת הזמנה</button>
+                    <button id="submitButton" class="submit" type="submit">שלח הזמנה</button>
                     <button id="resetOrderButton" class="reset-order" type="button">איפוס הזמנה</button>
                     <div id="message" class="message"></div>
                 </div>
@@ -2715,7 +2726,7 @@
             els.form.querySelectorAll('input, textarea, button[type="submit"]').forEach(function (control) {
                 control.disabled = false;
             });
-            els.submitButton.textContent = 'שליחת הזמנה';
+            els.submitButton.textContent = 'שלח הזמנה';
         }
 
         function renderContactInfo(phone, email) {
@@ -3661,7 +3672,7 @@
 
         function setSubmitting(isSubmitting) {
             els.submitButton.disabled = isSubmitting;
-            els.submitButton.textContent = isSubmitting ? 'שולח...' : 'שליחת הזמנה';
+            els.submitButton.textContent = isSubmitting ? 'שולח...' : 'שלח הזמנה';
         }
 
         function showMessage(text, type) {

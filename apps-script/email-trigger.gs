@@ -43,10 +43,10 @@ function processNewOrders_() {
   var customerEmailColIndex = orderHeaders.indexOf('אימייל לקוח');
   var customerEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל לקוח');
   var customerEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל לקוח');
-  var businessEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל פרינוק');
-  var businessEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל פרינוק');
-  var telegramStatusColIndex = orderHeaders.indexOf('סטטוס טלגרם פרינוק');
-  var telegramErrorColIndex = orderHeaders.indexOf('שגיאת טלגרם פרינוק');
+  var businessEmailStatusColIndex = orderHeaders.indexOf('סטטוס מייל פרינוּק');
+  var businessEmailErrorColIndex = orderHeaders.indexOf('שגיאת מייל פרינוּק');
+  var telegramStatusColIndex = orderHeaders.indexOf('סטטוס טלגרם פרינוּק');
+  var telegramErrorColIndex = orderHeaders.indexOf('שגיאת טלגרם פרינוּק');
 
   var lastRow = ordersSheet.getLastRow();
   var allRows = ordersSheet.getRange(2, 1, lastRow - 1, orderHeaders.length).getValues();
