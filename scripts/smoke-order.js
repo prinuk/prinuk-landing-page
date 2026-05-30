@@ -197,6 +197,8 @@ async function runSmokeTest(baseUrl, executablePath) {
         summaryTotal: document.getElementById('summaryTotal').textContent,
         freeDeliveryNow: document.getElementById('freeDeliveryTrack').getAttribute('aria-valuenow'),
         freeDeliveryText: document.getElementById('freeDeliveryMessage').textContent,
+        headerCartCount: document.getElementById('headerCartCount').textContent,
+        headerCartCountHidden: document.getElementById('headerCartCount').hidden,
       };
     });
 
@@ -236,8 +238,29 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected free-delivery progress for ₪18 subtotal, got: ' + JSON.stringify(result));
     }
 
+    if (result.headerCartCount !== '2' || result.headerCartCountHidden) {
+      throw new Error('Expected visible header cart badge for 2 selected items, got: ' + JSON.stringify(result));
+    }
+
     if (result.summaryNames.join('|') !== 'עגבניה איכותית|שום קלוף') {
       throw new Error('Expected summary items in add order, got: ' + result.summaryNames.join('|'));
+    }
+
+    const cartDrawerResult = await page.evaluate(() => {
+      document.getElementById('headerCartButton').click();
+      const opened = document.getElementById('orderSummary').classList.contains('is-open')
+        && document.getElementById('cartOverlay').classList.contains('show');
+      document.getElementById('cartCloseButton').click();
+
+      return {
+        opened,
+        closed: !document.getElementById('orderSummary').classList.contains('is-open')
+          && !document.getElementById('cartOverlay').classList.contains('show'),
+      };
+    });
+
+    if (!cartDrawerResult.opened || !cartDrawerResult.closed) {
+      throw new Error('Expected header cart drawer to open and close, got: ' + JSON.stringify(cartDrawerResult));
     }
 
     // Switching a kg-sale-unit item to ק״ג gives an exact (non-estimated)
