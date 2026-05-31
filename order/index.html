@@ -3197,6 +3197,37 @@
         .order-standalone .store-footer-links a[data-landing-path] {
             display: none;
         }
+
+        /* In-page "send order" CTA at the end of the details form. */
+        .finish-order {
+            margin-top: 20px;
+        }
+
+        .finish-order-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            width: 100%;
+            min-height: 56px;
+            border-radius: 999px;
+            font-size: 17px;
+        }
+
+        .finish-order-total {
+            font-weight: 900;
+        }
+
+        .finish-order-total:empty {
+            display: none;
+        }
+
+        .finish-order .message {
+            margin-top: 12px;
+            padding: 14px 16px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -3375,6 +3406,14 @@
                         <span>הערות</span>
                         <textarea id="notes" name="notes"></textarea>
                     </label>
+
+                    <div class="finish-order">
+                        <button id="finishOrderButton" class="submit finish-order-button" type="submit">
+                            <span id="finishOrderLabel">שליחת הזמנה</span>
+                            <span id="finishOrderTotal" class="finish-order-total"></span>
+                        </button>
+                        <div id="finishOrderMessage" class="message" aria-live="polite"></div>
+                    </div>
                 </section>
 
             </main>
@@ -3537,6 +3576,10 @@
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             submitButton: document.getElementById('submitButton'),
+            finishButton: document.getElementById('finishOrderButton'),
+            finishLabel: document.getElementById('finishOrderLabel'),
+            finishTotal: document.getElementById('finishOrderTotal'),
+            finishMessage: document.getElementById('finishOrderMessage'),
             resetOrderButton: document.getElementById('resetOrderButton'),
             cartToggleButton: document.getElementById('cartToggleButton'),
             headerCartButton: document.getElementById('headerCartButton'),
@@ -4223,7 +4266,7 @@
 
             return [
                 '<label class="product-note hidden" for="' + escapeAttr(id) + '">',
-                '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="הוסיפו הערה..." aria-label="הערה למוצר" data-product-id="' + escapeAttr(product.id) + '">',
+                '<input id="' + escapeAttr(id) + '" class="product-note-input" type="text" maxlength="300" placeholder="הוסיפו הערה למוצר..." aria-label="הערה למוצר" data-product-id="' + escapeAttr(product.id) + '">',
                 '</label>'
             ].join('');
         }
@@ -4697,6 +4740,10 @@
             if (show && els.floatingCartLabel) {
                 els.floatingCartLabel.textContent = itemCount + ' · ₪' + formatMoney(estimatedTotal || 0);
             }
+
+            if (els.finishTotal) {
+                els.finishTotal.textContent = itemCount > 0 ? ' · ₪' + formatMoney(estimatedTotal || 0) : '';
+            }
         }
 
         function updateRowState(row) {
@@ -4947,6 +4994,10 @@
                     showMessage(buildSuccessMessage(result.data, collected), 'success');
                     resetProducts();
                     clearOrderDraft();
+                    setCartSummaryOpen(false);
+                    if (els.finishMessage && els.finishMessage.scrollIntoView) {
+                        els.finishMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 })
                 .catch(function (error) {
                     setSubmitting(false);
@@ -5108,11 +5159,26 @@
         function setSubmitting(isSubmitting) {
             els.submitButton.disabled = isSubmitting;
             els.submitButton.textContent = isSubmitting ? 'שולח...' : 'שלח הזמנה';
+
+            if (els.finishButton) {
+                els.finishButton.disabled = isSubmitting;
+            }
+            if (els.finishLabel) {
+                els.finishLabel.textContent = isSubmitting ? 'שולח...' : 'שליחת הזמנה';
+            }
         }
 
         function showMessage(text, type) {
+            var className = text ? 'message show ' + type : 'message';
+
             els.message.textContent = text || '';
-            els.message.className = text ? 'message show ' + type : 'message';
+            els.message.className = className;
+
+            if (els.finishMessage) {
+                els.finishMessage.textContent = text || '';
+                els.finishMessage.className = className;
+            }
+
             updateMobileSummaryMetrics();
         }
 
