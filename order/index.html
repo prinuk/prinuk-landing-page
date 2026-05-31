@@ -3408,6 +3408,31 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Estimate / billing reminder shown at the commit points (cart + finish). */
+        .estimate-note {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .summary-meta .estimate-note {
+            margin-top: 4px;
+        }
+
+        .finish-estimate-note {
+            margin: 0 0 10px;
+            text-align: start;
+        }
+
+        @media (max-width: 900px) {
+            /* Keep the collapsed docked cart bar slim; the note still shows when
+               the cart is opened and always by the finish button. */
+            .summary:not(.is-open) .estimate-note {
+                display: none;
+            }
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -3610,6 +3635,7 @@
                     </label>
 
                     <div class="finish-order">
+                        <p class="estimate-note finish-estimate-note">הסכום מוערך — החיוב הסופי נקבע בעת הליקוט לפי המשקל והכמויות בפועל. משלוח חינם בהזמנה מעל ₪200.</p>
                         <button id="finishOrderButton" class="submit finish-order-button" type="submit">
                             <span id="finishOrderLabel">שליחת הזמנה</span>
                             <span id="finishOrderTotal" class="finish-order-total"></span>
@@ -3642,6 +3668,7 @@
                     <div class="summary-meta">
                         <div id="summaryCount" class="count">0 מוצרים</div>
                         <div id="summaryTotal" class="summary-total">סכום משוער: ₪0</div>
+                        <div class="estimate-note">הסכום מוערך — החיוב הסופי נקבע בעת הליקוט לפי המשקל והכמויות בפועל.</div>
                     </div>
                     <button id="cartToggleButton" class="cart-toggle" type="button" aria-expanded="false" aria-controls="summaryItems">סל קניות</button>
                     <button id="submitButton" class="submit" type="submit">שלח הזמנה</button>
