@@ -3201,6 +3201,10 @@
         }
 
         /* === Hero: premium fresh-produce landing (two-column) === */
+        .weekly-sale-intro::after {
+            display: none; /* drop the old decorative circle */
+        }
+
         .weekly-sale-intro {
             position: relative;
             overflow: hidden;
@@ -3212,8 +3216,9 @@
                 linear-gradient(180deg, #fbfaf5 0%, #f7f4eb 100%);
         }
 
-        /* Soft luminous highlights behind the content. */
-        .weekly-sale-intro::after {
+        /* Soft luminous highlights behind the content (the decorative ::after
+           circle stays hidden). */
+        .weekly-sale-intro::before {
             content: "";
             display: block;
             position: absolute;
@@ -3315,7 +3320,8 @@
         /* Subtle floating leaf decorations (decorative, behind content). */
         .hero-leaves {
             position: absolute;
-            inset: 0;
+            inset-block: 0;
+            inset-inline: max(24px, calc((100vw - 1360px) / 2));
             z-index: 0;
             pointer-events: none;
         }
