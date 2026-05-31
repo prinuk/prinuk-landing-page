@@ -22,6 +22,54 @@
   "תפו״א אדום (תפזורת)" is `'תפוא אדום (תפזורת)'`. A key containing `״`
   will never match.
 
+## Architecture & gotchas (read before editing the order site)
+- **The order page is one big file: `order/index.html`** (~5k lines) — all
+  markup, a giant inline `<style>`, and a giant inline `<script>` (vanilla
+  JS, RTL Hebrew). There is no build step for it; edit in place. Append new
+  CSS near the end of the `<style>` block so it wins the cascade.
+- **`order/index.html` is served on two hosts** (see `vercel.json`):
+  `order.prinuk.co.il/` (rewrite of `/` → `/order/index.html`) **and**
+  `prinuk.co.il/order/`. For host-specific behavior, branch on
+  `location.hostname` (e.g. the `order-standalone` class hides cross-site
+  nav only on the dedicated subdomain). Test domains mirror prod:
+  `test.prinuk.co.il` / `test.order.prinuk.co.il`; previews/localhost serve
+  both from one origin (landing at `/`, order at `/order/`).
+- **Catalog comes from Google Sheets via `/api/catalog`** → `lib/sheets.js`
+  `parseProducts`. A product object's fields flow straight to the client
+  (the API returns the whole catalog), so adding a field (e.g. `outOfStock`)
+  needs no API change. Catalog is cached ~60s — live changes lag up to a min.
+- **`lib/sheets.js` is the shared core**: `parseProducts`, column mapping
+  (`buildColumnMap`), and `validateAndBuildOrder` (server-side order build +
+  validation — enforce rules here, not just client-side).
+- **`formatEstimatedTotal` and `buildAddressText` are DUPLICATED** in
+  `lib/sheets.js` and `lib/order-pdf.js`. `email.js` and `telegram.js`
+  import them from `order-pdf.js`; `sheets.js` uses its own. The order total
+  surfaces in ~6 places: order row cell, picking sheet, email (×3), PDF,
+  Telegram. Change all definitions + call sites together when touching totals.
+- **The cart total is an estimate** (final billing is by weight at picking).
+  The order object carries `estimatedTotal` (items only), plus `deliveryFee`
+  and `grandTotal`. The order-row "סכום משוער" cell stores `grandTotal`.
+- **Two payload builders** must stay in sync when adding order fields:
+  `saveOrderDraft` (localStorage draft) and `submitOrder` (POST).
+- **Cart JS guards**: functions like `collectItems`/`updateRowState` iterate
+  every `.product-row` and dereference `.quantity-input`. Cards without one
+  (e.g. out-of-stock) must be guarded (`if (!input) return;`).
+- **Lists/constants duplicated client+server, keep in sync**: delivery
+  neighborhoods (`<select>` in `order/index.html` ↔ `DELIVERY_NEIGHBORHOODS`
+  in `lib/sheets.js`); free-delivery threshold (₪200) and delivery fee (₪25).
+- **Sheet status column** (header contains פעיל/זמין/מלאי/סטטוס): `אזל` /
+  `אין במלאי` → shown but out of stock; `לא` → hidden entirely.
+- **`npm run build`** asserts specific product **image URLs (filenames)** and
+  that each produce image is **≤120KB** — re-saving image *content* is fine,
+  renaming/oversizing breaks the build. `npm test` runs email-toggle +
+  smoke-order; the "Edge Config unavailable" line is an expected test case,
+  not a failure. The smoke test submits a **pickup** order.
+- **Produce photos use `object-fit: contain`** in the cards, so built-in
+  whitespace in a source image makes the produce look small. Trim it — see
+  the `trim-produce-images` skill (`.claude/skills/`). No ImageMagick on the
+  box; install Pillow with `pip3 install --break-system-packages Pillow`.
+- **Workflow rhythm**: the user reviews on the Vercel `dev` preview, so after
+  each accepted change run lint+build and commit/push to `dev`.
 
 ## Project Context
 
