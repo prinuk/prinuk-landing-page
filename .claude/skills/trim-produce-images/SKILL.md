@@ -10,6 +10,12 @@ shows the **whole** image. Many source photos have a wide white border baked
 in, so the produce renders small and floating. The fix is to crop each image
 down to just its content (no forced square), keeping its natural aspect.
 
+> This is the Prinuk-specific guide (paths, the 120KB build limit, the
+> `object-fit` rationale) and is self-contained for the repo. A generic,
+> project-agnostic version also exists in your personal skills as
+> `trim-image-whitespace` (`~/.claude/skills/`) — use that one in other
+> projects.
+
 ## When to use
 - A product image looks too small / lost in whitespace in the catalog.
 - New photos were added to `assets/produce/` and should be normalized.
