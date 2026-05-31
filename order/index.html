@@ -2382,6 +2382,54 @@
             opacity: 1;
         }
 
+        .floating-cart-button {
+            position: fixed;
+            bottom: calc(22px + env(safe-area-inset-bottom));
+            inset-inline-end: 22px;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 22px;
+            border: 0;
+            border-radius: 999px;
+            color: #f8f3e8;
+            background: var(--accent);
+            font-family: "Assistant", Arial, sans-serif;
+            font-size: 15px;
+            font-weight: 800;
+            box-shadow: 0 26px 60px -26px rgba(27, 42, 32, 0.7);
+            cursor: pointer;
+            transition: background 160ms ease, transform 160ms ease;
+        }
+
+        .floating-cart-button.is-visible {
+            display: inline-flex;
+        }
+
+        .floating-cart-button:hover,
+        .floating-cart-button:focus-visible {
+            background: var(--accent-dark);
+            transform: translateY(-2px);
+        }
+
+        .floating-cart-button svg {
+            width: 19px;
+            height: 19px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        @media (max-width: 900px) {
+            /* Mobile already has a docked summary bar, so the floating pill is redundant. */
+            .floating-cart-button.is-visible {
+                display: none;
+            }
+        }
+
         .shell {
             width: 100%;
             max-width: none;
@@ -2761,6 +2809,31 @@
             font-size: 30px;
         }
 
+        .footer-kosher-seal {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 7px 14px 7px 11px;
+            border: 1px solid #d5a847;
+            border-radius: 999px;
+            color: #e7c878;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .footer-kosher-seal span {
+            display: grid;
+            flex: 0 0 auto;
+            width: 20px;
+            height: 20px;
+            place-items: center;
+            border: 1px solid #d5a847;
+            border-radius: 50%;
+            font-size: 11px;
+        }
+
         .store-footer p,
         .store-footer a,
         .store-footer span {
@@ -3059,7 +3132,7 @@
 
     <header class="store-header">
         <div class="store-header-inner">
-            <a class="store-wordmark" href="https://prinuk.co.il/" aria-label="פרינוּק - עמוד הבית">
+            <a class="store-wordmark" href="https://prinuk.co.il/" data-landing-path="/" aria-label="פרינוּק - עמוד הבית">
                 <img id="brandLogo" src="/assets/prinuk-logo-round.png" alt="לוגו פרינוּק">
                 <span class="store-wordmark-copy">
                     <strong>פרינוּק</strong>
@@ -3068,10 +3141,10 @@
             </a>
 
             <nav class="store-nav" aria-label="ניווט ראשי">
-                <a href="https://prinuk.co.il/">בית</a>
+                <a href="https://prinuk.co.il/" data-landing-path="/">בית</a>
                 <a class="active" href="#catalogPanel">המכירה השבועית</a>
-                <a href="https://prinuk.co.il/#about">הסיפור שלנו</a>
-                <a href="https://prinuk.co.il/#contact">צרו קשר</a>
+                <a href="https://prinuk.co.il/#about" data-landing-path="/#about">הסיפור שלנו</a>
+                <a href="https://prinuk.co.il/#contact" data-landing-path="/#contact">צרו קשר</a>
             </nav>
 
             <div class="store-actions">
@@ -3093,6 +3166,13 @@
     </header>
 
     <div id="cartOverlay" class="cart-overlay"></div>
+
+    <button id="floatingCartButton" class="floating-cart-button" type="button" aria-label="פתיחת סל קניות">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/>
+        </svg>
+        <span id="floatingCartLabel">0 · ₪0</span>
+    </button>
 
     <div class="shell">
         <div class="bsd-mark">בס״ד</div>
@@ -3247,18 +3327,22 @@
     <footer class="store-footer">
         <div class="store-footer-inner">
             <div>
-                <a class="store-footer-wordmark" href="https://prinuk.co.il/">
+                <a class="store-footer-wordmark" href="https://prinuk.co.il/" data-landing-path="/">
                     <img src="/assets/prinuk-logo-round.png" alt="">
                     <strong>פרינוּק</strong>
                 </a>
                 <p>מכירת פירות וירקות. טרי, איכותי ובכשרות מהודרת.</p>
+                <div class="footer-kosher-seal">
+                    <span aria-hidden="true">★</span>
+                    בכשרות מהודרת
+                </div>
             </div>
             <div>
                 <h2>מידע</h2>
                 <div class="store-footer-links">
                     <a href="#catalogPanel">המכירה השבועית</a>
-                    <a href="https://prinuk.co.il/#about">הסיפור שלנו</a>
-                    <a href="https://prinuk.co.il/#contact">צרו קשר</a>
+                    <a href="https://prinuk.co.il/#about" data-landing-path="/#about">הסיפור שלנו</a>
+                    <a href="https://prinuk.co.il/#contact" data-landing-path="/#contact">צרו קשר</a>
                 </div>
             </div>
             <div>
@@ -3272,6 +3356,30 @@
         </div>
         <div class="store-footer-bottom">© 2026 פרינוּק · כל הזכויות שמורות</div>
     </footer>
+
+    <script>
+        /* Resolve landing-page links to the matching environment so test/preview
+           deployments link to their own landing page instead of production. */
+        (function () {
+            var host = location.hostname;
+
+            // Production order host keeps the absolute production links as-is.
+            if (host === 'order.prinuk.co.il') {
+                return;
+            }
+
+            // Test order host points at the test landing page; every other host
+            // (Vercel preview, *.vercel.app, localhost) serves the landing page
+            // from the same origin at "/", so a relative path is correct there.
+            var base = host === 'test.order.prinuk.co.il' ? 'https://test.prinuk.co.il' : '';
+
+            var links = document.querySelectorAll('[data-landing-path]');
+            for (var i = 0; i < links.length; i++) {
+                var path = links[i].getAttribute('data-landing-path') || '/';
+                links[i].setAttribute('href', base + path);
+            }
+        })();
+    </script>
 
     <script>
         var DEFAULT_LOGO_DATA_URL = document.getElementById('brandLogo').getAttribute('src') || '';
@@ -3341,6 +3449,8 @@
             headerCartCount: document.getElementById('headerCartCount'),
             cartCloseButton: document.getElementById('cartCloseButton'),
             cartOverlay: document.getElementById('cartOverlay'),
+            floatingCartButton: document.getElementById('floatingCartButton'),
+            floatingCartLabel: document.getElementById('floatingCartLabel'),
             summaryPanel: document.querySelector('.summary'),
             summaryItems: document.getElementById('summaryItems'),
             summaryAd: document.getElementById('summaryAd'),
@@ -3367,6 +3477,11 @@
         els.resetOrderButton.addEventListener('click', resetOrder);
         els.cartToggleButton.addEventListener('click', toggleCartSummary);
         els.headerCartButton.addEventListener('click', toggleCartSummary);
+        if (els.floatingCartButton) {
+            els.floatingCartButton.addEventListener('click', function () {
+                setCartSummaryOpen(true);
+            });
+        }
         els.cartCloseButton.addEventListener('click', function () {
             setCartSummaryOpen(false);
         });
@@ -4359,6 +4474,7 @@
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
                 updateFreeDeliveryProgress(0);
                 updateCartToggleState(0);
+                updateFloatingCart(0, 0);
                 updateMobileSummaryMetrics();
                 updateSummaryAdFit();
                 return;
@@ -4392,6 +4508,7 @@
             els.summaryTotal.innerHTML = buildEstimatedTotalHtml(collected);
             updateFreeDeliveryProgress(collected.estimatedTotal);
             updateCartToggleState(collected.items.length);
+            updateFloatingCart(collected.items.length, collected.estimatedTotal);
             updateMobileSummaryMetrics();
             updateSummaryAdFit();
         }
@@ -4470,6 +4587,20 @@
 
             if (els.cartToggleButton && els.cartToggleButton.getAttribute('aria-expanded') !== 'true') {
                 els.cartToggleButton.textContent = itemCount ? 'סל (' + itemCount + ')' : 'סל קניות';
+            }
+        }
+
+        function updateFloatingCart(itemCount, estimatedTotal) {
+            if (!els.floatingCartButton) {
+                return;
+            }
+
+            var drawerOpen = els.summaryPanel && els.summaryPanel.classList.contains('is-open');
+            var show = itemCount > 0 && !drawerOpen;
+            els.floatingCartButton.classList.toggle('is-visible', show);
+
+            if (show && els.floatingCartLabel) {
+                els.floatingCartLabel.textContent = itemCount + ' · ₪' + formatMoney(estimatedTotal || 0);
             }
         }
 
@@ -4568,9 +4699,11 @@
             els.headerCartButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
             els.cartOverlay.classList.toggle('show', Boolean(isOpen));
             els.cartToggleButton.textContent = isOpen ? 'סגירת סל' : 'סל קניות';
+            var collectedForCart = collectItems();
             if (!isOpen) {
-                updateCartToggleState(collectItems().items.length);
+                updateCartToggleState(collectedForCart.items.length);
             }
+            updateFloatingCart(collectedForCart.items.length, collectedForCart.estimatedTotal);
             updateMobileSummaryMetrics();
         }
 

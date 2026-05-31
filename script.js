@@ -1,3 +1,26 @@
+// Resolve order-site links to the matching environment so test/preview
+// deployments link to their own order page instead of production.
+(() => {
+  const host = location.hostname;
+
+  // Production landing host keeps the absolute production order links as-is.
+  if (host === "prinuk.co.il" || host === "www.prinuk.co.il") {
+    return;
+  }
+
+  // Test landing host points at the test order site; every other host
+  // (Vercel preview, *.vercel.app, localhost) serves the order page from the
+  // same origin at "/order/", so a relative path is correct there.
+  const target =
+    host === "test.prinuk.co.il"
+      ? "https://test.order.prinuk.co.il/"
+      : "/order/";
+
+  document.querySelectorAll("[data-order-link]").forEach((link) => {
+    link.setAttribute("href", target);
+  });
+})();
+
 const form = document.querySelector("#orderForm");
 const note = document.querySelector("#formNote");
 
