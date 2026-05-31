@@ -3318,29 +3318,42 @@
         }
 
         /* Subtle floating leaf decorations (decorative, behind content). */
+        /* Crisp leaf accents tucked at the photo's corners (within content). */
         .hero-leaves {
             position: absolute;
             inset-block: 0;
             inset-inline: max(24px, calc((100vw - 1360px) / 2));
-            z-index: 0;
+            z-index: 2;
             pointer-events: none;
         }
 
         .leaf {
             position: absolute;
             display: block;
-            font-size: 54px;
-            line-height: 1;
-            opacity: 0.22;
-            filter: blur(0.4px);
-            transform-origin: center;
         }
 
-        .leaf-1 { top: 8%; right: 4%; transform: rotate(-22deg) scale(1.15); opacity: 0.24; }
-        .leaf-2 { top: 34%; right: 47%; transform: rotate(18deg) scale(0.8); opacity: 0.14; filter: blur(1px); }
-        .leaf-3 { bottom: 12%; right: 39%; transform: rotate(-8deg) scale(0.65); opacity: 0.2; }
-        .leaf-4 { top: 25%; left: 4%; transform: rotate(32deg) scale(1.5); opacity: 0.18; filter: blur(1.4px); }
-        .leaf-5 { bottom: 8%; left: 13%; transform: rotate(-35deg) scale(1.25); opacity: 0.16; filter: blur(1.2px); }
+        .leaf svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 6px 10px rgba(29, 47, 35, 0.18));
+        }
+
+        .leaf-1 {
+            top: -14px;
+            left: -16px;
+            width: 92px;
+            height: 92px;
+            transform: rotate(-28deg);
+        }
+
+        .leaf-2 {
+            bottom: -10px;
+            left: 14px;
+            width: 70px;
+            height: 70px;
+            transform: rotate(146deg);
+        }
 
         @media (max-width: 900px) {
             .weekly-sale-card {
@@ -3361,13 +3374,13 @@
                 height: 240px;
             }
 
-            .leaf-2,
-            .leaf-3 {
-                display: none;
+            .leaf-1 {
+                width: 64px;
+                height: 64px;
             }
 
-            .leaf {
-                font-size: 40px;
+            .leaf-2 {
+                display: none;
             }
         }
 
@@ -3911,11 +3924,8 @@
             <main class="main">
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
                     <div class="hero-leaves" aria-hidden="true">
-                        <span class="leaf leaf-1">🍃</span>
-                        <span class="leaf leaf-2">🍃</span>
-                        <span class="leaf leaf-3">🍃</span>
-                        <span class="leaf leaf-4">🍃</span>
-                        <span class="leaf leaf-5">🍃</span>
+                        <span class="leaf leaf-1"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z" fill="#8cbf63"/><path d="M7 17c3-4 6-6 9-7" fill="none" stroke="#5c8a3f" stroke-width="1.1" stroke-linecap="round"/></svg></span>
+                        <span class="leaf leaf-2"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z" fill="#8cbf63"/><path d="M7 17c3-4 6-6 9-7" fill="none" stroke="#5c8a3f" stroke-width="1.1" stroke-linecap="round"/></svg></span>
                     </div>
                     <div class="weekly-sale-card">
                         <div class="weekly-sale-copy">
