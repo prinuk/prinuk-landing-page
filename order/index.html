@@ -3812,6 +3812,7 @@
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var KG_STEP = 0.5;
         var FREE_DELIVERY_THRESHOLD = 200;
+        var DELIVERY_FEE = 25;
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -3940,6 +3941,7 @@
         document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
             input.addEventListener('change', function () {
                 toggleDeliveryFields();
+                renderSummary();
             });
         });
 
@@ -5044,12 +5046,14 @@
             var show = itemCount > 0 && !drawerOpen;
             els.floatingCartButton.classList.toggle('is-visible', show);
 
+            var grandTotal = roundMoney((Number(estimatedTotal) || 0) + deliveryFeeFor(estimatedTotal));
+
             if (show && els.floatingCartLabel) {
-                els.floatingCartLabel.textContent = itemCount + ' · ₪' + formatMoney(estimatedTotal || 0);
+                els.floatingCartLabel.textContent = itemCount + ' · ₪' + formatMoney(grandTotal);
             }
 
             if (els.finishTotal) {
-                els.finishTotal.textContent = itemCount > 0 ? ' · ₪' + formatMoney(estimatedTotal || 0) : '';
+                els.finishTotal.textContent = itemCount > 0 ? ' · ₪' + formatMoney(grandTotal) : '';
             }
         }
 
@@ -5606,8 +5610,23 @@
             return String(rounded.toFixed(2)).replace(/0+$/, '').replace(/\.$/, '');
         }
 
+        // Delivery costs ₪25 when delivering and the subtotal is under the free
+        // threshold; free at/above it, and never charged for self-pickup.
+        function deliveryFeeFor(subtotal) {
+            var sub = Number(subtotal) || 0;
+            return getFulfillment() === 'משלוח' && sub > 0 && sub < FREE_DELIVERY_THRESHOLD ? DELIVERY_FEE : 0;
+        }
+
         function buildEstimatedTotalHtml(collected) {
-            var html = 'סכום משוער: ₪' + formatMoney(collected.estimatedTotal);
+            var fee = deliveryFeeFor(collected.estimatedTotal);
+            var grandTotal = roundMoney(collected.estimatedTotal + fee);
+            var html = 'סכום משוער: ₪' + formatMoney(grandTotal);
+
+            if (fee > 0) {
+                html += '<small>כולל ₪' + formatMoney(DELIVERY_FEE) + ' דמי משלוח</small>';
+            } else if (getFulfillment() === 'משלוח' && collected.estimatedTotal > 0) {
+                html += '<small>כולל משלוח חינם 🌿</small>';
+            }
 
             if (collected.unpricedItemCount) {
                 html += '<small>יש פריטים שיחושבו לאחר שקילה</small>';
@@ -5627,7 +5646,15 @@
             var unpricedItemCount = result && typeof result.unpricedItemCount === 'number'
                 ? result.unpricedItemCount
                 : collected.unpricedItemCount;
-            var message = 'ההזמנה נשלחה בהצלחה. מספר הזמנה: ' + result.orderId + '. סכום משוער: ₪' + formatMoney(estimatedTotal);
+            var deliveryFee = result && typeof result.deliveryFee === 'number'
+                ? result.deliveryFee
+                : deliveryFeeFor(estimatedTotal);
+            var grandTotal = roundMoney(estimatedTotal + deliveryFee);
+            var message = 'ההזמנה נשלחה בהצלחה. מספר הזמנה: ' + result.orderId + '. סכום משוער: ₪' + formatMoney(grandTotal);
+
+            if (deliveryFee > 0) {
+                message += ' (כולל ₪' + formatMoney(deliveryFee) + ' משלוח)';
+            }
 
             if (unpricedItemCount) {
                 message += '. יש פריטים שיחושבו לאחר שקילה';
