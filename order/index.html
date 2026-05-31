@@ -649,9 +649,9 @@
         }
 
         .price {
-            color: var(--muted);
-            font-size: 13px;
-            font-weight: 700;
+            color: var(--accent-dark);
+            font-size: 15px;
+            font-weight: 800;
         }
 
         .row-estimate {
@@ -3099,7 +3099,7 @@
             }
 
             .price {
-                font-size: 12.5px;
+                font-size: 16px;
             }
 
             .amount-line {
@@ -3152,6 +3152,11 @@
         .product-row:not(.is-selected) .quantity-button[data-quantity-action="decrease"],
         .product-row:not(.is-selected) .suffix {
             display: none;
+        }
+
+        /* Push the add button to the far (inline-end) side, away from the price. */
+        .product-row:not(.is-selected) .prow .number-wrap {
+            margin-inline-start: auto;
         }
 
         .product-row:not(.is-selected) .quantity-button[data-quantity-action="increase"] {
