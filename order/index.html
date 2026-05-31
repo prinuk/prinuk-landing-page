@@ -3277,6 +3277,53 @@
             background: var(--accent);
             box-shadow: 0 2px 6px -2px rgba(46, 90, 57, 0.6);
         }
+
+        /* Out-of-stock items: shown but not orderable. */
+        .product-row.out-of-stock {
+            opacity: 0.85;
+        }
+
+        .product-row.out-of-stock:hover {
+            transform: none;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .product-row.out-of-stock .product-image {
+            filter: grayscale(0.85);
+            opacity: 0.85;
+        }
+
+        .product-row.out-of-stock .product-name strong {
+            color: var(--muted);
+        }
+
+        .stock-badge {
+            position: absolute;
+            top: 10px;
+            inset-inline-end: 10px;
+            z-index: 2;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: rgba(27, 42, 32, 0.82);
+            color: #f8f3e8;
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 0.01em;
+        }
+
+        .out-of-stock-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            margin: auto 12px 14px;
+            padding: 11px 14px;
+            border: 1px dashed var(--line-strong, rgba(27, 42, 32, 0.28));
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 900;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4274,6 +4321,10 @@
         }
 
         function renderProduct(product, categoryName) {
+            if (product.outOfStock) {
+                return renderOutOfStockProduct(product, categoryName);
+            }
+
             return [
                 '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
                 '<div class="product-info">',
@@ -4289,9 +4340,28 @@
             ].join('');
         }
 
-        function renderProductImage(product) {
+        function renderOutOfStockProduct(product, categoryName) {
+            var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
+
+            return [
+                '<article class="product-row out-of-stock" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-out-of-stock="1" aria-disabled="true">',
+                '<div class="product-info">',
+                renderProductImage(product, true),
+                '<div class="product-name">',
+                '<strong>' + escapeHtml(product.name) + '</strong>',
+                '<span class="price">' + escapeHtml(price) + '</span>',
+                '</div>',
+                '</div>',
+                '<div class="out-of-stock-note">אזל מהמלאי</div>',
+                '</article>'
+            ].join('');
+        }
+
+        function renderProductImage(product, outOfStock) {
             var imageUrl = String(product.imageUrl || '').trim();
-            var badge = '<span class="selected-badge" data-selected-badge hidden>0</span>';
+            var badge = outOfStock
+                ? '<span class="stock-badge">אזל מהמלאי</span>'
+                : '<span class="selected-badge" data-selected-badge hidden>0</span>';
 
             if (!imageUrl) {
                 return [
@@ -4588,6 +4658,9 @@
 
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
                 var input = row.querySelector('.quantity-input');
+                if (!input) {
+                    return;
+                }
                 var noteInput = row.querySelector('.product-note-input');
                 var rawValue = String(input.value || '').trim();
                 var quantity = Number(rawValue);
@@ -4802,6 +4875,9 @@
             }
 
             var input = row.querySelector('.quantity-input');
+            if (!input) {
+                return;
+            }
             var product = productById[row.getAttribute('data-product-id')];
             var quantity = Number(input.value || 0);
             var isSelected = quantity > 0;
