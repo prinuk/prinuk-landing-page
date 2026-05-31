@@ -2608,8 +2608,9 @@
         }
 
         .product-image {
-            padding: 0;
-            object-fit: cover;
+            padding: 8px;
+            object-fit: contain;
+            background: #fff;
         }
 
         .product-image-placeholder {
@@ -3075,48 +3076,55 @@
         /* === Compact product cards + Claude-style add control === */
         @media (min-width: 681px) {
             .product-list {
-                gap: 14px;
+                gap: 12px;
             }
 
             .product-image-wrap {
-                aspect-ratio: 1 / 0.64;
+                aspect-ratio: 1 / 0.54;
             }
 
             .product-name {
                 min-height: 0;
-                padding: 12px 14px 6px;
+                padding: 10px 13px 4px;
             }
 
             .product-name strong {
-                font-size: 17px;
+                font-size: 16px;
+                line-height: 1.2;
             }
 
             .price {
-                font-size: 13px;
+                font-size: 12.5px;
             }
 
             .amount-line {
-                padding: 2px 12px 12px;
+                padding: 2px 12px 11px;
+            }
+
+            .product-row {
+                border-radius: 16px;
             }
         }
 
-        /* Price and the add control share one row, like the Claude design. */
+        /* Fit more cards per row on wide screens so each item is smaller. */
+        @media (min-width: 1100px) {
+            .product-list {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+        }
+
+        /* Price and the add control share one row, like the Claude design;
+           wraps gracefully when the card is narrow. */
         .prow {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 6px 10px;
         }
 
         .prow .price {
             min-width: 0;
-        }
-
-        @media (max-width: 680px) {
-            .prow {
-                flex-wrap: wrap;
-                gap: 6px 10px;
-            }
         }
 
         /* The units/kg switch is only relevant once the item is in the cart. */
