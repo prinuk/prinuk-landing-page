@@ -3173,6 +3173,16 @@
             color: var(--accent-dark);
             font-size: 13px;
         }
+
+        /* Dedicated order subdomain (order.prinuk.co.il): hide links off the page,
+           keeping the logo, the cart and the on-page contact details. */
+        .order-standalone .store-nav {
+            display: none;
+        }
+
+        .order-standalone .store-footer-links a[data-landing-path] {
+            display: none;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -3427,25 +3437,26 @@
     </footer>
 
     <script>
-        /* Resolve landing-page links to the matching environment so test/preview
-           deployments link to their own landing page instead of production. */
+        /* On the dedicated order subdomain (order.prinuk.co.il) the page stands
+           alone, with no links back to the rest of the site. Everywhere else
+           (prinuk.co.il/order, test, Vercel preview, localhost) the landing page
+           lives on the same origin at "/", so the nav links back to it. */
         (function () {
             var host = location.hostname;
+            var standalone = host === 'order.prinuk.co.il' || host === 'test.order.prinuk.co.il';
+            var links = document.querySelectorAll('[data-landing-path]');
 
-            // Production order host keeps the absolute production links as-is.
-            if (host === 'order.prinuk.co.il') {
+            if (standalone) {
+                document.documentElement.classList.add('order-standalone');
+                for (var j = 0; j < links.length; j++) {
+                    // Keep the logo as branding without leaving the order site.
+                    links[j].setAttribute('href', '/');
+                }
                 return;
             }
 
-            // Test order host points at the test landing page; every other host
-            // (Vercel preview, *.vercel.app, localhost) serves the landing page
-            // from the same origin at "/", so a relative path is correct there.
-            var base = host === 'test.order.prinuk.co.il' ? 'https://test.prinuk.co.il' : '';
-
-            var links = document.querySelectorAll('[data-landing-path]');
             for (var i = 0; i < links.length; i++) {
-                var path = links[i].getAttribute('data-landing-path') || '/';
-                links[i].setAttribute('href', base + path);
+                links[i].setAttribute('href', links[i].getAttribute('data-landing-path') || '/');
             }
         })();
     </script>
