@@ -3100,17 +3100,31 @@
             }
         }
 
+        /* Price and the add control share one row, like the Claude design. */
+        .prow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .prow .price {
+            min-width: 0;
+        }
+
+        @media (max-width: 680px) {
+            .prow {
+                flex-wrap: wrap;
+                gap: 6px 10px;
+            }
+        }
+
         /* The units/kg switch is only relevant once the item is in the cart. */
         .product-row:not(.is-selected) .segment {
             display: none;
         }
 
         /* Not in cart → one clean round "add" button, like the Claude design. */
-        .product-row:not(.is-selected) .amount-line {
-            display: flex;
-            justify-content: flex-start;
-        }
-
         .product-row:not(.is-selected) .number-wrap {
             display: inline-flex;
             width: auto;
@@ -4168,15 +4182,12 @@
         }
 
         function renderProduct(product, categoryName) {
-            var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
-
             return [
                 '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
                 '<div class="product-info">',
                 renderProductImage(product),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
-                '<span class="price">' + escapeHtml(price) + '</span>',
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
@@ -4220,6 +4231,7 @@
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
             var allowKg = getUnitType(product.unit) === 'kg';
+            var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
 
             var toggle = allowKg
                 ? [
@@ -4233,11 +4245,14 @@
             return [
                 '<div class="amount-line' + (allowKg ? '' : ' single') + '">',
                 toggle,
+                '<div class="prow">',
+                '<span class="price">' + escapeHtml(price) + '</span>',
                 '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
                 '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
                 '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
                 '<button class="quantity-button" type="button" data-quantity-action="increase" aria-label="הוספת כמות עבור ' + productName + '">+</button>',
                 '<span class="suffix">יחידות</span>',
+                '</div>',
                 '</div>',
                 '</div>'
             ].join('');
