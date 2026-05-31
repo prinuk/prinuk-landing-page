@@ -3437,6 +3437,38 @@
                 display: none;
             }
         }
+
+        /* Delivery area: neighborhood selector (delivery limited to a few areas). */
+        .delivery-fields .delivery-area-note,
+        .delivery-fields .delivery-neighborhood {
+            grid-column: 1 / -1;
+        }
+
+        .delivery-area-note {
+            margin: 0;
+            color: var(--amber);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .delivery-fields select {
+            width: 100%;
+            min-height: 42px;
+            padding: 9px 11px;
+            border: 1px solid var(--line);
+            border-radius: 11px;
+            background: var(--surface-tint);
+            color: var(--ink);
+            font: inherit;
+            font-size: 16px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .delivery-fields select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -3619,8 +3651,20 @@
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
+                        <p class="delivery-area-note">משלוח לשכונות נבחרות בירושלים בלבד. לשאר האזורים — איסוף עצמי.</p>
+                        <label class="field delivery-neighborhood">
+                            <span>שכונה <span class="required-star">*</span></span>
+                            <select id="neighborhood" name="neighborhood">
+                                <option value="">בחרו שכונה</option>
+                                <option value="בית וגן">בית וגן</option>
+                                <option value="בית הכרם">בית הכרם</option>
+                                <option value="קריית יובל">קריית יובל</option>
+                                <option value="רמת שרת">רמת שרת</option>
+                                <option value="רמת דניה">רמת דניה</option>
+                            </select>
+                        </label>
                         <label class="field">
-                            <span>כתובת <span class="required-star">*</span></span>
+                            <span>רחוב ומספר <span class="required-star">*</span></span>
                             <input id="address" name="address" autocomplete="street-address">
                         </label>
                         <label class="field">
@@ -4026,6 +4070,7 @@
                 },
                 fulfillment: getFulfillment(),
                 delivery: {
+                    neighborhood: document.getElementById('neighborhood').value,
                     address: document.getElementById('address').value,
                     floor: document.getElementById('floor').value,
                     apartment: document.getElementById('apartment').value
@@ -4055,6 +4100,7 @@
                 }
             }
 
+            setInputValue('neighborhood', draft.delivery && draft.delivery.neighborhood);
             setInputValue('address', draft.delivery && draft.delivery.address);
             setInputValue('floor', draft.delivery && draft.delivery.floor);
             setInputValue('apartment', draft.delivery && draft.delivery.apartment);
@@ -5221,6 +5267,7 @@
                 },
                 fulfillment: getFulfillment(),
                 delivery: {
+                    neighborhood: document.getElementById('neighborhood').value.trim(),
                     address: document.getElementById('address').value.trim(),
                     floor: document.getElementById('floor').value.trim(),
                     apartment: document.getElementById('apartment').value.trim()
@@ -5301,9 +5348,18 @@
             }
 
             if (getFulfillment() === 'משלוח') {
+                var neighborhoodInput = document.getElementById('neighborhood');
+
+                if (!neighborhoodInput.value) {
+                    return {
+                        message: 'יש לבחור שכונת משלוח. המשלוח זמין לשכונות נבחרות בלבד.',
+                        field: neighborhoodInput
+                    };
+                }
+
                 if (!addressInput.value.trim()) {
                     return {
-                        message: 'יש למלא כתובת למשלוח.',
+                        message: 'יש למלא רחוב ומספר למשלוח.',
                         field: addressInput
                     };
                 }
