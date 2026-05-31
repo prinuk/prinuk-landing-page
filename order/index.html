@@ -3173,6 +3173,42 @@
             }
         }
 
+        /* Friendly empty-cart state. */
+        .cart-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 30px 16px 24px;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        .cart-empty svg {
+            width: 46px;
+            height: 46px;
+            margin-bottom: 4px;
+            color: var(--accent);
+            opacity: 0.55;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .cart-empty-title {
+            color: var(--accent-dark);
+            font-family: "Frank Ruhl Libre", serif;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .cart-empty-hint {
+            font-size: 13.5px;
+            font-weight: 700;
+        }
+
         /* The units/kg switch is only relevant once the item is in the cart. */
         .product-row:not(.is-selected) .segment {
             display: none;
@@ -3736,7 +3772,11 @@
                     <button id="cartCloseButton" class="summary-close" type="button" aria-label="סגירת סל קניות">×</button>
                 </div>
                 <div id="summaryItems" class="summary-items">
-                    <div class="muted">עוד לא נבחרו מוצרים</div>
+                    <div class="cart-empty">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/><path d="M14.5 13.2c-1.6 0-2.6-1.2-2.6-2.9 1.7 0 2.9 1 2.9 2.6m-.3.3c0-1.7 1-2.9 2.7-2.9 0 1.7-1.2 2.9-2.9 2.9"/></svg>
+                        <div class="cart-empty-title">הסל עדיין ריק</div>
+                        <div class="cart-empty-hint">הוסיפו מוצרים טריים כדי להתחיל</div>
+                    </div>
                 </div>
                 <div id="freeDeliveryProgress" class="free-delivery-progress">
                     <div id="freeDeliveryTrack" class="free-delivery-track" role="progressbar"
@@ -3846,6 +3886,11 @@
         var KG_STEP = 0.5;
         var FREE_DELIVERY_THRESHOLD = 200;
         var DELIVERY_FEE = 25;
+        var EMPTY_CART_HTML = '<div class="cart-empty">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/><path d="M14.5 13.2c-1.6 0-2.6-1.2-2.6-2.9 1.7 0 2.9 1 2.9 2.6m-.3.3c0-1.7 1-2.9 2.7-2.9 0 1.7-1.2 2.9-2.9 2.9"/></svg>'
+            + '<div class="cart-empty-title">הסל עדיין ריק</div>'
+            + '<div class="cart-empty-hint">הוסיפו מוצרים טריים כדי להתחיל</div>'
+            + '</div>';
 
         var CATEGORY_COLORS = {
             'ירקות': {
@@ -4952,7 +4997,7 @@
             var collected = collectItems();
 
             if (!collected.items.length) {
-                els.summaryItems.innerHTML = '<div class="muted">עוד לא נבחרו מוצרים</div>';
+                els.summaryItems.innerHTML = EMPTY_CART_HTML;
                 els.summaryCount.textContent = formatItemCountText(0);
                 els.summaryTotal.textContent = 'סכום משוער: ₪0';
                 updateFreeDeliveryProgress(0);
