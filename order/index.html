@@ -3200,40 +3200,45 @@
             font-weight: 700;
         }
 
-        /* Produce photo filling the empty (start/left in RTL) side of the hero,
-           dissolving into the cream toward the headline. */
+        /* === Hero: premium fresh-produce landing (two-column) === */
         .weekly-sale-intro {
             position: relative;
             overflow: hidden;
+            padding-block: clamp(40px, 5vw, 64px);
+            border-bottom: 1px solid rgba(33, 66, 44, 0.12);
+            background:
+                radial-gradient(circle at 75% 42%, rgba(46, 94, 61, 0.08), transparent 34%),
+                radial-gradient(circle at 38% 78%, rgba(181, 145, 73, 0.09), transparent 30%),
+                linear-gradient(180deg, #fbfaf5 0%, #f7f4eb 100%);
         }
 
-        /* Hero as a centered two-column card: text (right) + photo (left). */
-        .weekly-sale-intro {
-            padding-block: clamp(36px, 4.5vw, 56px);
+        /* Soft luminous highlights behind the content. */
+        .weekly-sale-intro::after {
+            content: "";
+            display: block;
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.8), transparent 18%),
+                radial-gradient(circle at 78% 58%, rgba(255, 255, 255, 0.55), transparent 22%);
         }
 
         .weekly-sale-card {
             position: relative;
             z-index: 1;
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.78fr);
             align-items: center;
-            gap: clamp(28px, 4vw, 60px);
+            gap: clamp(32px, 5vw, 72px);
             width: min(1360px, 100%);
             margin: 0 auto;
         }
 
         .weekly-sale-copy {
-            flex: 1 1 0;
             min-width: 0;
-        }
-
-        .weekly-sale-art {
-            flex: 0 0 auto;
-            width: min(400px, 36%);
-            height: clamp(240px, 26vw, 320px);
-            object-fit: cover;
-            border-radius: 20px;
-            box-shadow: 0 26px 50px -34px rgba(27, 42, 32, 0.5);
+            text-align: right;
         }
 
         .weekly-sale-card > .weekly-sale-copy > * {
@@ -3241,55 +3246,49 @@
             max-width: none;
         }
 
-        .weekly-sale-sub {
-            margin-top: 14px;
-            color: var(--muted);
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        /* Clean leaf accents tucked into the hero corners. */
-        .hero-leaf {
-            position: absolute;
-            z-index: 0;
-            display: block;
-            pointer-events: none;
-        }
-
-        .hero-leaf svg {
-            display: block;
+        .weekly-sale-art {
             width: 100%;
-            height: 100%;
+            height: clamp(260px, 28vw, 360px);
+            object-fit: cover;
+            border-radius: 28px;
+            box-shadow: 0 24px 60px rgba(29, 47, 35, 0.16), 0 4px 12px rgba(29, 47, 35, 0.08);
         }
 
-        .hero-leaf-1 {
-            top: -10px;
-            right: -8px;
-            width: 46px;
-            height: 46px;
-            transform: rotate(18deg);
+        .weekly-sale-intro h2 {
+            font-size: clamp(40px, 4.8vw, 68px);
+            color: var(--accent-dark);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
         }
 
-        .hero-leaf-2 {
-            bottom: -12px;
-            left: -8px;
-            width: 40px;
-            height: 40px;
-            transform: rotate(-150deg);
+        /* Eyebrow as a soft pill. */
+        .weekly-sale-copy .catalog-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 18px;
+            padding: 8px 22px;
+            border-radius: 999px;
+            background: rgba(46, 94, 61, 0.1);
+            color: #b08a3c;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
         }
 
-        @media (max-width: 760px) {
-            .hero-leaf-2 {
-                display: none;
-            }
+        .weekly-sale-sub {
+            margin-top: 16px;
+            color: rgba(31, 75, 50, 0.72);
+            font-size: clamp(16px, 1.4vw, 20px);
+            font-weight: 700;
         }
 
         /* Trust badges under the headline. */
         .hero-badges {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px 22px;
-            margin-top: 22px;
+            gap: 12px 26px;
+            margin-top: 24px;
         }
 
         .hero-badge {
@@ -3297,7 +3296,7 @@
             align-items: center;
             gap: 8px;
             color: var(--accent-dark);
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 800;
         }
 
@@ -3313,20 +3312,56 @@
             stroke-linejoin: round;
         }
 
-        @media (min-width: 761px) {
-            .weekly-sale-intro h2 {
-                font-size: clamp(38px, 4.4vw, 58px);
-            }
+        /* Subtle floating leaf decorations (decorative, behind content). */
+        .hero-leaves {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
         }
 
-        /* On small screens stack to one column and hide the photo. */
-        @media (max-width: 760px) {
+        .leaf {
+            position: absolute;
+            display: block;
+            font-size: 54px;
+            line-height: 1;
+            opacity: 0.22;
+            filter: blur(0.4px);
+            transform-origin: center;
+        }
+
+        .leaf-1 { top: 8%; right: 4%; transform: rotate(-22deg) scale(1.15); opacity: 0.24; }
+        .leaf-2 { top: 34%; right: 47%; transform: rotate(18deg) scale(0.8); opacity: 0.14; filter: blur(1px); }
+        .leaf-3 { bottom: 12%; right: 39%; transform: rotate(-8deg) scale(0.65); opacity: 0.2; }
+        .leaf-4 { top: 25%; left: 4%; transform: rotate(32deg) scale(1.5); opacity: 0.18; filter: blur(1.4px); }
+        .leaf-5 { bottom: 8%; left: 13%; transform: rotate(-35deg) scale(1.25); opacity: 0.16; filter: blur(1.2px); }
+
+        @media (max-width: 900px) {
             .weekly-sale-card {
-                display: block;
+                grid-template-columns: 1fr;
+                gap: 28px;
+            }
+
+            .weekly-sale-copy {
+                text-align: center;
+            }
+
+            .hero-badges {
+                justify-content: center;
             }
 
             .weekly-sale-art {
+                order: -1;
+                height: 240px;
+            }
+
+            .leaf-2,
+            .leaf-3 {
                 display: none;
+            }
+
+            .leaf {
+                font-size: 40px;
             }
         }
 
@@ -3869,11 +3904,16 @@
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
-                    <span class="hero-leaf hero-leaf-1" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z" fill="#cadcb4"/><path d="M7 17c3-4 6-6 9-7" fill="none" stroke="#93b277" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-                    <span class="hero-leaf hero-leaf-2" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z" fill="#cadcb4"/><path d="M7 17c3-4 6-6 9-7" fill="none" stroke="#93b277" stroke-width="1.2" stroke-linecap="round"/></svg></span>
+                    <div class="hero-leaves" aria-hidden="true">
+                        <span class="leaf leaf-1">🍃</span>
+                        <span class="leaf leaf-2">🍃</span>
+                        <span class="leaf leaf-3">🍃</span>
+                        <span class="leaf leaf-4">🍃</span>
+                        <span class="leaf leaf-5">🍃</span>
+                    </div>
                     <div class="weekly-sale-card">
                         <div class="weekly-sale-copy">
-                            <p class="catalog-eyebrow">המכירה השבועית</p>
+                            <span class="catalog-eyebrow">המכירה השבועית</span>
                             <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
                             <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
                             <div class="hero-badges">
