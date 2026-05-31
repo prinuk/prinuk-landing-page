@@ -3228,12 +3228,28 @@
         }
 
         .product-row:not(.is-selected) .number-wrap input,
-        .product-row:not(.is-selected) .quantity-button[data-quantity-action="decrease"],
-        .product-row:not(.is-selected) .suffix {
+        .product-row:not(.is-selected) .quantity-button[data-quantity-action="decrease"] {
             display: none;
         }
 
-        /* Push the add button to the far (inline-end) side, away from the price. */
+        /* Keep a clear "יחידות" label next to the add button so it's obvious
+           the order is by units (not weight). */
+        .product-row:not(.is-selected) .number-wrap {
+            gap: 9px;
+        }
+
+        .product-row:not(.is-selected) .suffix {
+            min-width: 0;
+            height: auto;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* Push the add control to the far (inline-end) side, away from the price. */
         .product-row:not(.is-selected) .prow .number-wrap {
             margin-inline-start: auto;
         }
@@ -4708,27 +4724,16 @@
 
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
-            var allowKg = getUnitType(product.unit) === 'kg';
 
-            var toggle = allowKg
-                ? [
-                    '<span class="unit-toggle-label">כמות לפי</span>',
-                    '<div class="segment" role="group" aria-label="אופן הזמנה עבור ' + productName + '">',
-                    '<button class="active" type="button" data-mode-button="unit" aria-pressed="true">יחידות</button>',
-                    '<button type="button" data-mode-button="kg" aria-pressed="false">ק״ג</button>',
-                    '</div>'
-                ].join('')
-                : '';
-
+            // Orders are always in whole units (no kg option).
             return [
-                '<div class="amount-line' + (allowKg ? '' : ' single') + '">',
-                toggle,
+                '<div class="amount-line single">',
                 '<div class="prow">',
                 priceHtml(product),
-                '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
+                '<div class="number-wrap" role="group" aria-label="כמות (יחידות) עבור ' + productName + '">',
                 '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
                 '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
-                '<button class="quantity-button" type="button" data-quantity-action="increase" aria-label="הוספת כמות עבור ' + productName + '">+</button>',
+                '<button class="quantity-button" type="button" data-quantity-action="increase" aria-label="הוספת יחידה עבור ' + productName + '">+</button>',
                 '<span class="suffix">יחידות</span>',
                 '</div>',
                 '</div>',

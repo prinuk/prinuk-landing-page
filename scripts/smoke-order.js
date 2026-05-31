@@ -224,8 +224,8 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Product image did not load.');
     }
 
-    if (result.modeButtonCount !== 2) {
-      throw new Error('Expected unit/kg mode buttons on a kg-sale-unit item, got: ' + result.modeButtonCount);
+    if (result.modeButtonCount !== 0) {
+      throw new Error('Expected no kg/units toggle (units only), got: ' + result.modeButtonCount);
     }
 
     if (!result.noteHiddenBefore || result.noteHiddenAfter) {
@@ -281,38 +281,23 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected header cart drawer to open and close, got: ' + JSON.stringify(cartDrawerResult));
     }
 
-    // Switching a kg-sale-unit item to ק״ג gives an exact (non-estimated)
-    // total and a 0.5 kg step.
-    const kgResult = await page.evaluate(() => {
+    // Orders are units-only: a kg-sale-unit item still orders in whole units
+    // (no kg toggle), with a "יחידות" suffix and a whole-number step.
+    const unitsOnlyResult = await page.evaluate(() => {
       const row = [...document.querySelectorAll('.product-row')]
         .find(r => String(r.getAttribute('data-name') || '').includes('עגבניה'));
-      row.querySelector('[data-mode-button="kg"]').click();
-
       const input = row.querySelector('.quantity-input');
-      const convertedValue = input.value; // 2 units × 0.15 kg ≈ 0.3 → 0.5
-
-      input.value = '1.5';
-      input.dispatchEvent(new Event('input', { bubbles: true }));
 
       return {
         mode: row.getAttribute('data-mode'),
         step: input.step,
         suffix: row.querySelector('.suffix').textContent,
-        convertedValue,
-        estimateText: row.querySelector('[data-row-estimate]').textContent,
+        kgButton: !!row.querySelector('[data-mode-button="kg"]'),
       };
     });
 
-    if (kgResult.mode !== 'kg' || kgResult.step !== '0.5' || kgResult.suffix !== 'ק״ג') {
-      throw new Error('Expected kg mode with 0.5 step and ק״ג suffix, got: ' + JSON.stringify(kgResult));
-    }
-
-    if (kgResult.convertedValue !== '0.5') {
-      throw new Error('Expected 2 units to convert to 0.5 kg on switch, got: ' + kgResult.convertedValue);
-    }
-
-    if (!kgResult.estimateText.includes('סכום: ₪15') || kgResult.estimateText.includes('משוער')) {
-      throw new Error('Expected exact kg total ₪15 (1.5×10), got: ' + kgResult.estimateText);
+    if (unitsOnlyResult.mode !== 'unit' || unitsOnlyResult.step !== '1' || unitsOnlyResult.suffix !== 'יחידות' || unitsOnlyResult.kgButton) {
+      throw new Error('Expected units-only ordering (unit mode, step 1, יחידות, no kg button), got: ' + JSON.stringify(unitsOnlyResult));
     }
 
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
