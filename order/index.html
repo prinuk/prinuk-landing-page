@@ -3132,6 +3132,13 @@
             min-width: 0;
         }
 
+        /* Emphasize the amount; keep the "/unit" qualifier quiet. */
+        .price-unit {
+            color: var(--muted);
+            font-size: 0.82em;
+            font-weight: 700;
+        }
+
         /* The units/kg switch is only relevant once the item is in the cart. */
         .product-row:not(.is-selected) .segment {
             display: none;
@@ -4532,15 +4539,13 @@
         }
 
         function renderOutOfStockProduct(product, categoryName) {
-            var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
-
             return [
                 '<article class="product-row out-of-stock" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-out-of-stock="1" aria-disabled="true">',
                 '<div class="product-info">',
                 renderProductImage(product, true),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
-                '<span class="price">' + escapeHtml(price) + '</span>',
+                priceHtml(product),
                 '</div>',
                 '</div>',
                 '<div class="out-of-stock-note">אזל מהמלאי</div>',
@@ -4581,10 +4586,16 @@
             ].join('');
         }
 
+        // Price with the amount emphasized and the "/unit" qualifier muted.
+        function priceHtml(product) {
+            var amount = escapeHtml(product.priceDisplay + ' ש״ח');
+            var unit = escapeHtml('ל-' + (product.priceUnit || product.unit));
+            return '<span class="price"><span class="price-amount">' + amount + '</span> <span class="price-unit">' + unit + '</span></span>';
+        }
+
         function renderUnitControls(product) {
             var productName = escapeAttr(product.name);
             var allowKg = getUnitType(product.unit) === 'kg';
-            var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
 
             var toggle = allowKg
                 ? [
@@ -4600,7 +4611,7 @@
                 '<div class="amount-line' + (allowKg ? '' : ' single') + '">',
                 toggle,
                 '<div class="prow">',
-                '<span class="price">' + escapeHtml(price) + '</span>',
+                priceHtml(product),
                 '<div class="number-wrap" role="group" aria-label="כמות עבור ' + productName + '">',
                 '<button class="quantity-button" type="button" data-quantity-action="decrease" aria-label="הפחתת כמות עבור ' + productName + '">−</button>',
                 '<input class="quantity-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" aria-label="כמות עבור ' + productName + '" data-product-id="' + escapeAttr(product.id) + '">',
