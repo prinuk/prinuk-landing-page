@@ -3493,6 +3493,18 @@
             margin-inline-end: 4px;
         }
 
+        /* Category tabs with a produce icon. */
+        .nav-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .nav-pill-ico {
+            font-size: 1.1em;
+            line-height: 1;
+        }
+
         .contact-link {
             gap: 8px;
             padding-inline: 14px;
@@ -4508,9 +4520,9 @@
 
             activeCategory = '';
             els.categoryNav.innerHTML = [
-                '<button class="nav-pill" type="button" data-category-tab="">הכל</button>'
+                '<button class="nav-pill" type="button" data-category-tab=""><span class="nav-pill-ico" aria-hidden="true">🧺</span>הכל</button>'
             ].concat(catalog.categories.map(function (category) {
-                return '<button class="nav-pill inactive" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '">' + escapeHtml(category.name) + '</button>';
+                return '<button class="nav-pill inactive" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '"><span class="nav-pill-ico" aria-hidden="true">' + categoryIcon(category.name) + '</span>' + escapeHtml(category.name) + '</button>';
             })).join('');
 
             els.categoryNav.querySelectorAll('[data-category-tab]').forEach(function (button) {
@@ -4611,6 +4623,23 @@
             } else {
                 els.emailContact.classList.add('hidden');
             }
+        }
+
+        // Produce icon for a category tab (matched by normalized name).
+        function categoryIcon(name) {
+            var key = String(name || '').replace(/[״"׳']/g, '').trim();
+            var map = {
+                'ירקות': '🥕',
+                'פירות': '🍎',
+                'עלים': '🌿',
+                'עלים ותבלינים': '🌿',
+                'תבלינים': '🌿',
+                'מיוחדים': '✨',
+                'מבצעים': '🏷️',
+                'מבצעי השבוע': '🏷️',
+                'אחר': '🧺'
+            };
+            return map[key] || '🥗';
         }
 
         function renderCategory(category) {
