@@ -3324,6 +3324,90 @@
             font-size: 14px;
             font-weight: 900;
         }
+
+        /* Pre-order info: icon-led cards + a calm quality note (replaces the
+           stack of full-width notice bars). */
+        .order-info-panel .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .info-card {
+            display: flex;
+            gap: 12px;
+            padding: 15px 16px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: var(--surface-tint);
+        }
+
+        .info-card > svg,
+        .quality-note > svg {
+            flex: 0 0 auto;
+            width: 24px;
+            height: 24px;
+            margin-top: 1px;
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .info-card-body {
+            min-width: 0;
+        }
+
+        .info-card-title,
+        .quality-note-title {
+            margin-bottom: 3px;
+            color: var(--accent-dark);
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .info-card-text {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.45;
+        }
+
+        .quality-note {
+            display: flex;
+            gap: 12px;
+            padding: 16px 18px;
+            border: 1px solid rgba(46, 90, 57, 0.18);
+            border-radius: 14px;
+            background: var(--accent-soft);
+        }
+
+        .quality-note p {
+            margin: 0;
+            color: var(--accent-dark);
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.55;
+        }
+
+        .order-info-panel .contact-info {
+            align-items: center;
+            padding-top: 14px;
+            border-top: 1px solid var(--line);
+        }
+
+        .order-info-panel .contact-title {
+            width: auto;
+            margin-inline-end: 4px;
+        }
+
+        @media (max-width: 760px) {
+            .order-info-panel .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -3418,26 +3502,48 @@
                 </section>
 
                 <section class="panel order-info-panel" aria-labelledby="orderInfoTitle">
-                    <h2 id="orderInfoTitle">מה חשוב לדעת לפני שמזמינים</h2>
-                    <div class="delivery-note">
-                        משלוח: 25 ש״ח. בהזמנה מעל 200 ש״ח המשלוח חינם.
+                    <h2 id="orderInfoTitle">מה כדאי לדעת לפני שמזמינים</h2>
+
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                            <div class="info-card-body">
+                                <div class="info-card-title">משלוח</div>
+                                <p class="info-card-text">25 ש״ח · חינם בהזמנה מעל 200 ש״ח</p>
+                            </div>
+                        </div>
+
+                        <div class="info-card" data-pickup-card>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21c4-4 7-7.5 7-11a7 7 0 1 0-14 0c0 3.5 3 7 7 11zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
+                            <div class="info-card-body">
+                                <div class="info-card-title">המכירה השבועית</div>
+                                <p id="pickupInfo" class="info-card-text">המכירה מתקיימת מדי יום רביעי ברחוב עוזיאל 101 בין השעות 10:00-19:00</p>
+                            </div>
+                        </div>
+
+                        <div class="info-card">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 9h6M9 13h6"/></svg>
+                            <div class="info-card-body">
+                                <div class="info-card-title">חיוב לפי משקל בפועל</div>
+                                <p class="info-card-text">הסכום המוצג הוא הערכה בלבד. החיוב הסופי מתבצע בעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.</p>
+                            </div>
+                        </div>
                     </div>
-                    <div id="pickupInfo" class="pickup-info">
-                        המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00
+
+                    <div class="quality-note">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2zM7 17c3-4 6-6 9-7"/></svg>
+                        <div>
+                            <div class="quality-note-title">מחויבות לאיכות</div>
+                            <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
+                        </div>
                     </div>
+
                     <div id="contactInfo" class="contact-info">
-                        <div class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</div>
+                        <span class="contact-title">ליצירת קשר או להזמנה בדרכים נוספות</span>
                         <a id="phoneContact" class="contact-link" href="tel:0535234975">שיחה: 0535234975</a>
                         <a id="whatsappContact" class="contact-link" href="https://wa.me/972535234975" target="_blank"
                             rel="noopener">וואטסאפ</a>
                         <a id="emailContact" class="contact-link" href="mailto:prinuk10@gmail.com">מייל</a>
-                    </div>
-                    <div class="billing-notice">
-                        הסכום המוצג הוא הערכה בלבד. החיוב הסופי יתבצע בשעת ליקוט ההזמנה, לפי המשקל והכמויות בפועל.
-                    </div>
-                    <div class="quality-notice">
-                        <strong>חשוב לנו שתדעו:</strong>
-                        <p>בפרינוּק, אנחנו מתחייבים לאיכות וטריות ללא פשרות. לכן, ייתכן שבבוקר המכירה נחליט להסיר מהמלאי פריטים מסוימים שלא עמדו במבחן האיכות הקפדני שלנו. במידה ופריט שהזמנת חסר, נעשה את מירב המאמצים לעדכן אותך, וכמובן שלא תחויב על מוצרים שלא סופקו.</p>
                     </div>
                 </section>
 
@@ -4173,7 +4279,8 @@
             document.title = title;
             document.getElementById('formTitle').textContent = title;
             els.pickupInfo.textContent = pickupText;
-            els.pickupInfo.classList.toggle('hidden', !pickupText);
+            var pickupCard = els.pickupInfo.closest('[data-pickup-card]') || els.pickupInfo;
+            pickupCard.classList.toggle('hidden', !pickupText);
             renderContactInfo(contactPhone, contactEmail);
             setBrandLogo(logoUrl);
 
