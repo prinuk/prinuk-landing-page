@@ -1708,7 +1708,7 @@
     }
 
     function renderProduct(product, categoryName) {
-      var price = product.priceDisplay + ' ש״ח ל-' + (product.priceUnit || product.unit);
+      var price = product.priceDisplay + ' ש״ח ל' + (product.priceUnit || product.unit);
 
       return [
         '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
