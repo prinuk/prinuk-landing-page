@@ -1080,27 +1080,29 @@
 
         .cart-feedback {
             position: fixed;
-            inset-inline-end: 18px;
+            left: 50%;
+            right: auto;
             bottom: 18px;
             z-index: 1001;
-            max-width: min(320px, calc(100vw - 32px));
-            padding: 12px 14px;
+            max-width: min(340px, calc(100vw - 32px));
+            padding: 12px 18px;
             color: #fff;
             background: var(--accent-dark);
-            border-radius: 8px;
+            border-radius: 999px;
             box-shadow: 0 18px 40px rgba(7, 48, 107, 0.28);
             font-size: 14px;
             font-weight: 900;
             line-height: 1.35;
+            text-align: center;
             opacity: 0;
             pointer-events: none;
-            transform: translateY(12px);
+            transform: translate(-50%, 12px);
             transition: opacity 180ms ease, transform 180ms ease;
         }
 
         .cart-feedback.show {
             opacity: 1;
-            transform: translateY(0);
+            transform: translate(-50%, 0);
         }
 
         .summary.bump {
@@ -1409,9 +1411,7 @@
             }
 
             .cart-feedback {
-                inset-inline: 12px;
                 bottom: calc(var(--mobile-summary-height) + 18px + env(safe-area-inset-bottom));
-                max-width: none;
             }
 
             body.is-text-editing .summary {
@@ -3070,6 +3070,108 @@
             .store-footer-bottom {
                 margin-top: 28px;
             }
+        }
+
+        /* === Compact product cards + Claude-style add control === */
+        @media (min-width: 681px) {
+            .product-list {
+                gap: 14px;
+            }
+
+            .product-image-wrap {
+                aspect-ratio: 1 / 0.64;
+            }
+
+            .product-name {
+                min-height: 0;
+                padding: 12px 14px 6px;
+            }
+
+            .product-name strong {
+                font-size: 17px;
+            }
+
+            .price {
+                font-size: 13px;
+            }
+
+            .amount-line {
+                padding: 2px 12px 12px;
+            }
+        }
+
+        /* The units/kg switch is only relevant once the item is in the cart. */
+        .product-row:not(.is-selected) .segment {
+            display: none;
+        }
+
+        /* Not in cart → one clean round "add" button, like the Claude design. */
+        .product-row:not(.is-selected) .amount-line {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .product-row:not(.is-selected) .number-wrap {
+            display: inline-flex;
+            width: auto;
+            min-height: 0;
+            overflow: visible;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .product-row:not(.is-selected) .number-wrap input,
+        .product-row:not(.is-selected) .quantity-button[data-quantity-action="decrease"],
+        .product-row:not(.is-selected) .suffix {
+            display: none;
+        }
+
+        .product-row:not(.is-selected) .quantity-button[data-quantity-action="increase"] {
+            width: 42px;
+            height: 42px;
+            min-height: 42px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #f8f3e8;
+            font-size: 23px;
+            box-shadow: 0 12px 24px -14px rgba(46, 90, 57, 0.95);
+        }
+
+        .product-row:not(.is-selected) .quantity-button[data-quantity-action="increase"]:hover,
+        .product-row:not(.is-selected) .quantity-button[data-quantity-action="increase"]:focus-visible {
+            background: var(--accent-dark);
+            color: #f8f3e8;
+            transform: translateY(-1px);
+        }
+
+        /* In cart → green stepper pill that still shows the unit (units / ק״ג). */
+        .product-row.is-selected .number-wrap {
+            grid-template-columns: 40px minmax(30px, 1fr) 40px auto;
+            min-height: 44px;
+            border-color: var(--accent);
+            border-radius: 999px;
+        }
+
+        .product-row.is-selected .quantity-button {
+            background: var(--accent);
+            color: #f8f3e8;
+            font-size: 22px;
+        }
+
+        .product-row.is-selected .quantity-button:hover,
+        .product-row.is-selected .quantity-button:focus-visible {
+            background: var(--accent-dark);
+            color: #f8f3e8;
+        }
+
+        .product-row.is-selected .suffix {
+            min-width: 0;
+            padding: 0 12px 0 10px;
+            border-inline-start: 0;
+            background: transparent;
+            color: var(--accent-dark);
+            font-size: 13px;
         }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
