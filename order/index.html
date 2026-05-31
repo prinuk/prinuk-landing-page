@@ -3213,7 +3213,7 @@
             top: 20px;
             /* Align to the content column edge, not the viewport edge. */
             left: max(24px, calc((100vw - 1360px) / 2));
-            width: min(440px, 35%);
+            width: min(520px, 40%);
             height: calc(100% - 40px);
             object-fit: cover;
             border-radius: 20px;
@@ -3224,9 +3224,62 @@
 
         .weekly-sale-intro > .catalog-eyebrow,
         .weekly-sale-intro > h2,
-        .weekly-sale-intro > p {
+        .weekly-sale-intro > p,
+        .weekly-sale-intro > .hero-badges {
             position: relative;
             z-index: 1;
+        }
+
+        .weekly-sale-sub {
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Trust badges under the headline. */
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 22px;
+            margin-top: 22px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-dark);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .hero-badge svg {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+            color: var(--accent);
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Desktop: keep the hero text in a right-hand column, clear of the photo. */
+        @media (min-width: 761px) {
+            .weekly-sale-intro > .catalog-eyebrow,
+            .weekly-sale-intro > h2,
+            .weekly-sale-intro > .weekly-sale-sub,
+            .weekly-sale-intro > .hero-badges {
+                max-width: min(640px, 56%);
+                margin-left: auto;
+                margin-right: 0;
+            }
+
+            .weekly-sale-intro h2 {
+                font-size: clamp(38px, 4.4vw, 58px);
+            }
         }
 
         /* On small screens the headline needs the full width — hide the photo. */
@@ -3776,9 +3829,23 @@
             <main class="main">
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
                     <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async">
-                    <p class="catalog-eyebrow">מבחר טרי, מתעדכן מדי שבוע · כל יום רביעי</p>
-                    <h2 id="weeklySaleTitle">המכירה השבועית</h2>
-                    <p>בחרו מוצרים, הגדירו כמות ושלחו את ההזמנה בקלות. הסכום מתעדכן בזמן הבחירה.</p>
+                    <p class="catalog-eyebrow">המכירה השבועית</p>
+                    <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
+                    <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
+                    <div class="hero-badges">
+                        <span class="hero-badge">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                            משלוח עד הבית
+                        </span>
+                        <span class="hero-badge">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2zM7 17c3-4 6-6 9-7"/></svg>
+                            טרי ואיכותי
+                        </span>
+                        <span class="hero-badge">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4"/></svg>
+                            מובחר בקפידה
+                        </span>
+                    </div>
                 </section>
 
                 <section class="panel order-info-panel" aria-labelledby="orderInfoTitle">
