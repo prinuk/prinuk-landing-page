@@ -4703,7 +4703,7 @@
         // Price with the amount emphasized and the "/unit" qualifier muted.
         function priceHtml(product) {
             var amount = escapeHtml(product.priceDisplay + ' ש״ח');
-            var unit = escapeHtml('ל-' + (product.priceUnit || product.unit));
+            var unit = escapeHtml('ל' + (product.priceUnit || product.unit));
             return '<span class="price"><span class="price-amount">' + amount + '</span> <span class="price-unit">' + unit + '</span></span>';
         }
 
