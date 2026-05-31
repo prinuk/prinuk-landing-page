@@ -2362,7 +2362,9 @@
         .floating-cart-button {
             position: fixed;
             bottom: calc(22px + env(safe-area-inset-bottom));
-            inset-inline-end: 22px;
+            /* Align to the content column edge, not the viewport edge, so it
+               stays within the same scope as the rest of the layout. */
+            inset-inline-end: max(22px, calc((100vw - 1360px) / 2));
             z-index: 300;
             display: none;
             align-items: center;
