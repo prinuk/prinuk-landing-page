@@ -3207,27 +3207,38 @@
             overflow: hidden;
         }
 
-        /* Clean, defined produce photo card on the start (left in RTL) side. */
+        /* Hero as a centered two-column card: text (right) + photo (left). */
+        .weekly-sale-intro {
+            padding-block: clamp(36px, 4.5vw, 56px);
+        }
+
+        .weekly-sale-card {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: clamp(28px, 4vw, 60px);
+            width: min(1360px, 100%);
+            margin: 0 auto;
+        }
+
+        .weekly-sale-copy {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
         .weekly-sale-art {
-            position: absolute;
-            top: 20px;
-            /* Align to the content column edge, not the viewport edge. */
-            left: max(24px, calc((100vw - 1360px) / 2));
-            width: min(520px, 40%);
-            height: calc(100% - 40px);
+            flex: 0 0 auto;
+            width: min(460px, 42%);
+            height: clamp(240px, 26vw, 320px);
             object-fit: cover;
             border-radius: 20px;
             box-shadow: 0 26px 50px -34px rgba(27, 42, 32, 0.5);
-            z-index: 0;
-            pointer-events: none;
         }
 
-        .weekly-sale-intro > .catalog-eyebrow,
-        .weekly-sale-intro > h2,
-        .weekly-sale-intro > p,
-        .weekly-sale-intro > .hero-badges {
-            position: relative;
-            z-index: 1;
+        .weekly-sale-card > .weekly-sale-copy > * {
+            margin-inline: 0;
+            max-width: none;
         }
 
         .weekly-sale-sub {
@@ -3316,24 +3327,18 @@
             stroke-linejoin: round;
         }
 
-        /* Desktop: keep the hero text in a right-hand column, clear of the photo. */
         @media (min-width: 761px) {
-            .weekly-sale-intro > .catalog-eyebrow,
-            .weekly-sale-intro > h2,
-            .weekly-sale-intro > .weekly-sale-sub,
-            .weekly-sale-intro > .hero-badges {
-                max-width: min(640px, 56%);
-                margin-left: auto;
-                margin-right: 0;
-            }
-
             .weekly-sale-intro h2 {
                 font-size: clamp(38px, 4.4vw, 58px);
             }
         }
 
-        /* On small screens the headline needs the full width — hide the photo. */
+        /* On small screens stack to one column and hide the photo. */
         @media (max-width: 760px) {
+            .weekly-sale-card {
+                display: block;
+            }
+
             .weekly-sale-art {
                 display: none;
             }
@@ -3878,26 +3883,30 @@
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
-                    <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async">
                     <span class="hero-leaf hero-leaf-1" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z"/></svg></span>
                     <span class="hero-leaf hero-leaf-2" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z"/></svg></span>
                     <span class="hero-leaf hero-leaf-3" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2z"/></svg></span>
-                    <p class="catalog-eyebrow">המכירה השבועית</p>
-                    <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
-                    <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
-                    <div class="hero-badges">
-                        <span class="hero-badge">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
-                            משלוח עד הבית
-                        </span>
-                        <span class="hero-badge">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2zM7 17c3-4 6-6 9-7"/></svg>
-                            טרי ואיכותי
-                        </span>
-                        <span class="hero-badge">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4"/></svg>
-                            מובחר בקפידה
-                        </span>
+                    <div class="weekly-sale-card">
+                        <div class="weekly-sale-copy">
+                            <p class="catalog-eyebrow">המכירה השבועית</p>
+                            <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
+                            <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
+                            <div class="hero-badges">
+                                <span class="hero-badge">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                                    משלוח עד הבית
+                                </span>
+                                <span class="hero-badge">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 21c-4 0-8-3-8-9 0-3 2-6 4-7 3-2 8-2 11-2 0 5-1 10-4 13-1 1-2 2-3 2zM7 17c3-4 6-6 9-7"/></svg>
+                                    טרי ואיכותי
+                                </span>
+                                <span class="hero-badge">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4"/></svg>
+                                    מובחר בקפידה
+                                </span>
+                            </div>
+                        </div>
+                        <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="מבחר פירות וירקות טריים" loading="lazy" decoding="async">
                     </div>
                 </section>
 
