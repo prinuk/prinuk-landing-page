@@ -3139,6 +3139,40 @@
             font-weight: 700;
         }
 
+        /* Produce photo filling the empty (start/left in RTL) side of the hero,
+           dissolving into the cream toward the headline. */
+        .weekly-sale-intro {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weekly-sale-art {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: min(50%, 760px);
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(to right, #000 22%, transparent 95%);
+            mask-image: linear-gradient(to right, #000 22%, transparent 95%);
+        }
+
+        .weekly-sale-intro > .catalog-eyebrow,
+        .weekly-sale-intro > h2,
+        .weekly-sale-intro > p {
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 680px) {
+            .weekly-sale-art {
+                width: 64%;
+            }
+        }
+
         /* The units/kg switch is only relevant once the item is in the cart. */
         .product-row:not(.is-selected) .segment {
             display: none;
@@ -3555,6 +3589,7 @@
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
+                    <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async">
                     <p class="catalog-eyebrow">מבחר טרי, מתעדכן מדי שבוע · כל יום רביעי</p>
                     <h2 id="weeklySaleTitle">המכירה השבועית</h2>
                     <p>בחרו מוצרים, הגדירו כמות ושלחו את ההזמנה בקלות. הסכום מתעדכן בזמן הבחירה.</p>
