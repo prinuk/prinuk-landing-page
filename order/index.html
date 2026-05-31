@@ -3150,14 +3150,16 @@
             position: absolute;
             top: 0;
             bottom: 0;
-            left: 0;
-            width: min(50%, 760px);
+            /* Start at the content column edge (not the viewport edge) so the
+               image stays within the page's scope like everything else. */
+            left: max(24px, calc((100vw - 1360px) / 2));
+            width: min(600px, 44%);
             height: 100%;
             object-fit: cover;
             z-index: 0;
             pointer-events: none;
-            -webkit-mask-image: linear-gradient(to right, #000 22%, transparent 95%);
-            mask-image: linear-gradient(to right, #000 22%, transparent 95%);
+            -webkit-mask-image: linear-gradient(to right, #000 18%, transparent 94%);
+            mask-image: linear-gradient(to right, #000 18%, transparent 94%);
         }
 
         .weekly-sale-intro > .catalog-eyebrow,
@@ -3169,7 +3171,8 @@
 
         @media (max-width: 680px) {
             .weekly-sale-art {
-                width: 64%;
+                left: 0;
+                width: 68%;
             }
         }
 
