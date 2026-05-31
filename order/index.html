@@ -2345,6 +2345,67 @@
             display: none;
         }
 
+        /* Header cart shown as a "הסל שלי · ₪X" pill. */
+        .store-cart-pill {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            height: 46px;
+            padding: 0 17px 0 14px;
+            border: 0;
+            border-radius: 999px;
+            color: #f8f3e8;
+            background: var(--accent);
+            cursor: pointer;
+            transition: background 160ms ease, transform 160ms ease;
+        }
+
+        .store-cart-pill:hover,
+        .store-cart-pill:focus-visible {
+            background: var(--accent-dark);
+            transform: translateY(-1px);
+        }
+
+        .store-cart-pill svg {
+            width: 21px;
+            height: 21px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .store-cart-text {
+            display: grid;
+            line-height: 1.04;
+            text-align: start;
+        }
+
+        .store-cart-label {
+            font-size: 11px;
+            font-weight: 800;
+            opacity: 0.85;
+        }
+
+        .store-cart-total {
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        @media (max-width: 680px) {
+            .store-cart-pill {
+                gap: 7px;
+                height: 42px;
+                padding: 0 13px;
+            }
+
+            .store-cart-label {
+                display: none;
+            }
+        }
+
         .cart-overlay {
             position: fixed;
             inset: 0;
@@ -3493,16 +3554,49 @@
             margin-inline-end: 4px;
         }
 
-        /* Category tabs with a produce icon. */
+        /* Category tabs with a round produce-photo icon. */
         .nav-pill {
             display: inline-flex;
             align-items: center;
-            gap: 7px;
+            gap: 8px;
+            padding-inline-start: 7px;
         }
 
         .nav-pill-ico {
-            font-size: 1.1em;
-            line-height: 1;
+            display: inline-grid;
+            flex: 0 0 auto;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            overflow: hidden;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: inset 0 0 0 1px rgba(27, 42, 32, 0.08);
+        }
+
+        .nav-pill-ico img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .nav-pill-ico-all {
+            background: var(--accent-soft);
+        }
+
+        .nav-pill-ico-all svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* On the active (green) tab keep the icon chip readable. */
+        .nav-pill:not(.inactive) .nav-pill-ico-all {
+            background: rgba(255, 255, 255, 0.9);
         }
 
         .contact-link {
@@ -3645,11 +3739,15 @@
             </nav>
 
             <div class="store-actions">
-                <button id="headerCartButton" class="store-icon-button" type="button" aria-label="פתיחת סל קניות"
+                <button id="headerCartButton" class="store-cart-pill" type="button" aria-label="פתיחת סל קניות"
                     aria-expanded="false" aria-controls="orderSummary">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/>
                     </svg>
+                    <span class="store-cart-text">
+                        <span class="store-cart-label">הסל שלי</span>
+                        <span id="headerCartTotal" class="store-cart-total">₪0</span>
+                    </span>
                     <span id="headerCartCount" class="header-cart-count" hidden>0</span>
                 </button>
             </div>
@@ -4006,6 +4104,7 @@
             cartToggleButton: document.getElementById('cartToggleButton'),
             headerCartButton: document.getElementById('headerCartButton'),
             headerCartCount: document.getElementById('headerCartCount'),
+            headerCartTotal: document.getElementById('headerCartTotal'),
             cartCloseButton: document.getElementById('cartCloseButton'),
             cartOverlay: document.getElementById('cartOverlay'),
             floatingCartButton: document.getElementById('floatingCartButton'),
@@ -4520,9 +4619,9 @@
 
             activeCategory = '';
             els.categoryNav.innerHTML = [
-                '<button class="nav-pill" type="button" data-category-tab=""><span class="nav-pill-ico" aria-hidden="true">🧺</span>הכל</button>'
+                '<button class="nav-pill" type="button" data-category-tab="">' + categoryIconHtml('') + 'הכל</button>'
             ].concat(catalog.categories.map(function (category) {
-                return '<button class="nav-pill inactive" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '"><span class="nav-pill-ico" aria-hidden="true">' + categoryIcon(category.name) + '</span>' + escapeHtml(category.name) + '</button>';
+                return '<button class="nav-pill inactive" type="button" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-tab="' + escapeAttr(category.name) + '">' + categoryIconHtml(category.name) + escapeHtml(category.name) + '</button>';
             })).join('');
 
             els.categoryNav.querySelectorAll('[data-category-tab]').forEach(function (button) {
@@ -4625,21 +4724,26 @@
             }
         }
 
-        // Produce icon for a category tab (matched by normalized name).
-        function categoryIcon(name) {
+        // Produce photo tile for a category tab (matched by normalized name).
+        // "הכל" (empty name) uses a basket glyph; unknown categories fall back
+        // to a representative photo.
+        function categoryIconHtml(name) {
+            if (!name) {
+                return '<span class="nav-pill-ico nav-pill-ico-all" aria-hidden="true">'
+                    + '<svg viewBox="0 0 24 24"><path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/></svg>'
+                    + '</span>';
+            }
             var key = String(name || '').replace(/[״"׳']/g, '').trim();
             var map = {
-                'ירקות': '🥕',
-                'פירות': '🍎',
-                'עלים': '🌿',
-                'עלים ותבלינים': '🌿',
-                'תבלינים': '🌿',
-                'מיוחדים': '✨',
-                'מבצעים': '🏷️',
-                'מבצעי השבוע': '🏷️',
-                'אחר': '🧺'
+                'ירקות': 'tomato',
+                'פירות': 'apple-red',
+                'עלים': 'lettuce',
+                'עלים ותבלינים': 'lettuce',
+                'תבלינים': 'basil',
+                'מיוחדים': 'pineapple'
             };
-            return map[key] || '🥗';
+            var file = map[key] || 'tomato';
+            return '<span class="nav-pill-ico" aria-hidden="true"><img src="/assets/produce/' + file + '.jpg" alt="" loading="lazy" decoding="async"></span>';
         }
 
         function renderCategory(category) {
@@ -5217,6 +5321,10 @@
 
             if (els.finishTotal) {
                 els.finishTotal.textContent = itemCount > 0 ? ' · ₪' + formatMoney(grandTotal) : '';
+            }
+
+            if (els.headerCartTotal) {
+                els.headerCartTotal.textContent = '₪' + formatMoney(grandTotal);
             }
         }
 
