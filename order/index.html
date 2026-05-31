@@ -3320,7 +3320,8 @@
         /* Subtle floating leaf decorations (decorative, behind content). */
         .hero-leaves {
             position: absolute;
-            inset: 0;
+            inset: 0 0 0 auto;
+            width: 60%;
             z-index: 0;
             pointer-events: none;
         }
@@ -3335,16 +3336,20 @@
             transform-origin: center;
         }
 
-        .leaf-1 { top: 6%; left: 40%; transform: rotate(-22deg) scale(1.15); opacity: 0.24; }
-        .leaf-2 { top: 26%; right: 8%; transform: rotate(18deg) scale(0.8); opacity: 0.14; filter: blur(1px); }
-        .leaf-3 { bottom: 14%; right: 30%; transform: rotate(-8deg) scale(0.65); opacity: 0.2; }
-        .leaf-4 { top: 54%; left: 43%; transform: rotate(32deg) scale(1.5); opacity: 0.18; filter: blur(1.4px); }
-        .leaf-5 { bottom: 8%; right: 6%; transform: rotate(-35deg) scale(1.25); opacity: 0.16; filter: blur(1.2px); }
+        .leaf-1 { top: 3%; left: 22%; transform: rotate(-22deg) scale(1.15); opacity: 0.24; }
+        .leaf-2 { top: 22%; right: 3%; transform: rotate(18deg) scale(0.8); opacity: 0.14; filter: blur(1px); }
+        .leaf-3 { bottom: 14%; right: 34%; transform: rotate(-8deg) scale(0.65); opacity: 0.2; }
+        .leaf-4 { top: 53%; left: 3%; transform: rotate(32deg) scale(1.5); opacity: 0.18; filter: blur(1.4px); }
+        .leaf-5 { bottom: 4%; right: 4%; transform: rotate(-35deg) scale(1.25); opacity: 0.16; filter: blur(1.2px); }
 
         @media (max-width: 900px) {
             .weekly-sale-card {
                 grid-template-columns: 1fr;
                 gap: 28px;
+            }
+
+            .hero-leaves {
+                width: 100%;
             }
 
             .weekly-sale-copy {
