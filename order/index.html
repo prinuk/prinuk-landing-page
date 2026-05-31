@@ -3248,12 +3248,6 @@
             margin-bottom: 2px;
         }
 
-        /* The unit toggle already states the chosen unit, so drop the duplicate
-           label inside the stepper for kg items (kept for unit-only products). */
-        .amount-line:not(.single) .suffix {
-            display: none;
-        }
-
         /* Lighter, less bulky unit toggle. */
         .segment {
             min-height: 34px;
@@ -3262,6 +3256,26 @@
 
         .segment button {
             font-size: 12.5px;
+        }
+
+        /* Make it explicit that the toggle chooses the ordering unit, and make
+           the chosen option pop so "units vs kg" is unmistakable. */
+        .unit-toggle-label {
+            margin-bottom: 2px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            text-align: start;
+        }
+
+        .product-row:not(.is-selected) .unit-toggle-label {
+            display: none;
+        }
+
+        .segment button.active {
+            color: #f8f3e8;
+            background: var(--accent);
+            box-shadow: 0 2px 6px -2px rgba(46, 90, 57, 0.6);
         }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
@@ -4313,6 +4327,7 @@
 
             var toggle = allowKg
                 ? [
+                    '<span class="unit-toggle-label">כמות לפי</span>',
                     '<div class="segment" role="group" aria-label="אופן הזמנה עבור ' + productName + '">',
                     '<button class="active" type="button" data-mode-button="unit" aria-pressed="true">יחידות</button>',
                     '<button type="button" data-mode-button="kg" aria-pressed="false">ק״ג</button>',
