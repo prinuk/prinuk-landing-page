@@ -4275,7 +4275,7 @@
         var cartFeedbackTimer = null;
         var activeQuantityInput = null;
         var quantityScrollTimer = null;
-        var keyboardInsetSeen = false;
+        var baselineViewportHeight = 0;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var KG_STEP = 0.5;
@@ -4387,6 +4387,12 @@
         window.addEventListener('resize', handleNoticeViewportChange);
         window.addEventListener('resize', updateMobileSummaryMetrics);
         window.addEventListener('resize', updateSummaryAdFit);
+        window.addEventListener('resize', refreshKeyboardState);
+        window.addEventListener('orientationchange', function () {
+            // Reset the full-height baseline so it re-measures for the new orientation.
+            baselineViewportHeight = 0;
+            window.setTimeout(refreshKeyboardState, 300);
+        });
         if (els.summaryAd) {
             var summaryAdImg = els.summaryAd.querySelector('img');
             if (summaryAdImg) {
@@ -4412,6 +4418,7 @@
         restoreOrderDraft();
         loadCatalog();
         updateMobileSummaryMetrics();
+        refreshKeyboardState();
 
         document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
             input.addEventListener('change', function () {
@@ -4788,10 +4795,13 @@
                 scrollQuantityInputIntoView(event.target);
             }
 
-            // Slide the floating summary bar away while typing. Update now and
-            // again shortly after, since the keyboard opens slightly later.
-            refreshKeyboardState();
-            window.setTimeout(refreshKeyboardState, 250);
+            // Slide the floating summary bar away immediately — on mobile the
+            // keyboard opens right after a field is focused. A follow-up check
+            // restores it if the keyboard turns out not to have opened.
+            if (isTextEntryTarget(event.target)) {
+                document.body.classList.add('keyboard-open');
+            }
+            window.setTimeout(refreshKeyboardState, 300);
         }
 
         function handleTextEditingBlur(event) {
@@ -4811,36 +4821,41 @@
             }, 80);
         }
 
-        // Hide the floating summary bar while the customer is typing. Focus is the
-        // reliable cross-browser signal: on mobile, focusing a text field opens the
-        // keyboard. Some Android browsers (e.g. Samsung Internet) shrink
-        // window.innerHeight instead of the visual viewport, so a height-difference
-        // check alone fails — focus does not. The visual viewport is used only to
-        // detect the edge case where the keyboard is dismissed while the field keeps
-        // focus (Android keyboard-close button), so the bar can return.
+        function currentViewportHeight() {
+            if (window.visualViewport && window.visualViewport.height) {
+                return window.visualViewport.height;
+            }
+            return window.innerHeight;
+        }
+
+        // Hide the floating summary bar while the customer is typing, and bring it
+        // back the moment the keyboard closes — even if the field keeps focus.
+        // The open keyboard shrinks the viewport height; comparing the current
+        // height to the full-screen baseline detects open/close on every browser,
+        // including those (e.g. Samsung Internet) that shrink window.innerHeight
+        // itself rather than only the visual viewport.
         function refreshKeyboardState() {
             var textFocused = isTextEntryTarget(document.activeElement);
+            var height = currentViewportHeight();
 
             if (!textFocused) {
-                keyboardInsetSeen = false;
+                // No field focused: the keyboard is closed, so this is the full
+                // height. Grow the baseline towards it (ignoring transient dips
+                // while the keyboard animates closed); rotation resets it.
+                if (height > baselineViewportHeight) {
+                    baselineViewportHeight = height;
+                }
                 document.body.classList.remove('keyboard-open');
                 return;
             }
 
-            var inset = window.visualViewport
-                ? Math.max(0, window.innerHeight - window.visualViewport.height)
-                : 0;
+            // A field is focused: the keyboard is "open" only while the viewport is
+            // meaningfully shorter than the full-screen baseline.
+            var keyboardOpen = baselineViewportHeight > 0
+                ? (baselineViewportHeight - height) > 120
+                : true;
 
-            if (inset > 80) {
-                keyboardInsetSeen = true;
-            }
-
-            // Only treat the keyboard as dismissed when this browser actually
-            // reveals it through the visual viewport (keyboardInsetSeen) and the
-            // viewport has since returned to (near) full height.
-            var keyboardDismissed = keyboardInsetSeen && inset < 80;
-
-            document.body.classList.toggle('keyboard-open', !keyboardDismissed);
+            document.body.classList.toggle('keyboard-open', keyboardOpen);
         }
 
         function scrollQuantityInputIntoView(input) {
