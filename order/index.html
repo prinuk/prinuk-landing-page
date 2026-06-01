@@ -2193,6 +2193,7 @@
         }
 
         .store-announcement-inner {
+            position: relative;
             justify-content: center;
             min-height: 38px;
             gap: 26px;
@@ -2205,7 +2206,7 @@
             white-space: nowrap;
         }
 
-        .store-announcement span + span::before {
+        .store-announcement span:not(.store-announcement-bsd) + span::before {
             width: 4px;
             height: 4px;
             content: "";
@@ -2214,7 +2215,11 @@
         }
 
         .store-announcement-bsd {
+            position: absolute;
+            inset-inline-start: 0;
+            top: 50%;
             color: #d5a847;
+            transform: translateY(-50%);
         }
 
         .store-header {
