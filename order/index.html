@@ -4275,6 +4275,7 @@
         var cartFeedbackTimer = null;
         var activeQuantityInput = null;
         var quantityScrollTimer = null;
+        var keyboardInsetSeen = false;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var KG_STEP = 0.5;
@@ -4810,16 +4811,36 @@
             }, 80);
         }
 
-        // The floating summary bar should disappear only while the customer is
-        // actually typing: a field is focused AND the keyboard is showing. This
-        // combines focus state with the visual viewport so it works even when the
-        // Android keyboard-close button keeps focus on the field.
+        // Hide the floating summary bar while the customer is typing. Focus is the
+        // reliable cross-browser signal: on mobile, focusing a text field opens the
+        // keyboard. Some Android browsers (e.g. Samsung Internet) shrink
+        // window.innerHeight instead of the visual viewport, so a height-difference
+        // check alone fails — focus does not. The visual viewport is used only to
+        // detect the edge case where the keyboard is dismissed while the field keeps
+        // focus (Android keyboard-close button), so the bar can return.
         function refreshKeyboardState() {
             var textFocused = isTextEntryTarget(document.activeElement);
-            var viewportShrunk = window.visualViewport
-                ? (window.innerHeight - window.visualViewport.height) > 120
-                : textFocused;
-            document.body.classList.toggle('keyboard-open', textFocused && viewportShrunk);
+
+            if (!textFocused) {
+                keyboardInsetSeen = false;
+                document.body.classList.remove('keyboard-open');
+                return;
+            }
+
+            var inset = window.visualViewport
+                ? Math.max(0, window.innerHeight - window.visualViewport.height)
+                : 0;
+
+            if (inset > 80) {
+                keyboardInsetSeen = true;
+            }
+
+            // Only treat the keyboard as dismissed when this browser actually
+            // reveals it through the visual viewport (keyboardInsetSeen) and the
+            // viewport has since returned to (near) full height.
+            var keyboardDismissed = keyboardInsetSeen && inset < 80;
+
+            document.body.classList.toggle('keyboard-open', !keyboardDismissed);
         }
 
         function scrollQuantityInputIntoView(input) {
