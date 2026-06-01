@@ -4786,6 +4786,11 @@
                 activeQuantityInput = event.target;
                 scrollQuantityInputIntoView(event.target);
             }
+
+            // Slide the floating summary bar away while typing. Update now and
+            // again shortly after, since the keyboard opens slightly later.
+            refreshKeyboardState();
+            window.setTimeout(refreshKeyboardState, 250);
         }
 
         function handleTextEditingBlur(event) {
@@ -4801,16 +4806,20 @@
                 if (!isTextEntryTarget(document.activeElement)) {
                     document.body.classList.remove('is-text-editing');
                 }
+                refreshKeyboardState();
             }, 80);
         }
 
-        function updateKeyboardState() {
-            if (!window.visualViewport) {
-                return;
-            }
-
-            var keyboardOpen = (window.innerHeight - window.visualViewport.height) > 120;
-            document.body.classList.toggle('keyboard-open', keyboardOpen);
+        // The floating summary bar should disappear only while the customer is
+        // actually typing: a field is focused AND the keyboard is showing. This
+        // combines focus state with the visual viewport so it works even when the
+        // Android keyboard-close button keeps focus on the field.
+        function refreshKeyboardState() {
+            var textFocused = isTextEntryTarget(document.activeElement);
+            var viewportShrunk = window.visualViewport
+                ? (window.innerHeight - window.visualViewport.height) > 120
+                : textFocused;
+            document.body.classList.toggle('keyboard-open', textFocused && viewportShrunk);
         }
 
         function scrollQuantityInputIntoView(input) {
@@ -4875,7 +4884,7 @@
         }
 
         function handleQuantityViewportChange() {
-            updateKeyboardState();
+            refreshKeyboardState();
 
             if (!document.body.classList.contains('keyboard-open')) {
                 return;
