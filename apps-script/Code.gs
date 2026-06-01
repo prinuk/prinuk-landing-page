@@ -381,13 +381,19 @@ function refreshWeightSummary() {
     var agg = byProduct[name];
     agg.lines++;
 
-    if (!weightPriced) {
-      // Priced per unit: sum the raw number of units ordered.
+    var orderedByKg = getUnitType_(item['יחידת הזמנה']) === 'kg';
+
+    if (!orderedByKg) {
+      // Sum the raw number of units ordered. This applies both to unit-priced
+      // products and to weight-priced products that were ordered by the unit.
       agg.units += quantity;
+    }
+
+    if (!weightPriced) {
       return;
     }
 
-    if (getUnitType_(item['יחידת הזמנה']) === 'kg') {
+    if (orderedByKg) {
       // Ordered by weight: the quantity is already in kilograms.
       agg.weightKg += quantity;
       return;
@@ -439,9 +445,14 @@ function refreshWeightSummary() {
         note = 'כולל ' + formatAmount_(r.unknownUnits) + ' יח׳ ללא הערכת משקל — לשקול ידנית';
       }
     } else {
+      unitProductCount++;
+    }
+
+    // Units are summed for any product ordered by the unit, including
+    // weight-priced products, so the unit count shows alongside the weight.
+    if (r.units > 0) {
       units = Math.round(r.units * 100) / 100;
       totalUnits += units;
-      unitProductCount++;
     }
 
     output.push([r.name, r.department, weight, units, r.lines, note]);
