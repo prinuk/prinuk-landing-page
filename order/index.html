@@ -2223,7 +2223,7 @@
         }
 
         .store-header-inner {
-            min-height: 78px;
+            min-height: 94px;
             gap: 30px;
         }
 
@@ -2234,7 +2234,12 @@
             text-decoration: none;
         }
 
-        .store-wordmark img,
+        .store-wordmark img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+        }
+
         .store-footer-wordmark img {
             width: 60px;
             height: 60px;
@@ -2249,26 +2254,26 @@
         .store-wordmark-copy strong {
             color: var(--accent-dark);
             font-family: "Frank Ruhl Libre", serif;
-            font-size: 29px;
+            font-size: 34px;
             font-weight: 800;
         }
 
         .store-wordmark-copy small {
             margin-top: 5px;
             color: var(--muted);
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.15em;
         }
 
         .store-nav {
-            gap: 28px;
+            gap: 32px;
         }
 
         .store-nav a {
             position: relative;
             color: var(--muted);
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 800;
             text-decoration: none;
         }
@@ -2351,8 +2356,8 @@
             display: inline-flex;
             align-items: center;
             gap: 9px;
-            height: 46px;
-            padding: 0 17px 0 14px;
+            height: 52px;
+            padding: 0 20px 0 16px;
             border: 0;
             border-radius: 999px;
             color: #f8f3e8;
@@ -2368,8 +2373,8 @@
         }
 
         .store-cart-pill svg {
-            width: 21px;
-            height: 21px;
+            width: 23px;
+            height: 23px;
             fill: none;
             stroke: currentColor;
             stroke-width: 1.8;
@@ -2384,13 +2389,13 @@
         }
 
         .store-cart-label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 800;
             opacity: 0.85;
         }
 
         .store-cart-total {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 900;
         }
 
@@ -2922,6 +2927,41 @@
                 display: none;
             }
 
+            .store-header-inner {
+                min-height: 76px;
+            }
+
+            .store-wordmark img {
+                width: 56px;
+                height: 56px;
+            }
+
+            .store-wordmark-copy strong {
+                font-size: 27px;
+            }
+
+            .store-wordmark-copy small {
+                font-size: 9px;
+            }
+
+            .store-cart-pill {
+                height: 46px;
+                padding: 0 15px;
+            }
+
+            .store-cart-pill svg {
+                width: 21px;
+                height: 21px;
+            }
+
+            .store-cart-label {
+                font-size: 11px;
+            }
+
+            .store-cart-total {
+                font-size: 15px;
+            }
+
             .summary {
                 inset: auto max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
                 display: block;
@@ -3009,6 +3049,11 @@
 
             .store-actions {
                 gap: 7px;
+            }
+
+            .store-cart-pill {
+                height: 42px;
+                padding: 0 13px;
             }
 
             .store-icon-button {
