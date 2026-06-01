@@ -82,7 +82,7 @@ function onOpen() {
     .addItem('רענן דפי ליקוט', 'refreshPickingSheets')
     .addItem('סיכום משקל מוערך', 'refreshWeightSummary')
     .addSeparator()
-    .addItem('העבר הזמנות לארכיון ונקה', 'archiveOrdersAndClear')
+    .addItem('העבר מכירה לארכיון ונקה', 'archiveOrdersAndClear')
     .addItem('בדיקת קטלוג', 'logPrinokCatalog')
     .addItem('בדיקת טלגרם', 'testTelegramAlert')
     .addToUi();
@@ -264,8 +264,8 @@ function createProductSignsPdf() {
 function archiveOrdersAndClear() {
   var ui = SpreadsheetApp.getUi();
   var response = ui.alert(
-    'העברת הזמנות לארכיון',
-    'הפעולה תעתיק את כל ההזמנות ופריטי ההזמנות לארכיון, ואז תנקה את גיליונות ההזמנות הפעילים ואת דפי הליקוט. להמשיך?',
+    'העברת מכירה לארכיון',
+    'הפעולה תעתיק לארכיון את כל ההזמנות, פריטי ההזמנות והמוצרים. לאחר מכן היא תנקה את גיליונות ההזמנות הפעילים, את דפי הליקוט ורק את המחירים בגיליון המוצרים. שאר נתוני המוצרים יישארו ללא שינוי. להמשיך?',
     ui.ButtonSet.YES_NO
   );
 
@@ -279,13 +279,14 @@ function archiveOrdersAndClear() {
     '',
     'הזמנות שהועברו לארכיון: ' + result.orderCount,
     'שורות פריטים שהועברו לארכיון: ' + result.itemCount,
+    'מוצרים שהועברו לארכיון: ' + result.productCount,
     'שם מכירה בארכיון: ' + result.saleName,
     'גיליון בארכיון: ' + result.archiveSheetName,
     'קובץ ארכיון: ' + result.archiveSpreadsheetUrl
   ].join('\n');
 
   Logger.log(message);
-  getSpreadsheet_().toast('ההזמנות הועברו לארכיון והקובץ נוקה.', 'פרינוּק', 8);
+  getSpreadsheet_().toast('הנתונים הועברו לארכיון. ההזמנות ודפי הליקוט נוקו, ובגיליון המוצרים נוקו רק המחירים.', 'פרינוּק', 8);
   ui.alert('הסתיים', message, ui.ButtonSet.OK);
 }
 
@@ -3184,22 +3185,28 @@ function archiveOrdersAndClear_() {
     var archivedAt = new Date();
     var orderHeaders = getOrderHeaders_();
     var itemHeaders = getOrderItemHeaders_();
+    var productColumnCount = Math.max(productSheet.getLastColumn(), getProductHeaders_().length);
+    var productHeaders = productSheet.getRange(1, 1, 1, productColumnCount).getValues()[0];
+    var productPriceColumn = getProductPriceColumn_(productHeaders);
     var ordersSheet = ensureSheet_(ss, PRINOK_CONFIG.ORDERS_SHEET_NAME, orderHeaders);
     var orderItemsSheet = ensureSheet_(ss, PRINOK_CONFIG.ORDER_ITEMS_SHEET_NAME, itemHeaders);
     var orderRows = getBodyRows_(ordersSheet, orderHeaders.length);
     var itemRows = getBodyRows_(orderItemsSheet, itemHeaders.length);
+    var productRows = getBodyRows_(productSheet, productColumnCount);
     var archiveSpreadsheet = openOrCreateArchiveSpreadsheet_(settings, ss);
-    var archiveSheet = appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeaders, orderRows, itemHeaders, itemRows);
+    var archiveSheet = appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeaders, orderRows, itemHeaders, itemRows, productHeaders, productRows);
 
 
     clearSheetBody_(ordersSheet);
     clearSheetBody_(orderItemsSheet);
+    clearProductPrices_(productSheet, productPriceColumn);
     resetPickingSheet_(ss);
 
     return {
       saleName: saleName,
       orderCount: orderRows.length,
       itemCount: itemRows.length,
+      productCount: productRows.length,
       archiveSpreadsheetUrl: archiveSpreadsheet.getUrl(),
       archiveSheetName: archiveSheet.getName()
     };
@@ -3249,7 +3256,7 @@ function moveSpreadsheetNearSource_(targetSpreadsheet, sourceSpreadsheet) {
   }
 }
 
-function appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeaders, orderRows, itemHeaders, itemRows) {
+function appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeaders, orderRows, itemHeaders, itemRows, productHeaders, productRows) {
   var sheetName = buildArchiveSheetName_(saleName);
   var sheet = archiveSpreadsheet.getSheetByName(sheetName);
 
@@ -3260,7 +3267,7 @@ function appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeade
   removeDefaultArchiveSheetIfEmpty_(archiveSpreadsheet, sheet);
   applySheetDirection_(sheet);
 
-  var maxColumns = Math.max(orderHeaders.length, itemHeaders.length, 4);
+  var maxColumns = Math.max(orderHeaders.length, itemHeaders.length, productHeaders.length, 4);
   var rows = [];
 
   rows.push(padRow_(['ארכיון מכירה', saleName, 'תאריך ארכיון', archivedAt], maxColumns));
@@ -3274,6 +3281,12 @@ function appendSaleArchive_(archiveSpreadsheet, saleName, archivedAt, orderHeade
   rows.push(padRow_(['פריטי הזמנות'], maxColumns));
   rows.push(padRow_(itemHeaders, maxColumns));
   itemRows.forEach(function(row) {
+    rows.push(padRow_(row, maxColumns));
+  });
+  rows.push(padRow_([''], maxColumns));
+  rows.push(padRow_(['מוצרים'], maxColumns));
+  rows.push(padRow_(productHeaders, maxColumns));
+  productRows.forEach(function(row) {
     rows.push(padRow_(row, maxColumns));
   });
 
@@ -3302,6 +3315,13 @@ function formatSaleArchiveBlock_(sheet, startRow, rowCount, maxColumns, orderCou
     .setFontColor('#ffffff')
     .setFontWeight('bold');
   sheet.getRange(startRow + 6 + orderCount, 1, 1, maxColumns)
+    .setBackground('#f7f6f1')
+    .setFontWeight('bold');
+  sheet.getRange(startRow + 8 + orderCount + itemCount, 1, 1, maxColumns)
+    .setBackground('#1f7a5a')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold');
+  sheet.getRange(startRow + 9 + orderCount + itemCount, 1, 1, maxColumns)
     .setBackground('#f7f6f1')
     .setFontWeight('bold');
   sheet.getRange(startRow, 1, rowCount, maxColumns)
@@ -3372,6 +3392,26 @@ function clearSheetBody_(sheet) {
 
   sheet
     .getRange(2, 1, sheet.getLastRow() - 1, Math.max(sheet.getLastColumn(), 1))
+    .clearContent();
+}
+
+function getProductPriceColumn_(headers) {
+  var columns = buildColumnMap_(headers);
+
+  if (!columns.detectedPrice) {
+    throw new Error('לא נמצאה עמודת מחיר בגיליון המוצרים. לא בוצעו שינויים.');
+  }
+
+  return columns.price + 1;
+}
+
+function clearProductPrices_(productSheet, priceColumn) {
+  if (!productSheet || productSheet.getLastRow() < 2) {
+    return;
+  }
+
+  productSheet
+    .getRange(2, priceColumn, productSheet.getLastRow() - 1, 1)
     .clearContent();
 }
 
