@@ -4814,22 +4814,41 @@
                 return;
             }
 
+            // Scroll the whole product card (not just the input) into view so the
+            // customer can still see the produce image and name while typing.
+            var card = (input.closest && input.closest('.product-row')) || input;
+
             var run = function () {
                 if (!input || document.activeElement !== input) {
                     return;
                 }
 
-                var rect = input.getBoundingClientRect();
+                var rect = card.getBoundingClientRect();
                 var viewportTop = (window.visualViewport && typeof window.visualViewport.offsetTop === 'number')
                     ? window.visualViewport.offsetTop
                     : 0;
                 var viewportHeight = (window.visualViewport && window.visualViewport.height)
                     ? window.visualViewport.height
                     : window.innerHeight;
-                // Place the input in the upper third of the space left above the keyboard.
-                var desired = viewportHeight * 0.3;
-                var delta = (rect.top - viewportTop) - desired;
 
+                // Leave room for the sticky category nav so the card top isn't hidden.
+                var navHeight = 0;
+                if (els.categoryNav) {
+                    var navRect = els.categoryNav.getBoundingClientRect();
+                    navHeight = navRect.height || 0;
+                }
+                var topMargin = navHeight + 12;
+
+                // If the card is short enough to fit fully, anchor its top below the
+                // nav; if it's taller than the visible space, still show its top.
+                var desiredTop = topMargin;
+                var available = viewportHeight - topMargin;
+                if (rect.height < available) {
+                    // Nudge it down slightly so it doesn't hug the nav.
+                    desiredTop = topMargin + Math.min(16, (available - rect.height) / 2);
+                }
+
+                var delta = (rect.top - viewportTop) - desiredTop;
                 if (Math.abs(delta) > 8) {
                     window.scrollBy({ top: delta, left: 0, behavior: 'smooth' });
                 }
@@ -4852,7 +4871,23 @@
         }
 
         function handleQuantityViewportChange() {
+            if (!window.visualViewport) {
+                return;
+            }
+
+            var keyboardOpen = (window.innerHeight - window.visualViewport.height) > 120;
+
+            if (!keyboardOpen) {
+                // Keyboard was dismissed (often without firing focusout on Android),
+                // so bring the summary bar back even if the input keeps focus.
+                document.body.classList.remove('is-editing-quantity');
+                return;
+            }
+
             if (activeQuantityInput && document.activeElement === activeQuantityInput) {
+                // Re-opening the keyboard on an already-focused input: restore the
+                // editing state (focusin won't fire again) and re-align the card.
+                document.body.classList.add('is-editing-quantity');
                 scrollQuantityInputIntoView(activeQuantityInput);
             }
         }
