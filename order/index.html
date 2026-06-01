@@ -1421,6 +1421,19 @@
                 pointer-events: auto;
                 transform: none;
             }
+
+            /* While typing a quantity, slide the fixed bottom bar away so it
+               doesn't cover the product card above the on-screen keyboard. */
+            body.is-editing-quantity .summary:not(.is-open) {
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(140%);
+            }
+
+            body.is-editing-quantity .floating-cart-button {
+                opacity: 0;
+                pointer-events: none;
+            }
         }
 
         @media (max-width: 720px) {
@@ -4259,6 +4272,8 @@
         var pendingScrollRestore = true;
         var scrollSaveTimer = null;
         var cartFeedbackTimer = null;
+        var activeQuantityInput = null;
+        var quantityScrollTimer = null;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var KG_STEP = 0.5;
@@ -4387,6 +4402,7 @@
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', handleNoticeViewportChange);
             window.visualViewport.addEventListener('resize', updateMobileSummaryMetrics);
+            window.visualViewport.addEventListener('resize', handleQuantityViewportChange);
         }
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
@@ -4761,9 +4777,27 @@
             if (isTextEntryTarget(event.target)) {
                 document.body.classList.add('is-text-editing');
             }
+
+            if (event.target && event.target.matches && event.target.matches('.quantity-input')) {
+                activeQuantityInput = event.target;
+                document.body.classList.add('is-editing-quantity');
+                scrollQuantityInputIntoView(event.target);
+            }
         }
 
         function handleTextEditingBlur(event) {
+            if (event.target && event.target.matches && event.target.matches('.quantity-input')) {
+                if (activeQuantityInput === event.target) {
+                    activeQuantityInput = null;
+                }
+
+                window.setTimeout(function () {
+                    if (!document.activeElement || !document.activeElement.matches || !document.activeElement.matches('.quantity-input')) {
+                        document.body.classList.remove('is-editing-quantity');
+                    }
+                }, 80);
+            }
+
             if (!isTextEntryTarget(event.target)) {
                 return;
             }
@@ -4773,6 +4807,54 @@
                     document.body.classList.remove('is-text-editing');
                 }
             }, 80);
+        }
+
+        function scrollQuantityInputIntoView(input) {
+            if (!input) {
+                return;
+            }
+
+            var run = function () {
+                if (!input || document.activeElement !== input) {
+                    return;
+                }
+
+                var rect = input.getBoundingClientRect();
+                var viewportTop = (window.visualViewport && typeof window.visualViewport.offsetTop === 'number')
+                    ? window.visualViewport.offsetTop
+                    : 0;
+                var viewportHeight = (window.visualViewport && window.visualViewport.height)
+                    ? window.visualViewport.height
+                    : window.innerHeight;
+                // Place the input in the upper third of the space left above the keyboard.
+                var desired = viewportHeight * 0.3;
+                var delta = (rect.top - viewportTop) - desired;
+
+                if (Math.abs(delta) > 8) {
+                    window.scrollBy({ top: delta, left: 0, behavior: 'smooth' });
+                }
+            };
+
+            // If the keyboard is already open (e.g. moving between inputs), the
+            // visual viewport is already shrunk, so we can scroll immediately.
+            var keyboardLikelyOpen = window.visualViewport
+                && (window.innerHeight - window.visualViewport.height) > 120;
+            if (keyboardLikelyOpen) {
+                run();
+            }
+
+            // Re-run after the keyboard has had time to open and shrink the
+            // visual viewport (some devices report the resize late or not at all).
+            if (quantityScrollTimer) {
+                window.clearTimeout(quantityScrollTimer);
+            }
+            quantityScrollTimer = window.setTimeout(run, 320);
+        }
+
+        function handleQuantityViewportChange() {
+            if (activeQuantityInput && document.activeElement === activeQuantityInput) {
+                scrollQuantityInputIntoView(activeQuantityInput);
+            }
         }
 
         function loadCatalog() {
