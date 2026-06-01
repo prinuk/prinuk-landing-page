@@ -2213,6 +2213,10 @@
             border-radius: 50%;
         }
 
+        .store-announcement-bsd {
+            color: #d5a847;
+        }
+
         .store-header {
             position: sticky;
             top: 0;
@@ -3021,7 +3025,7 @@
                 font-size: 11px;
             }
 
-            .store-announcement span:not(:first-child) {
+            .store-announcement span:not(.store-announcement-bsd):not(.store-announcement-primary) {
                 display: none;
             }
 
@@ -3310,14 +3314,6 @@
             font-weight: 900;
             line-height: 1.05;
             letter-spacing: -0.02em;
-        }
-
-        .hero-bsd {
-            display: block;
-            margin-bottom: 10px;
-            color: rgba(31, 75, 50, 0.68);
-            font-size: 15px;
-            font-weight: 800;
         }
 
         /* Eyebrow as a soft pill. */
@@ -3902,7 +3898,8 @@
 
     <div class="store-announcement">
         <div class="store-announcement-inner">
-            <span>משלוח חינם בקנייה מעל 200 ש״ח</span>
+            <span class="store-announcement-bsd">בס״ד</span>
+            <span class="store-announcement-primary">משלוח חינם בקנייה מעל 200 ש״ח</span>
             <span>המכירה השבועית · בכל יום רביעי</span>
             <span>בכשרות מהודרת</span>
         </div>
@@ -3977,7 +3974,6 @@
                     </div>
                     <div class="weekly-sale-card">
                         <div class="weekly-sale-copy">
-                            <span class="hero-bsd">בס״ד</span>
                             <span class="catalog-eyebrow">המכירה השבועית</span>
                             <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
                             <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
