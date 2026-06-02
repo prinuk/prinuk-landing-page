@@ -79,6 +79,7 @@ function onOpen() {
     .addItem('צור PDF פלייר מחירים', 'createDesignedPriceFlyerPdf')
     .addItem('צור PDF טופס הזמנה', 'createPrintableOrderFormPdf')
     .addItem('צור PDF שלטי מוצרים', 'createProductSignsPdf')
+    .addItem('צור PDF כל ההזמנות', 'createAllOrdersPdf')
     .addItem('רענן דפי ליקוט', 'refreshPickingSheets')
     .addItem('סיכום משקל ויחידות', 'refreshWeightSummary')
     .addSeparator()
@@ -183,6 +184,19 @@ function createPrintableOrderFormPdf() {
 
   try {
     SpreadsheetApp.getUi().alert('טופס ההזמנה נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (error) {
+  }
+}
+
+function createAllOrdersPdf() {
+  var result = createAllOrdersPdf_();
+  var message = 'נוצר PDF עם ' + result.orderCount + ' הזמנות: ' + result.fileName + '\n' + result.url;
+
+  Logger.log(message);
+  getSpreadsheet_().toast('PDF של כל ההזמנות נוצר ונשמר בדרייב.', 'פרינוּק', 8);
+
+  try {
+    SpreadsheetApp.getUi().alert('PDF כל ההזמנות נוצר', message, SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (error) {
   }
 }
@@ -1637,6 +1651,122 @@ function updateTelegramStatus_(ordersSheet, orderRowNumber, result) {
   }
 }
 
+// Builds a single PDF holding every order, each on its own A4 page (one
+// page break between orders), so the whole batch can be printed at once.
+function createAllOrdersPdf_() {
+  var ss = getSpreadsheet_();
+  var ordersSheet = ss.getSheetByName(PRINOK_CONFIG.ORDERS_SHEET_NAME);
+  var orderItemsSheet = ss.getSheetByName(PRINOK_CONFIG.ORDER_ITEMS_SHEET_NAME);
+
+  if (!ordersSheet || ordersSheet.getLastRow() < 2) {
+    throw new Error('אין עדיין הזמנות ליצירת PDF.');
+  }
+
+  var settings = getSettings_(ss, getProductSheet_(ss));
+  var orders = readTable_(ordersSheet);
+  var items = (orderItemsSheet && orderItemsSheet.getLastRow() >= 2) ? readTable_(orderItemsSheet) : [];
+  var itemsByOrderId = {};
+
+  items.forEach(function(item) {
+    var orderId = item['מספר הזמנה'];
+
+    if (!itemsByOrderId[orderId]) {
+      itemsByOrderId[orderId] = [];
+    }
+
+    itemsByOrderId[orderId].push(item);
+  });
+
+  var entries = orders.map(function(orderRow) {
+    return {
+      order: mapOrderRowToOrderDetails_(orderRow),
+      items: mapItemRowsToOrderItems_(itemsByOrderId[orderRow['מספר הזמנה']] || [])
+    };
+  });
+
+  var html = buildAllOrdersPdfHtml_(settings, entries);
+  var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone();
+  var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyyMMdd-HHmm');
+  var salePart = settings.saleName ? '-' + safeFileName_(settings.saleName) : '';
+  var fileName = 'כל-ההזמנות-פרינוּק' + salePart + '-' + timestamp + '.pdf';
+  var pdf = Utilities
+    .newBlob(html, 'text/html', 'all-orders.html')
+    .getAs('application/pdf')
+    .setName(fileName);
+  var file = createDriveFileNearSpreadsheet_(ss, pdf);
+
+  return {
+    fileName: file.getName(),
+    url: file.getUrl(),
+    orderCount: entries.length
+  };
+}
+
+function buildAllOrdersPdfHtml_(settings, entries) {
+  var sections = entries.map(function(entry, index) {
+    var lastClass = index === entries.length - 1 ? ' order-page-last' : '';
+    return '<section class="order-page' + lastClass + '">'
+      + buildOrderDetailsBodyHtml_(settings, entry.order, entry.items)
+      + '</section>';
+  }).join('');
+
+  return [
+    '<!doctype html>',
+    '<html dir="rtl" lang="he">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:0;line-height:1.45;}',
+    '.order-page{padding:28px;page-break-after:always;}',
+    '.order-page-last{page-break-after:auto;}',
+    getOrderPdfBodyCss_(),
+    '</style>',
+    '</head>',
+    '<body>',
+    sections,
+    '</body>',
+    '</html>'
+  ].join('');
+}
+
+// Maps an הזמנות sheet row to the order object the PDF body expects.
+function mapOrderRowToOrderDetails_(orderRow) {
+  return {
+    timestamp: orderRow['זמן'],
+    orderId: orderRow['מספר הזמנה'],
+    productSheetName: orderRow['גיליון מוצרים'],
+    fullName: orderRow['שם מלא'],
+    phone: orderRow['טלפון'],
+    email: orderRow['אימייל לקוח'],
+    fulfillment: orderRow['שיטת הזמנה'],
+    address: orderRow['כתובת'],
+    floor: orderRow['קומה'],
+    apartment: orderRow['דירה'],
+    notes: orderRow['הערות'],
+    itemCount: orderRow['מספר שורות'],
+    estimatedTotal: parsePrice_(orderRow['סכום משוער']),
+    unpricedItemCount: Number(orderRow['פריטים ללא חישוב'] || 0)
+  };
+}
+
+// Maps פריטי הזמנות rows to the item objects the PDF body expects.
+function mapItemRowsToOrderItems_(itemRows) {
+  return itemRows.map(function(itemRow) {
+    return {
+      product: {
+        name: itemRow['מוצר'],
+        department: itemRow['מחלקה'],
+        price: itemRow['מחיר מהגיליון'],
+        priceUnit: itemRow['יחידת מחיר']
+      },
+      quantity: itemRow['כמות'],
+      orderUnit: itemRow['יחידת הזמנה'],
+      lineTotal: typeof itemRow['סכום מחושב'] === 'number' ? itemRow['סכום מחושב'] : '',
+      note: String(itemRow['הערת מוצר'] || '').trim()
+    };
+  });
+}
+
 function createOrderPdf_(settings, order, items) {
   var html = buildOrderPdfHtml_(settings, order, items);
 
@@ -1655,7 +1785,28 @@ function createOrderPdfSafely_(settings, order, items) {
   }
 }
 
-function buildOrderPdfHtml_(settings, order, items) {
+// Shared CSS for the order-details body (single-order email PDF and the
+// combined "all orders" PDF), excluding the page-level body rule.
+function getOrderPdfBodyCss_() {
+  return [
+    getDocumentHeaderCss_(),
+    '.box{border:1px solid #d9ded6;border-radius:8px;padding:14px;margin-bottom:16px;background:#f7f6f1;}',
+    '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;}',
+    '.label{font-weight:bold;color:#165a43;}',
+    'table{width:100%;border-collapse:collapse;margin-top:14px;}',
+    'th{background:#1f7a5a;color:#fff;}',
+    'th,td{border:1px solid #d9ded6;padding:8px;text-align:right;vertical-align:top;}',
+    'tr:nth-child(even) td{background:#fbfcfa;}',
+    '.notes{white-space:pre-wrap;}',
+    '.total{font-size:18px;font-weight:bold;color:#165a43;}',
+    '.notice{border:1px solid #d7e5db;background:#e5f2ec;color:#165a43;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-weight:bold;}'
+  ].join('');
+}
+
+// The order-details body content (header, customer box, billing notice,
+// notes and items table) without the surrounding <html>/<style>. Reused for
+// both the single-order PDF and one section per order in the combined PDF.
+function buildOrderDetailsBodyHtml_(settings, order, items) {
   var rows = items.map(function(line) {
     var total = typeof line.lineTotal === 'number' ? formatMoney_(line.lineTotal) : 'לפי חישוב בפועל';
     var noteHtml = line.note
@@ -1675,26 +1826,6 @@ function buildOrderPdfHtml_(settings, order, items) {
   }).join('');
 
   return [
-    '<!doctype html>',
-    '<html dir="rtl" lang="he">',
-    '<head>',
-    '<meta charset="UTF-8">',
-    '<style>',
-    'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:28px;line-height:1.45;}',
-    getDocumentHeaderCss_(),
-    '.box{border:1px solid #d9ded6;border-radius:8px;padding:14px;margin-bottom:16px;background:#f7f6f1;}',
-    '.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;}',
-    '.label{font-weight:bold;color:#165a43;}',
-    'table{width:100%;border-collapse:collapse;margin-top:14px;}',
-    'th{background:#1f7a5a;color:#fff;}',
-    'th,td{border:1px solid #d9ded6;padding:8px;text-align:right;vertical-align:top;}',
-    'tr:nth-child(even) td{background:#fbfcfa;}',
-    '.notes{white-space:pre-wrap;}',
-    '.total{font-size:18px;font-weight:bold;color:#165a43;}',
-    '.notice{border:1px solid #d7e5db;background:#e5f2ec;color:#165a43;border-radius:8px;padding:10px 12px;margin-bottom:16px;font-weight:bold;}',
-    '</style>',
-    '</head>',
-    '<body>',
     buildDocumentHeaderHtml_(settings, 'פרינוּק - פרטי הזמנה', [order.orderId]),
     '<div class="box grid">',
     '<div><span class="label">לקוח:</span> ', escapeHtml_(order.fullName), '</div>',
@@ -1710,7 +1841,23 @@ function buildOrderPdfHtml_(settings, order, items) {
     '<table>',
     '<thead><tr><th>מוצר</th><th>מחלקה</th><th>כמות</th><th>יחידה</th><th>מחיר</th><th>סכום</th></tr></thead>',
     '<tbody>', rows, '</tbody>',
-    '</table>',
+    '</table>'
+  ].join('');
+}
+
+function buildOrderPdfHtml_(settings, order, items) {
+  return [
+    '<!doctype html>',
+    '<html dir="rtl" lang="he">',
+    '<head>',
+    '<meta charset="UTF-8">',
+    '<style>',
+    'body{font-family:Arial,Helvetica,sans-serif;color:#1e2528;margin:28px;line-height:1.45;}',
+    getOrderPdfBodyCss_(),
+    '</style>',
+    '</head>',
+    '<body>',
+    buildOrderDetailsBodyHtml_(settings, order, items),
     '</body>',
     '</html>'
   ].join('');
