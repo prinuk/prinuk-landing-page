@@ -1762,9 +1762,38 @@ function mapItemRowsToOrderItems_(itemRows) {
       quantity: itemRow['כמות'],
       orderUnit: itemRow['יחידת הזמנה'],
       lineTotal: typeof itemRow['סכום מחושב'] === 'number' ? itemRow['סכום מחושב'] : '',
-      note: String(itemRow['הערת מוצר'] || '').trim()
+      note: readItemNote_(itemRow)
     };
   });
+}
+
+// The customer's per-product comment. Tolerant of header drift between sheets
+// that were created before the column settled on 'הערת מוצר'.
+function readItemNote_(itemRow) {
+  var candidates = ['הערת מוצר', 'הערות מוצר', 'הערת לקוח', 'הערה', 'הערות'];
+
+  for (var i = 0; i < candidates.length; i++) {
+    if (Object.prototype.hasOwnProperty.call(itemRow, candidates[i])) {
+      var value = String(itemRow[candidates[i]] == null ? '' : itemRow[candidates[i]]).trim();
+      if (value) {
+        return value;
+      }
+    }
+  }
+
+  // Fallback: any header that mentions a note (the items sheet has no other
+  // note-like column), to survive an unexpected header name.
+  var keys = Object.keys(itemRow);
+  for (var j = 0; j < keys.length; j++) {
+    if (keys[j].indexOf('הער') !== -1) {
+      var fallback = String(itemRow[keys[j]] == null ? '' : itemRow[keys[j]]).trim();
+      if (fallback) {
+        return fallback;
+      }
+    }
+  }
+
+  return '';
 }
 
 function createOrderPdf_(settings, order, items) {
