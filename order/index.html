@@ -3892,29 +3892,30 @@
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
-        /* Kosher certification seal (hero). Pulled out of the copy column's flow
-           and anchored to the lower-left of the hero card, so the badges sit
-           directly under the subtitle (no gap) while the seal stays on the left.
-           Positions against .weekly-sale-card (the nearest positioned ancestor). */
-        .weekly-sale-copy .kosher-seal {
+        /* Kosher certification seal (hero). Overlaid, centered over the left
+           (produce) column — where it was marked — and out of the text column's
+           flow so the badges sit directly under the subtitle (no gap). It is a
+           direct child of the positioned .weekly-sale-card. */
+        .weekly-sale-card > .kosher-seal {
             position: absolute;
-            left: 0;
-            bottom: 0;
+            top: 50%;
+            left: clamp(8px, 4vw, 56px);
+            transform: translateY(-50%);
             display: block;
-            width: clamp(150px, 16vw, 200px);
+            width: clamp(170px, 18vw, 230px);
             height: auto;
             margin: 0;
-            opacity: 0.92;
-            z-index: 2;
+            opacity: 0.95;
+            z-index: 3;
         }
 
         @media (max-width: 900px) {
-            /* Stacked layout: return to normal flow, centered under the title. */
-            .weekly-sale-copy .kosher-seal {
+            /* Stacked layout: return to normal flow, centered below the copy. */
+            .weekly-sale-card > .kosher-seal {
                 position: static;
-                width: clamp(140px, 44vw, 170px);
-                margin: 10px auto 2px;
-                margin-inline: auto;
+                transform: none;
+                width: clamp(150px, 52vw, 210px);
+                margin: 12px auto 0;
             }
         }
     </style>
@@ -4022,9 +4023,6 @@
                             <span class="catalog-eyebrow">המכירה השבועית</span>
                             <h2 id="weeklySaleTitle">פירות וירקות מובחרים עד הבית</h2>
                             <p class="weekly-sale-sub">מבחר טרי שמתעדכן מדי שבוע · אספקה בכל יום רביעי</p>
-                            <img class="kosher-seal" src="/assets/kosher-seal.png"
-                                alt="כשר למהדרין בהשגחה ובפיקוח של הגאון ר׳ אברהם נפתלי וויג שליט״א, בית וגן ירושלים · מעושר לחומרא"
-                                loading="lazy" decoding="async">
                             <div class="hero-badges">
                                 <span class="hero-badge">
                                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
@@ -4041,6 +4039,9 @@
                             </div>
                         </div>
                         <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="מבחר פירות וירקות טריים" loading="lazy" decoding="async">
+                        <img class="kosher-seal" src="/assets/kosher-seal.png"
+                            alt="כשר למהדרין בהשגחה ובפיקוח של הגאון ר׳ אברהם נפתלי וויג שליט״א, בית וגן ירושלים · מעושר לחומרא"
+                            loading="lazy" decoding="async">
                     </div>
                 </section>
 
