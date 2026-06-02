@@ -3892,17 +3892,20 @@
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
-        /* Kosher certification seal (hero). Overlaid, centered over the left
-           (produce) column — where it was marked — and out of the text column's
-           flow so the badges sit directly under the subtitle (no gap). It is a
-           direct child of the positioned .weekly-sale-card. */
-        .weekly-sale-card > .kosher-seal {
+        /* The text column is the positioning context for the seal. */
+        .weekly-sale-copy {
+            position: relative;
+        }
+
+        /* Kosher certification seal (hero). Anchored to the bottom-left of the
+           text column — in the gap below the subtitle, to the left of the badges
+           (where it was marked) — and out of the flow so the badges stay put. */
+        .weekly-sale-copy .kosher-seal {
             position: absolute;
-            top: 50%;
-            left: clamp(8px, 4vw, 56px);
-            transform: translateY(-50%);
+            bottom: 0;
+            inset-inline-end: clamp(0px, 3vw, 56px);
             display: block;
-            width: clamp(170px, 18vw, 230px);
+            width: clamp(140px, 14vw, 184px);
             height: auto;
             margin: 0;
             opacity: 0.95;
@@ -3911,11 +3914,11 @@
 
         @media (max-width: 900px) {
             /* Stacked layout: return to normal flow, centered below the copy. */
-            .weekly-sale-card > .kosher-seal {
+            .weekly-sale-copy .kosher-seal {
                 position: static;
-                transform: none;
                 width: clamp(150px, 52vw, 210px);
                 margin: 12px auto 0;
+                margin-inline: auto;
             }
         }
     </style>
@@ -4037,11 +4040,11 @@
                                     נבחר בקפידה
                                 </span>
                             </div>
+                            <img class="kosher-seal" src="/assets/kosher-seal.png"
+                                alt="כשר למהדרין בהשגחה ובפיקוח של הגאון ר׳ אברהם נפתלי וויג שליט״א, בית וגן ירושלים · מעושר לחומרא"
+                                loading="lazy" decoding="async">
                         </div>
                         <img class="weekly-sale-art" src="/assets/produce-hero.jpg" alt="מבחר פירות וירקות טריים" loading="lazy" decoding="async">
-                        <img class="kosher-seal" src="/assets/kosher-seal.png"
-                            alt="כשר למהדרין בהשגחה ובפיקוח של הגאון ר׳ אברהם נפתלי וויג שליט״א, בית וגן ירושלים · מעושר לחומרא"
-                            loading="lazy" decoding="async">
                     </div>
                 </section>
 
