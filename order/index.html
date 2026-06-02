@@ -3892,24 +3892,29 @@
             box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
-        /* Kosher certification seal (hero) */
-        .kosher-seal {
+        /* Kosher certification seal (hero). The selector is specific enough to
+           beat ".weekly-sale-card > .weekly-sale-copy > * { margin-inline: 0 }". */
+        .weekly-sale-copy .kosher-seal {
             display: block;
             width: clamp(150px, 16vw, 188px);
             height: auto;
-            /* Push to the physical left of the copy column (where it was marked). */
-            margin: 14px auto 6px 0;
+            margin: 14px 0 6px;
+            /* RTL: inline-start is the right edge, so auto there pushes the seal
+               to the physical left of the copy column — where it was marked. */
+            margin-inline-start: auto;
+            margin-inline-end: 0;
             opacity: 0.92;
         }
 
         @media (max-width: 900px) {
-            .kosher-seal {
+            .weekly-sale-copy .kosher-seal {
                 margin: 12px auto 4px;
+                margin-inline: auto;
             }
         }
 
         @media (max-width: 720px) {
-            .kosher-seal {
+            .weekly-sale-copy .kosher-seal {
                 width: clamp(140px, 44vw, 170px);
             }
         }
