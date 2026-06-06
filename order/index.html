@@ -6601,42 +6601,6 @@
             return html;
         }
 
-        function buildSuccessMessage(result, collected) {
-            var estimatedTotal = result && typeof result.estimatedTotal === 'number'
-                ? result.estimatedTotal
-                : collected.estimatedTotal;
-            var unpricedItemCount = result && typeof result.unpricedItemCount === 'number'
-                ? result.unpricedItemCount
-                : collected.unpricedItemCount;
-            var deliveryFee = result && typeof result.deliveryFee === 'number'
-                ? result.deliveryFee
-                : deliveryFeeFor(estimatedTotal);
-            var grandTotal = roundMoney(estimatedTotal + deliveryFee);
-            var message = 'ההזמנה נשלחה בהצלחה. מספר הזמנה: ' + result.orderId + '. סכום משוער: ₪' + formatMoney(grandTotal);
-
-            if (deliveryFee > 0) {
-                message += ' (כולל ₪' + formatMoney(deliveryFee) + ' משלוח)';
-            }
-
-            if (unpricedItemCount) {
-                message += '. יש פריטים שיחושבו לאחר שקילה';
-            }
-
-            if (result.estimatedWeightItemCount || collected.estimatedWeightItemCount) {
-                message += '. יש פריטים שחושבו לפי משקל משוער';
-            }
-
-            message += '. החיוב הסופי יתבצע בשעת ליקוט ההזמנה';
-
-            if (result.customerEmailStatus === 'נשלח' || result.customerEmailStatus === 'נשלח ל-Google') {
-                message += '. עותק הזמנה נשלח למייל';
-            } else if (result.customerEmailStatus === 'נכשל') {
-                message += '. עותק ההזמנה לא נשלח למייל, אבל ההזמנה נקלטה';
-            }
-
-            return message;
-        }
-
         function formatQuantity(value) {
             if (isWholeNumber(value)) {
                 return String(Math.round(value));
