@@ -8,7 +8,7 @@ const {
   writeOrder,
 } = require('../lib/sheets');
 const { sendBusinessOrderEmail, sendCustomerOrderEmail } = require('../lib/email');
-const { createOrderPdf } = require('../lib/order-pdf');
+const { createOrderPdf, createOrderChangesPdf } = require('../lib/order-pdf');
 const { sendTelegramOrder } = require('../lib/telegram');
 
 const EDIT_REASON_MESSAGES = {
@@ -99,9 +99,19 @@ module.exports = async function handler(req, res) {
       console.error('Order PDF generation failed:', error);
     }
 
+    // On an update, also build a "what changed" PDF for the business email.
+    let changesPdfBuffer = null;
+    if (isUpdate) {
+      try {
+        changesPdfBuffer = await createOrderChangesPdf(settings, documentOrder);
+      } catch (error) {
+        console.error('Order changes PDF generation failed:', error);
+      }
+    }
+
     const [customerEmailResult, businessEmailResult, telegramResult] = await Promise.all([
       sendCustomerOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError),
-      sendBusinessOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError),
+      sendBusinessOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError, changesPdfBuffer),
       sendTelegramOrder(settings, documentOrder, order.items, pdfBuffer, pdfError),
     ]);
 
