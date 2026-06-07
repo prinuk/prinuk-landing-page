@@ -4133,6 +4133,50 @@
             width: 100%;
             margin-top: 14px;
         }
+
+        .edit-mode-banner {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 0 0 14px;
+            padding: 12px 14px;
+            border: 1px solid #c9a227;
+            border-radius: 12px;
+            background: #fff8e6;
+        }
+
+        .edit-mode-banner.is-error {
+            border-color: var(--danger);
+            background: #fdecec;
+        }
+
+        .edit-mode-banner-text {
+            flex: 1 1 200px;
+            font-weight: 800;
+            color: #7a5b00;
+        }
+
+        .edit-mode-banner.is-error .edit-mode-banner-text {
+            color: var(--danger);
+        }
+
+        .edit-mode-cancel {
+            flex: 0 0 auto;
+            min-height: 36px;
+            padding: 7px 16px;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            background: transparent;
+            color: #7a5b00;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .edit-mode-banner.is-error .edit-mode-cancel {
+            color: var(--danger);
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4168,10 +4212,11 @@
 
             <div id="orderStatusSuccess" class="status-state hidden">
                 <div class="status-icon status-icon-success" aria-hidden="true">✓</div>
-                <h2>ההזמנה התקבלה בהצלחה!</h2>
-                <p class="status-subtitle">תודה רבה, נחזור אליכם בהקדם.</p>
+                <h2 id="orderStatusSuccessTitle">ההזמנה התקבלה בהצלחה!</h2>
+                <p id="orderStatusSuccessSubtitle" class="status-subtitle">תודה רבה, נחזור אליכם בהקדם.</p>
                 <dl id="orderStatusDetails" class="status-details"></dl>
                 <p id="orderStatusFineprint" class="status-fineprint"></p>
+                <button id="orderStatusEdit" class="basket-action status-save-basket" type="button">✏️ צריך לשנות? עריכת ההזמנה</button>
                 <button id="orderStatusSaveBasket" class="basket-action status-save-basket" type="button">⭐ שמירת ההזמנה כסל קבוע לשבוע הבא</button>
                 <button id="orderStatusClose" class="submit" type="button">סגירה</button>
             </div>
@@ -4354,6 +4399,10 @@
                     <div id="regularBasketBanner" class="regular-basket-banner hidden">
                         <span class="regular-basket-banner-text">⭐ יש לכם סל קבוע שמור — לטעון אותו במהירות?</span>
                         <button id="regularBasketBannerLoad" class="regular-basket-banner-button" type="button">טעינת הסל הקבוע</button>
+                    </div>
+                    <div id="editModeBanner" class="edit-mode-banner hidden" role="status">
+                        <span id="editModeBannerText" class="edit-mode-banner-text"></span>
+                        <button id="editModeCancel" class="edit-mode-cancel" type="button">ביטול</button>
                     </div>
                     <div id="productsRoot" class="loading">טוען מוצרים...</div>
                 </section>
@@ -4648,10 +4697,16 @@
             statusRetry: document.getElementById('orderStatusRetry'),
             statusDismiss: document.getElementById('orderStatusDismiss'),
             statusSaveBasket: document.getElementById('orderStatusSaveBasket'),
+            statusEdit: document.getElementById('orderStatusEdit'),
+            statusSuccessTitle: document.getElementById('orderStatusSuccessTitle'),
+            statusSuccessSubtitle: document.getElementById('orderStatusSuccessSubtitle'),
             basketSaveButton: document.getElementById('basketSaveButton'),
             basketLoadButton: document.getElementById('basketLoadButton'),
             regularBasketBanner: document.getElementById('regularBasketBanner'),
-            regularBasketBannerLoad: document.getElementById('regularBasketBannerLoad')
+            regularBasketBannerLoad: document.getElementById('regularBasketBannerLoad'),
+            editModeBanner: document.getElementById('editModeBanner'),
+            editModeBannerText: document.getElementById('editModeBannerText'),
+            editModeCancel: document.getElementById('editModeCancel')
         };
 
         els.searchInput.addEventListener('input', applySearch);
@@ -4677,6 +4732,25 @@
         }
         if (els.statusSaveBasket) {
             els.statusSaveBasket.addEventListener('click', saveSubmittedBasket);
+        }
+        if (els.statusEdit) {
+            els.statusEdit.addEventListener('click', function () {
+                if (!lastOrderEditLink) {
+                    return;
+                }
+                window.location.search = '?order=' + encodeURIComponent(lastOrderEditLink.orderId)
+                    + '&token=' + encodeURIComponent(lastOrderEditLink.token);
+            });
+        }
+        if (els.editModeCancel) {
+            els.editModeCancel.addEventListener('click', function () {
+                var wasEditing = !!editState;
+                clearEditUrlParams();
+                exitEditMode();
+                if (wasEditing) {
+                    showCartToast('בוטלה עריכת ההזמנה — אפשר לשלוח כהזמנה חדשה');
+                }
+            });
         }
         els.statusRetry.addEventListener('click', function () {
             if (lastOrderAttempt) {
@@ -5014,6 +5088,31 @@
                 return;
             }
 
+            var result = applyItemsByName(basket.items);
+
+            renderSummary();
+            saveOrderDraft();
+            updateRegularBasketUi();
+
+            if (result.loaded) {
+                setCartSummaryOpen(true);
+            }
+
+            var message = result.loaded
+                ? 'נטענו ' + result.loaded + ' מוצרים מהסל הקבוע'
+                : 'אף מוצר מהסל הקבוע אינו זמין השבוע';
+
+            if (result.loaded && result.missing.length) {
+                message += ' · ' + result.missing.length + ' לא זמינים השבוע';
+            }
+
+            showCartToast(message);
+        }
+
+        // Apply a list of {name, mode, quantity, note} to the rendered product
+        // rows, matching by normalized NAME. Shared by the regular basket and
+        // the edit-order flow. Returns how many were applied vs unavailable.
+        function applyItemsByName(items) {
             var rowByName = {};
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
                 rowByName[normalizeText(row.getAttribute('data-name'))] = row;
@@ -5022,7 +5121,7 @@
             var loaded = 0;
             var missing = [];
 
-            basket.items.forEach(function (item) {
+            (items || []).forEach(function (item) {
                 var row = rowByName[normalizeText(item.name)];
                 var input = row && row.querySelector('.quantity-input');
 
@@ -5046,23 +5145,7 @@
                 loaded++;
             });
 
-            renderSummary();
-            saveOrderDraft();
-            updateRegularBasketUi();
-
-            if (loaded) {
-                setCartSummaryOpen(true);
-            }
-
-            var message = loaded
-                ? 'נטענו ' + loaded + ' מוצרים מהסל הקבוע'
-                : 'אף מוצר מהסל הקבוע אינו זמין השבוע';
-
-            if (loaded && missing.length) {
-                message += ' · ' + missing.length + ' לא זמינים השבוע';
-            }
-
-            showCartToast(message);
+            return { loaded: loaded, missing: missing };
         }
 
         function updateRegularBasketUi() {
@@ -5078,6 +5161,120 @@
             }
             if (els.regularBasketBanner) {
                 els.regularBasketBanner.classList.toggle('hidden', !(saved && cartEmpty));
+            }
+        }
+
+        // --- Edit an existing order (via emailed magic link) ----------------
+        var editState = null;
+        var editLinkChecked = false;
+
+        function getEditLinkParams() {
+            var params = new URLSearchParams(window.location.search);
+            var orderId = String(params.get('order') || '').trim();
+            var token = String(params.get('token') || '').trim();
+            return orderId && token ? { orderId: orderId, token: token } : null;
+        }
+
+        function maybeStartEditFromUrl() {
+            if (editLinkChecked) {
+                return;
+            }
+            editLinkChecked = true;
+
+            var params = getEditLinkParams();
+            if (!params) {
+                return;
+            }
+
+            fetch('/api/order?order=' + encodeURIComponent(params.orderId) + '&token=' + encodeURIComponent(params.token))
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (!data || !data.ok) {
+                        showEditError((data && data.message) || 'לא ניתן לעדכן את ההזמנה.');
+                        return;
+                    }
+                    enterEditMode(data, params);
+                })
+                .catch(function () {
+                    showEditError('שגיאה בטעינת ההזמנה לעריכה. אפשר לנסות שוב מאוחר יותר.');
+                });
+        }
+
+        function enterEditMode(data, params) {
+            editState = { orderId: data.orderId || params.orderId, token: params.token };
+
+            // Replace whatever is in the cart with the order being edited.
+            resetProducts();
+            setInputValue('fullName', data.customer && data.customer.fullName);
+            setInputValue('phone', data.customer && data.customer.phone);
+            setInputValue('customerEmail', data.customer && data.customer.email);
+
+            if (data.fulfillment) {
+                var fulfillmentInput = els.form.querySelector('input[name="fulfillment"][value="' + cssEscape(data.fulfillment) + '"]');
+                if (fulfillmentInput) {
+                    fulfillmentInput.checked = true;
+                }
+            }
+
+            setInputValue('neighborhood', data.delivery && data.delivery.neighborhood);
+            setInputValue('address', data.delivery && data.delivery.address);
+            setInputValue('floor', data.delivery && data.delivery.floor);
+            setInputValue('apartment', data.delivery && data.delivery.apartment);
+            setInputValue('notes', data.notes);
+            toggleDeliveryFields();
+
+            var result = applyItemsByName(data.items);
+            renderSummary();
+            saveOrderDraft();
+
+            var message = 'עריכת הזמנה ' + editState.orderId + ' — שנו את הסל ולחצו "עדכון ההזמנה".';
+            if (result.missing.length) {
+                message += ' שימו לב: ' + result.missing.length + ' מוצרים מההזמנה אינם זמינים השבוע.';
+            }
+            showEditBanner(message);
+            updateSubmitLabels();
+            setCartSummaryOpen(true);
+        }
+
+        function exitEditMode() {
+            editState = null;
+            if (els.editModeBanner) {
+                els.editModeBanner.classList.add('hidden');
+                els.editModeBanner.classList.remove('is-error');
+            }
+            updateSubmitLabels();
+        }
+
+        function showEditBanner(text) {
+            if (!els.editModeBanner) {
+                return;
+            }
+            els.editModeBanner.classList.remove('hidden', 'is-error');
+            els.editModeBannerText.textContent = text;
+        }
+
+        function showEditError(text) {
+            if (!els.editModeBanner) {
+                return;
+            }
+            els.editModeBanner.classList.remove('hidden');
+            els.editModeBanner.classList.add('is-error');
+            els.editModeBannerText.textContent = text;
+        }
+
+        function clearEditUrlParams() {
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+        }
+
+        function updateSubmitLabels() {
+            var inEdit = !!editState;
+            if (els.finishLabel) {
+                els.finishLabel.textContent = inEdit ? 'עדכון ההזמנה' : 'שליחת הזמנה';
+            }
+            if (els.submitButton) {
+                els.submitButton.textContent = inEdit ? 'עדכון ההזמנה' : 'שלח הזמנה';
             }
         }
 
@@ -5463,6 +5660,7 @@
             restoreOrderDraft();
             renderSummary();
             restoreScrollPosition();
+            maybeStartEditFromUrl();
         }
 
         function switchCategory(name) {
@@ -6408,6 +6606,11 @@
                 })
             };
 
+            if (editState) {
+                payload.editOrderId = editState.orderId;
+                payload.editToken = editState.token;
+            }
+
             sendOrder(payload, collected);
         }
 
@@ -6426,7 +6629,12 @@
                 .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
                     if (!result.ok) { throw new Error(result.data.error || 'שגיאה בשליחת ההזמנה.'); }
+                    var wasUpdate = !!(result.data && result.data.updated);
                     setSubmitting(false);
+                    if (wasUpdate) {
+                        exitEditMode();
+                        clearEditUrlParams();
+                    }
                     showStatusSuccess(result.data, collected);
                     showMessage('', '');
                     resetProducts();
@@ -6460,7 +6668,25 @@
             setStatusState('error');
         }
 
+        var lastOrderEditLink = null;
+
         function showStatusSuccess(result, collected) {
+            var isUpdate = !!(result && result.updated);
+
+            if (els.statusSuccessTitle) {
+                els.statusSuccessTitle.textContent = isUpdate ? 'ההזמנה עודכנה בהצלחה!' : 'ההזמנה התקבלה בהצלחה!';
+            }
+            if (els.statusSuccessSubtitle) {
+                els.statusSuccessSubtitle.textContent = isUpdate ? 'השינויים נקלטו אצלנו. תודה רבה!' : 'תודה רבה, נחזור אליכם בהקדם.';
+            }
+
+            lastOrderEditLink = (result && result.orderId && result.editToken)
+                ? { orderId: result.orderId, token: result.editToken }
+                : null;
+            if (els.statusEdit) {
+                els.statusEdit.classList.toggle('hidden', !lastOrderEditLink);
+            }
+
             var estimatedTotal = result && typeof result.estimatedTotal === 'number'
                 ? result.estimatedTotal
                 : collected.estimatedTotal;
@@ -6712,14 +6938,19 @@
         }
 
         function setSubmitting(isSubmitting) {
+            var inEdit = !!editState;
             els.submitButton.disabled = isSubmitting;
-            els.submitButton.textContent = isSubmitting ? 'שולח...' : 'שלח הזמנה';
+            els.submitButton.textContent = isSubmitting
+                ? (inEdit ? 'מעדכן...' : 'שולח...')
+                : (inEdit ? 'עדכון ההזמנה' : 'שלח הזמנה');
 
             if (els.finishButton) {
                 els.finishButton.disabled = isSubmitting;
             }
             if (els.finishLabel) {
-                els.finishLabel.textContent = isSubmitting ? 'שולח...' : 'שליחת הזמנה';
+                els.finishLabel.textContent = isSubmitting
+                    ? (inEdit ? 'מעדכן...' : 'שולח...')
+                    : (inEdit ? 'עדכון ההזמנה' : 'שליחת הזמנה');
             }
         }
 
