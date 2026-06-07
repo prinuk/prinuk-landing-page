@@ -4060,6 +4060,79 @@
                 margin-inline: auto;
             }
         }
+
+        /* --- Regular basket (סל קבוע) --- */
+        .basket-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 12px;
+        }
+
+        .basket-action {
+            flex: 1 1 auto;
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font: inherit;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s ease, opacity 0.15s ease;
+        }
+
+        .basket-action:hover:not(:disabled) {
+            background: #d7e6fb;
+        }
+
+        .basket-action:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .regular-basket-banner {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 0 0 14px;
+            padding: 12px 14px;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            background: var(--accent-soft);
+        }
+
+        .regular-basket-banner-text {
+            flex: 1 1 200px;
+            font-weight: 800;
+            color: var(--accent-dark);
+        }
+
+        .regular-basket-banner-button {
+            flex: 0 0 auto;
+            min-height: 40px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: 999px;
+            background: var(--accent);
+            color: #fff;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .regular-basket-banner-button:hover {
+            background: var(--accent-dark);
+        }
+
+        .status-save-basket {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4099,6 +4172,7 @@
                 <p class="status-subtitle">תודה רבה, נחזור אליכם בהקדם.</p>
                 <dl id="orderStatusDetails" class="status-details"></dl>
                 <p id="orderStatusFineprint" class="status-fineprint"></p>
+                <button id="orderStatusSaveBasket" class="basket-action status-save-basket" type="button">⭐ שמירת ההזמנה כסל קבוע לשבוע הבא</button>
                 <button id="orderStatusClose" class="submit" type="button">סגירה</button>
             </div>
 
@@ -4277,6 +4351,10 @@
                         </div>
                         <nav id="categoryNav" class="category-nav" aria-label="מחלקות"></nav>
                     </div>
+                    <div id="regularBasketBanner" class="regular-basket-banner hidden">
+                        <span class="regular-basket-banner-text">⭐ יש לכם סל קבוע שמור — לטעון אותו במהירות?</span>
+                        <button id="regularBasketBannerLoad" class="regular-basket-banner-button" type="button">טעינת הסל הקבוע</button>
+                    </div>
                     <div id="productsRoot" class="loading">טוען מוצרים...</div>
                 </section>
 
@@ -4365,6 +4443,10 @@
                         <h2>סיכום הזמנה</h2>
                     </div>
                     <button id="cartCloseButton" class="summary-close" type="button" aria-label="סגירת סל קניות">×</button>
+                </div>
+                <div class="basket-actions">
+                    <button id="basketSaveButton" class="basket-action" type="button">⭐ שמירה כסל קבוע</button>
+                    <button id="basketLoadButton" class="basket-action" type="button">↻ טעינת הסל הקבוע</button>
                 </div>
                 <div id="summaryItems" class="summary-items">
                     <div class="cart-empty">
@@ -4481,6 +4563,7 @@
         var baselineViewportHeight = 0;
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
+        var REGULAR_BASKET_STORAGE_KEY = 'prinukRegularBasket:v1';
         var KG_STEP = 0.5;
         var FREE_DELIVERY_THRESHOLD = 200;
         var DELIVERY_FEE = 25;
@@ -4563,7 +4646,12 @@
             statusErrorText: document.getElementById('orderStatusErrorText'),
             statusClose: document.getElementById('orderStatusClose'),
             statusRetry: document.getElementById('orderStatusRetry'),
-            statusDismiss: document.getElementById('orderStatusDismiss')
+            statusDismiss: document.getElementById('orderStatusDismiss'),
+            statusSaveBasket: document.getElementById('orderStatusSaveBasket'),
+            basketSaveButton: document.getElementById('basketSaveButton'),
+            basketLoadButton: document.getElementById('basketLoadButton'),
+            regularBasketBanner: document.getElementById('regularBasketBanner'),
+            regularBasketBannerLoad: document.getElementById('regularBasketBannerLoad')
         };
 
         els.searchInput.addEventListener('input', applySearch);
@@ -4578,6 +4666,18 @@
         });
         els.statusClose.addEventListener('click', closeStatusModal);
         els.statusDismiss.addEventListener('click', closeStatusModal);
+        if (els.basketSaveButton) {
+            els.basketSaveButton.addEventListener('click', saveRegularBasket);
+        }
+        if (els.basketLoadButton) {
+            els.basketLoadButton.addEventListener('click', loadRegularBasket);
+        }
+        if (els.regularBasketBannerLoad) {
+            els.regularBasketBannerLoad.addEventListener('click', loadRegularBasket);
+        }
+        if (els.statusSaveBasket) {
+            els.statusSaveBasket.addEventListener('click', saveSubmittedBasket);
+        }
         els.statusRetry.addEventListener('click', function () {
             if (lastOrderAttempt) {
                 sendOrder(lastOrderAttempt.payload, lastOrderAttempt.collected);
@@ -4846,6 +4946,139 @@
 
                 updateRowState(row);
             });
+        }
+
+        // --- Regular basket (סל קבוע) -------------------------------------
+        // Saved in the browser so a returning customer can reload their usual
+        // cart. Keyed by product NAME (not id) because catalog ids are
+        // positional and shift week-to-week.
+        function readRegularBasket() {
+            try {
+                var raw = window.localStorage.getItem(REGULAR_BASKET_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (error) {
+                try {
+                    var fallback = window.sessionStorage.getItem(REGULAR_BASKET_STORAGE_KEY);
+                    return fallback ? JSON.parse(fallback) : null;
+                } catch (fallbackError) {
+                    return null;
+                }
+            }
+        }
+
+        function writeRegularBasket(basket) {
+            var value = JSON.stringify(basket);
+
+            try {
+                window.localStorage.setItem(REGULAR_BASKET_STORAGE_KEY, value);
+                return;
+            } catch (error) {
+                try {
+                    window.sessionStorage.setItem(REGULAR_BASKET_STORAGE_KEY, value);
+                } catch (fallbackError) { }
+            }
+        }
+
+        function hasRegularBasket() {
+            var basket = readRegularBasket();
+            return !!(basket && basket.items && basket.items.length);
+        }
+
+        function saveRegularBasket() {
+            var collected = collectItems();
+
+            if (!collected.items.length) {
+                showCartToast('הסל ריק — הוסיפו מוצרים לפני שמירה');
+                return;
+            }
+
+            var items = collected.items.map(function (item) {
+                return {
+                    name: item.name,
+                    mode: item.mode,
+                    quantity: item.quantity,
+                    note: item.note || ''
+                };
+            });
+
+            writeRegularBasket({ savedAt: new Date().toISOString(), items: items });
+            updateRegularBasketUi();
+            showCartToast('הסל נשמר כסל קבוע ⭐');
+        }
+
+        function loadRegularBasket() {
+            var basket = readRegularBasket();
+
+            if (!basket || !basket.items || !basket.items.length) {
+                showCartToast('אין סל קבוע שמור');
+                return;
+            }
+
+            var rowByName = {};
+            els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
+                rowByName[normalizeText(row.getAttribute('data-name'))] = row;
+            });
+
+            var loaded = 0;
+            var missing = [];
+
+            basket.items.forEach(function (item) {
+                var row = rowByName[normalizeText(item.name)];
+                var input = row && row.querySelector('.quantity-input');
+
+                if (!row || row.getAttribute('data-out-of-stock') || !input) {
+                    missing.push(item.name);
+                    return;
+                }
+
+                if (item.mode) {
+                    setProductMode(row, item.mode);
+                }
+
+                input.value = item.quantity || '';
+
+                var noteInput = row.querySelector('.product-note-input');
+                if (noteInput) {
+                    noteInput.value = item.note || '';
+                }
+
+                updateRowState(row);
+                loaded++;
+            });
+
+            renderSummary();
+            saveOrderDraft();
+            updateRegularBasketUi();
+
+            if (loaded) {
+                setCartSummaryOpen(true);
+            }
+
+            var message = loaded
+                ? 'נטענו ' + loaded + ' מוצרים מהסל הקבוע'
+                : 'אף מוצר מהסל הקבוע אינו זמין השבוע';
+
+            if (loaded && missing.length) {
+                message += ' · ' + missing.length + ' לא זמינים השבוע';
+            }
+
+            showCartToast(message);
+        }
+
+        function updateRegularBasketUi() {
+            var saved = hasRegularBasket();
+            var collected = collectItems();
+            var cartEmpty = !collected.items.length;
+
+            if (els.basketLoadButton) {
+                els.basketLoadButton.disabled = !saved;
+            }
+            if (els.basketSaveButton) {
+                els.basketSaveButton.disabled = cartEmpty;
+            }
+            if (els.regularBasketBanner) {
+                els.regularBasketBanner.classList.toggle('hidden', !(saved && cartEmpty));
+            }
         }
 
         function saveScrollPosition() {
@@ -5794,6 +6027,7 @@
                 updateFloatingCart(0, 0);
                 updateMobileSummaryMetrics();
                 updateSummaryAdFit();
+                updateRegularBasketUi();
                 return;
             }
 
@@ -5828,6 +6062,7 @@
             updateFloatingCart(collected.items.length, collected.estimatedTotal);
             updateMobileSummaryMetrics();
             updateSummaryAdFit();
+            updateRegularBasketUi();
         }
 
         function updateFreeDeliveryProgress(estimatedTotal) {
@@ -5998,11 +6233,15 @@
                 }, 460);
             }
 
+            showCartToast(productName + ' נוסף לסל', 1600);
+        }
+
+        function showCartToast(message, duration) {
             if (!els.cartFeedback) {
                 return;
             }
 
-            els.cartFeedback.textContent = productName + ' נוסף לסל';
+            els.cartFeedback.textContent = message;
             els.cartFeedback.classList.add('show');
 
             if (cartFeedbackTimer) {
@@ -6011,7 +6250,7 @@
 
             cartFeedbackTimer = window.setTimeout(function () {
                 els.cartFeedback.classList.remove('show');
-            }, 1600);
+            }, duration || 2600);
         }
 
         function toggleCartSummary() {
@@ -6266,7 +6505,37 @@
             }
             els.statusFineprint.textContent = fineprint.join(' ');
 
+            lastSubmittedBasketItems = (collected.items || []).map(function (item) {
+                return {
+                    name: item.name,
+                    mode: item.mode,
+                    quantity: item.quantity,
+                    note: item.note || ''
+                };
+            });
+
+            if (els.statusSaveBasket) {
+                els.statusSaveBasket.disabled = !lastSubmittedBasketItems.length;
+                els.statusSaveBasket.textContent = '⭐ שמירת ההזמנה כסל קבוע לשבוע הבא';
+            }
+
             setStatusState('success');
+        }
+
+        var lastSubmittedBasketItems = null;
+
+        function saveSubmittedBasket() {
+            if (!lastSubmittedBasketItems || !lastSubmittedBasketItems.length) {
+                return;
+            }
+
+            writeRegularBasket({ savedAt: new Date().toISOString(), items: lastSubmittedBasketItems });
+            updateRegularBasketUi();
+
+            if (els.statusSaveBasket) {
+                els.statusSaveBasket.textContent = 'נשמר כסל קבוע ✓';
+                els.statusSaveBasket.disabled = true;
+            }
         }
 
         function validateForm() {
