@@ -110,7 +110,7 @@ module.exports = async function handler(req, res) {
     }
 
     const [customerEmailResult, businessEmailResult, telegramResult] = await Promise.all([
-      sendCustomerOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError),
+      sendCustomerOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError, changesPdfBuffer),
       sendBusinessOrderEmail(settings, documentOrder, order.items, pdfBuffer, pdfError, changesPdfBuffer),
       sendTelegramOrder(settings, documentOrder, order.items, pdfBuffer, pdfError),
     ]);
