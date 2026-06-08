@@ -4,7 +4,32 @@ const {
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
+  readCatalogSheet,
+  addProduct,
+  updateProduct,
+  deleteProduct,
 } = require('../lib/sheets');
+
+// Validate + normalize a product payload from the client.
+function cleanProduct(raw) {
+  const p = raw || {};
+  const name = String(p.name || '').trim();
+  const price = Number(p.price);
+  const states = ['active', 'oos', 'hidden'];
+  const state = states.indexOf(p.state) !== -1 ? p.state : 'active';
+  if (!name) return { error: 'חסר שם מוצר.' };
+  if (!isFinite(price) || price < 0) return { error: 'מחיר לא תקין.' };
+  return {
+    product: {
+      name,
+      department: String(p.department || '').trim() || 'אחר',
+      unit: String(p.unit || '').trim() || 'יחידות',
+      priceUnit: String(p.priceUnit || '').trim(),
+      price: price,
+      state: state,
+    },
+  };
+}
 
 // Constant-time compare of the supplied key against DASHBOARD_PASSWORD.
 function isAuthorized(req) {
@@ -41,6 +66,11 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, order: result.order });
       }
 
+      if (action === 'products') {
+        const data = await readCatalogSheet();
+        return res.json({ ok: true, products: data.products, departments: data.departments });
+      }
+
       const orders = await listOrdersForDashboard();
       return res.json({ ok: true, orders });
     }
@@ -48,6 +78,32 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const body = req.body || {};
       const action = String(body.action || '').trim();
+
+      // --- Catalog management ---
+      if (action === 'product-add') {
+        const cleaned = cleanProduct(body.product);
+        if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+        await addProduct(cleaned.product);
+        return res.json({ ok: true });
+      }
+
+      if (action === 'product-update') {
+        const rowNumber = Number(body.rowNumber);
+        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
+        const cleaned = cleanProduct(body.product);
+        if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+        await updateProduct(rowNumber, cleaned.product);
+        return res.json({ ok: true });
+      }
+
+      if (action === 'product-delete') {
+        const rowNumber = Number(body.rowNumber);
+        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
+        await deleteProduct(rowNumber);
+        return res.json({ ok: true });
+      }
+
+      // --- Order actions ---
       const orderId = String(body.orderId || '').trim();
       const member = String(body.member || '').trim();
 

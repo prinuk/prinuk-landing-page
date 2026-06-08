@@ -405,6 +405,75 @@
     }
     .toast.show { opacity: 1; }
 
+    /* ---------- Tabs ---------- */
+    .tabs { display: flex; gap: 6px; padding: 12px 16px 2px; }
+    .tab {
+      flex: 1; padding: 11px; border-radius: 999px;
+      border: 1.5px solid var(--line-strong); background: var(--surface);
+      color: var(--muted); font-weight: 700; font-size: 14.5px;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ---------- Products ---------- */
+    .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
+    .prod-toolbar .search-wrap { flex: 1; margin: 0; }
+    .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
+
+    .prod-group-title {
+      padding: 16px 16px 6px; font-family: var(--display);
+      font-size: 16px; font-weight: 700; color: var(--accent-dark);
+    }
+    .prod-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); margin: 0 16px 8px; padding: 11px 13px;
+      border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    }
+    .prod-row.is-hidden { opacity: .55; }
+    .prod-main { flex: 1; min-width: 0; }
+    .prod-name { font-weight: 700; font-size: 15.5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .prod-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .prod-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 9px;
+      border: 1.5px solid var(--line-strong); background: var(--surface-2);
+      font-size: 17px; display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { background: #fff; }
+
+    .pill { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .pill.active { background: var(--fresh-soft); color: var(--fresh); }
+    .pill.oos { background: var(--amber-soft); color: var(--amber); }
+    .pill.hidden { background: #eceff1; color: var(--muted); }
+
+    /* ---------- Modal ---------- */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 30, 40, .5);
+      display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+    }
+    .modal {
+      background: #fff; width: 100%; max-width: 480px;
+      border-radius: 18px 18px 0 0;
+      padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+      max-height: 92vh; overflow-y: auto;
+    }
+    .modal h2 { font-family: var(--display); margin: 0 0 14px; font-size: 21px; color: var(--accent-dark); }
+    .modal .field { margin-bottom: 12px; }
+    .modal .field select, .modal .field input {
+      width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
+      border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
+      background: var(--surface-2); color: var(--ink);
+    }
+    .modal .field select:focus, .modal .field input:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-actions .btn { flex: 1; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { filter: brightness(.95); }
+
+    @media (min-width: 620px) {
+      .modal-overlay { align-items: center; }
+      .modal { border-radius: 18px; }
+    }
+
     /* ---------- Print ---------- */
     .print-only { display: none; }
 
@@ -455,6 +524,12 @@
       <button class="logout-btn" id="logout">יציאה</button>
     </div>
 
+    <div class="tabs">
+      <button class="tab active" data-tab="orders">📋 הזמנות</button>
+      <button class="tab" data-tab="products">🥬 מוצרים</button>
+    </div>
+
+   <div id="orders-tab">
     <!-- LIST VIEW -->
     <div id="list-view">
       <div class="counters">
@@ -485,6 +560,72 @@
 
     <!-- DETAIL VIEW -->
     <div id="detail-view" class="detail hidden"></div>
+   </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="products-tab" class="hidden">
+      <div class="prod-toolbar">
+        <div class="search-wrap">
+          <span class="icn">🔍</span>
+          <input id="prod-search" type="search" placeholder="חיפוש מוצר" />
+        </div>
+        <button class="btn btn-primary add-btn" id="add-product">+ הוסף מוצר</button>
+      </div>
+      <div id="prod-list"></div>
+    </div>
+  </div>
+
+  <!-- Product add/edit modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title">מוצר חדש</h2>
+      <form id="product-form" autocomplete="off">
+        <div class="field">
+          <label for="pf-name">שם המוצר</label>
+          <input id="pf-name" type="text" required />
+        </div>
+        <div class="field">
+          <label for="pf-dept">מחלקה</label>
+          <select id="pf-dept"></select>
+        </div>
+        <div class="field">
+          <label for="pf-unit">יחידה (מה הלקוח מזמין)</label>
+          <input id="pf-unit" type="text" list="unit-options" placeholder="יחידות / ק&quot;ג / מארז" />
+        </div>
+        <div class="field">
+          <label for="pf-priceunit">יחידת מחיר</label>
+          <input id="pf-priceunit" type="text" list="unit-options" placeholder="ק&quot;ג / יחידות" />
+        </div>
+        <div class="field">
+          <label for="pf-price">מחיר (₪)</label>
+          <input id="pf-price" type="number" inputmode="decimal" min="0" step="0.5" required />
+        </div>
+        <div class="field">
+          <label for="pf-state">סטטוס</label>
+          <select id="pf-state">
+            <option value="active">פעיל (מוצג וניתן להזמנה)</option>
+            <option value="oos">אזל מהמלאי (מוצג, לא ניתן להזמנה)</option>
+            <option value="hidden">מוסתר (לא מוצג ללקוחות)</option>
+          </select>
+        </div>
+        <p class="form-error" id="pf-error"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="pf-cancel">ביטול</button>
+          <button type="submit" class="btn btn-primary" id="pf-save">שמירה</button>
+        </div>
+        <div class="modal-actions" id="pf-delete-row">
+          <button type="button" class="btn btn-danger" id="pf-delete">🗑️ מחיקת מוצר</button>
+        </div>
+      </form>
+    </div>
+    <datalist id="unit-options">
+      <option value="יחידות"></option>
+      <option value="ק&quot;ג"></option>
+      <option value="מארז"></option>
+      <option value="סלסלה"></option>
+      <option value="צרור"></option>
+      <option value="שקית"></option>
+    </datalist>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -502,6 +643,9 @@
       currentItems: [],     // [{name, ..., picked}]
       filters: { search: '', status: 'all', type: 'all' },
       refreshTimer: null,
+      tab: 'orders',
+      products: [],
+      departments: [],
     };
 
     var el = function (id) { return document.getElementById(id); };
@@ -629,7 +773,7 @@
     function startAutoRefresh() {
       stopAutoRefresh();
       state.refreshTimer = setInterval(function () {
-        if (state.current) return; // pause while viewing an order
+        if (state.tab !== 'orders' || state.current) return; // pause off-tab / while viewing an order
         loadOrders(true);
       }, 30000);
     }
@@ -940,6 +1084,189 @@
           updateSummaryLine();
         });
     }
+
+    // ---------- Tabs ----------
+    function showTab(tab) {
+      state.tab = tab;
+      var isOrders = tab === 'orders';
+      el('orders-tab').classList.toggle('hidden', !isOrders);
+      el('products-tab').classList.toggle('hidden', isOrders);
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+        t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+      });
+      if (isOrders) {
+        state.current = null;
+        el('detail-view').classList.add('hidden');
+        el('detail-view').innerHTML = '';
+        el('list-view').classList.remove('hidden');
+        renderList();
+      } else {
+        loadProducts();
+      }
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
+      t.addEventListener('click', function () { showTab(t.getAttribute('data-tab')); });
+    });
+
+    // ---------- Products ----------
+    function loadProducts() {
+      el('prod-list').innerHTML = '<div class="loading">טוען מוצרים…</div>';
+      return api('GET', '?action=products').then(function (data) {
+        state.products = data.products || [];
+        state.departments = data.departments || [];
+        renderProducts();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('prod-list').innerHTML = '<div class="empty">שגיאה בטעינת המוצרים.</div>';
+      });
+    }
+
+    function productPill(stateVal) {
+      if (stateVal === 'oos') return '<span class="pill oos">אזל</span>';
+      if (stateVal === 'hidden') return '<span class="pill hidden">מוסתר</span>';
+      return '<span class="pill active">פעיל</span>';
+    }
+
+    function productRowHtml(p) {
+      var unit = p.priceUnit || p.unit || '';
+      var price = p.price ? formatMoney(p.price) + (unit ? ' / ' + esc(unit) : '') : 'ללא מחיר';
+      return '' +
+        '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + '" data-row="' + p.rowNumber + '">' +
+          '<div class="prod-main">' +
+            '<div class="prod-name">' + esc(p.name) + productPill(p.state) + '</div>' +
+            '<div class="prod-sub">' + price + (p.unit ? ' · ' + esc(p.unit) : '') + '</div>' +
+          '</div>' +
+          '<div class="prod-actions">' +
+            '<button class="icon-btn" data-act="stock" title="' + (p.state === 'oos' ? 'החזר למלאי' : 'סמן כאזל') + '">' +
+              (p.state === 'oos' ? '✅' : '🚫') + '</button>' +
+            '<button class="icon-btn" data-act="edit" title="עריכה">✏️</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderProducts() {
+      var q = (el('prod-search').value || '').trim().toLowerCase();
+      var list = el('prod-list');
+
+      if (!state.products.length) { list.innerHTML = '<div class="empty">אין מוצרים עדיין. אפשר להוסיף מוצר חדש.</div>'; return; }
+      var items = state.products.filter(function (p) { return !q || p.name.toLowerCase().indexOf(q) !== -1; });
+      if (!items.length) { list.innerHTML = '<div class="empty">לא נמצאו מוצרים.</div>'; return; }
+
+      var order = (state.departments && state.departments.length) ? state.departments.slice() : [];
+      var groups = {};
+      items.forEach(function (p) { (groups[p.department] = groups[p.department] || []).push(p); });
+      Object.keys(groups).forEach(function (d) { if (order.indexOf(d) === -1) order.push(d); });
+
+      var html = '';
+      order.forEach(function (dept) {
+        var arr = groups[dept];
+        if (!arr || !arr.length) return;
+        arr.sort(function (a, b) { return a.name.localeCompare(b.name, 'he'); });
+        html += '<div class="prod-group-title">' + esc(dept) + ' (' + arr.length + ')</div>';
+        arr.forEach(function (p) { html += productRowHtml(p); });
+      });
+      list.innerHTML = html;
+
+      Array.prototype.forEach.call(list.querySelectorAll('.prod-row'), function (row) {
+        var rn = Number(row.getAttribute('data-row'));
+        row.querySelector('[data-act="edit"]').addEventListener('click', function () { openProductForm(rn); });
+        row.querySelector('[data-act="stock"]').addEventListener('click', function () { toggleStock(rn); });
+      });
+    }
+
+    function toggleStock(rowNumber) {
+      var p = state.products.find(function (x) { return x.rowNumber === rowNumber; });
+      if (!p) return;
+      var newState = p.state === 'oos' ? 'active' : 'oos';
+      api('POST', '', { action: 'product-update', rowNumber: rowNumber, product: {
+        name: p.name, department: p.department, unit: p.unit, priceUnit: p.priceUnit, price: p.price, state: newState,
+      } }).then(function () {
+        p.state = newState;
+        renderProducts();
+        showToast(newState === 'oos' ? 'סומן כאזל מהמלאי' : 'חזר למלאי');
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast('שגיאה בעדכון');
+      });
+    }
+
+    var editingRow = null;
+
+    function openProductForm(rowNumber) {
+      editingRow = rowNumber || null;
+      var p = rowNumber ? state.products.find(function (x) { return x.rowNumber === rowNumber; }) : null;
+
+      var depts = (state.departments && state.departments.length) ? state.departments.slice() : ['ירקות', 'פירות', 'עלים', 'מיוחדים'];
+      if (p && depts.indexOf(p.department) === -1) depts.push(p.department);
+      if (depts.indexOf('אחר') === -1) depts.push('אחר');
+      el('pf-dept').innerHTML = depts.map(function (d) { return '<option value="' + esc(d) + '">' + esc(d) + '</option>'; }).join('');
+
+      el('modal-title').textContent = p ? 'עריכת מוצר' : 'מוצר חדש';
+      el('pf-name').value = p ? p.name : '';
+      el('pf-dept').value = p ? p.department : depts[0];
+      el('pf-unit').value = p ? p.unit : 'יחידות';
+      el('pf-priceunit').value = p ? p.priceUnit : '';
+      el('pf-price').value = (p && p.price) ? p.price : '';
+      el('pf-state').value = p ? p.state : 'active';
+      el('pf-error').textContent = '';
+      el('pf-delete-row').style.display = p ? 'flex' : 'none';
+      el('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeProductForm() {
+      el('modal-overlay').classList.add('hidden');
+      editingRow = null;
+    }
+
+    el('add-product').addEventListener('click', function () { openProductForm(null); });
+    el('pf-cancel').addEventListener('click', closeProductForm);
+    el('modal-overlay').addEventListener('click', function (e) { if (e.target === this) closeProductForm(); });
+    el('prod-search').addEventListener('input', renderProducts);
+
+    el('product-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var product = {
+        name: el('pf-name').value.trim(),
+        department: el('pf-dept').value,
+        unit: el('pf-unit').value.trim(),
+        priceUnit: el('pf-priceunit').value.trim(),
+        price: parseFloat(el('pf-price').value),
+        state: el('pf-state').value,
+      };
+      if (!product.name) { el('pf-error').textContent = 'יש להזין שם מוצר.'; return; }
+      if (isNaN(product.price) || product.price < 0) { el('pf-error').textContent = 'יש להזין מחיר תקין.'; return; }
+
+      var btn = el('pf-save');
+      btn.disabled = true;
+      btn.textContent = 'שומר…';
+
+      var payload = editingRow
+        ? { action: 'product-update', rowNumber: editingRow, product: product }
+        : { action: 'product-add', product: product };
+
+      api('POST', '', payload).then(function () {
+        closeProductForm();
+        showToast(editingRow ? 'המוצר עודכן' : 'המוצר נוסף');
+        loadProducts();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('pf-error').textContent = err.message || 'שגיאה בשמירה.';
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'שמירה';
+      });
+    });
+
+    el('pf-delete').addEventListener('click', function () {
+      if (!editingRow) return;
+      var p = state.products.find(function (x) { return x.rowNumber === editingRow; });
+      if (!window.confirm('למחוק את "' + (p ? p.name : 'המוצר') + '" לצמיתות?')) return;
+      api('POST', '', { action: 'product-delete', rowNumber: editingRow }).then(function () {
+        closeProductForm();
+        showToast('המוצר נמחק');
+        loadProducts();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast('שגיאה במחיקה');
+      });
+    });
 
     // ---------- Boot ----------
     if (state.member && state.key) {
