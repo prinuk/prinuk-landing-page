@@ -40,12 +40,27 @@ function cleanProduct(raw) {
   };
 }
 
+// Find the Vercel Blob read/write token. Prefer the standard name, but fall
+// back to any env var whose VALUE looks like a Blob RW token, since Vercel may
+// name it per-store (e.g. <STORE>_READ_WRITE_TOKEN).
+function getBlobToken() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  const keys = Object.keys(process.env);
+  for (let i = 0; i < keys.length; i++) {
+    const value = process.env[keys[i]];
+    if (typeof value === 'string' && value.indexOf('vercel_blob_rw_') === 0) return value;
+  }
+  return '';
+}
+
 // Upload a (client-downscaled) image data URL to Vercel Blob, return its URL.
 async function uploadImage(dataUrl, name) {
   const match = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/i.exec(String(dataUrl || ''));
   if (!match) throw new Error('קובץ תמונה לא תקין.');
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new Error('אחסון התמונות לא מוגדר. צרו Blob store ב-Vercel.');
+
+  const token = getBlobToken();
+  if (!token) {
+    throw new Error('אחסון התמונות לא מוגדר. ודאו ש-Blob store מחובר לפרויקט ושיש משתנה BLOB_READ_WRITE_TOKEN, ואז פרסו מחדש.');
   }
 
   const contentType = match[1];
@@ -60,7 +75,7 @@ async function uploadImage(dataUrl, name) {
   const result = await put('products/' + slug + '-' + Date.now() + '.' + ext, buffer, {
     access: 'public',
     contentType: contentType,
-    token: process.env.BLOB_READ_WRITE_TOKEN,
+    token: token,
   });
 
   return result.url;
