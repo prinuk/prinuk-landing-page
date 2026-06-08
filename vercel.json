@@ -5,9 +5,22 @@
     },
     "api/price-list.js": {
       "maxDuration": 60
+    },
+    "api/dashboard.js": {
+      "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/team",
+      "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
+      "dest": "/team/index.html"
+    },
+    {
+      "src": "/team",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
+      "dest": "/team/index.html"
+    },
     {
       "src": "/",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
@@ -21,6 +34,16 @@
   ],
   "rewrites": [
     {
+      "source": "/team",
+      "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
+      "destination": "/team/index.html"
+    },
+    {
+      "source": "/team",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
+      "destination": "/team/index.html"
+    },
+    {
       "source": "/",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
       "destination": "/order/index.html"
@@ -31,12 +54,12 @@
       "destination": "/order/index.html"
     },
     {
-      "source": "/:path((?!api/|order/|assets/|_vercel/).*)",
+      "source": "/:path((?!api/|order/|team/|assets/|_vercel/).*)",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
       "destination": "/order/:path*"
     },
     {
-      "source": "/:path((?!api/|order/|assets/|_vercel/).*)",
+      "source": "/:path((?!api/|order/|team/|assets/|_vercel/).*)",
       "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
       "destination": "/order/:path*"
     }

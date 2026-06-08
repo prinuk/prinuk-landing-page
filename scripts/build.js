@@ -18,6 +18,7 @@ const REQUIRED_FILES = [
 const STATIC_ENTRIES = [
   'index.html',
   'order',
+  'team',
   'script.js',
   'styles.css',
   'assets',

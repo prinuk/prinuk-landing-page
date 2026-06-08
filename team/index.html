@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>פרינוּק · ניהול הזמנות לצוות</title>
+  <link rel="icon" href="/assets/prinuk-logo-round.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef7f1;
+      --surface: #ffffff;
+      --surface-2: #f7fbf8;
+      --ink: #17242f;
+      --muted: #68767f;
+      --line: #dce7df;
+      --line-strong: #c5d6cc;
+      --accent: #0c4c9c;
+      --accent-dark: #07306b;
+      --accent-soft: #e8f2ff;
+      --fresh: #1d9b68;
+      --fresh-soft: #e8f7ef;
+      --fruit: #ec6f4a;
+      --amber: #b46e16;
+      --amber-soft: #fbf0db;
+      --danger: #b33636;
+      --danger-soft: #fbe7e7;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 6px 22px rgba(23, 36, 47, 0.08);
+      --shadow-sm: 0 2px 8px rgba(23, 36, 47, 0.06);
+      --display: "Frank Ruhl Libre", "David Libre", serif;
+      --body: "Assistant", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--body);
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      font-size: 16px;
+    }
+
+    button { font-family: inherit; cursor: pointer; }
+
+    .hidden { display: none !important; }
+
+    /* ---------- Login gate ---------- */
+    .gate {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .gate-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .gate-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin: 0 auto 14px;
+      display: block;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .gate-card h1 {
+      font-family: var(--display);
+      font-size: 24px;
+      margin: 0 0 4px;
+      color: var(--accent-dark);
+    }
+
+    .gate-card p {
+      color: var(--muted);
+      margin: 0 0 22px;
+      font-size: 15px;
+    }
+
+    .field { text-align: right; margin-bottom: 14px; }
+
+    .field label {
+      display: block;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .field input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-family: inherit;
+      background: var(--surface-2);
+      color: var(--ink);
+      transition: border-color .15s;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: #fff;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 16px;
+      padding: 14px 18px;
+      width: 100%;
+      transition: transform .05s, background .15s, box-shadow .15s;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-primary:disabled { opacity: .6; cursor: default; }
+
+    .btn-success { background: var(--fresh); color: #fff; }
+    .btn-success:hover { filter: brightness(.95); }
+
+    .btn-ghost {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1.5px solid var(--line-strong);
+    }
+    .btn-ghost:hover { background: var(--surface-2); }
+
+    .form-error {
+      color: var(--danger);
+      font-size: 14px;
+      margin: 6px 0 0;
+      min-height: 18px;
+    }
+
+    /* ---------- App shell ---------- */
+    .app { max-width: 760px; margin: 0 auto; padding-bottom: 40px; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--accent-dark);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar img {
+      width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.25);
+    }
+
+    .topbar .titles { flex: 1; min-width: 0; }
+    .topbar .titles strong { font-family: var(--display); font-size: 18px; display: block; line-height: 1.2; }
+    .topbar .titles span { font-size: 12.5px; opacity: .8; }
+
+    .topbar .who {
+      font-size: 13px; background: rgba(255,255,255,.14);
+      padding: 5px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .logout-btn {
+      background: transparent; border: none; color: #fff; opacity: .8;
+      font-size: 13px; padding: 4px; text-decoration: underline;
+    }
+
+    /* ---------- Counters ---------- */
+    .counters {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 14px 16px 6px;
+    }
+    .counter {
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: 10px 8px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      border-top: 3px solid var(--line);
+    }
+    .counter b { display: block; font-size: 22px; line-height: 1.1; }
+    .counter span { font-size: 12.5px; color: var(--muted); }
+    .counter.waiting { border-top-color: var(--amber); }
+    .counter.picking { border-top-color: var(--accent); }
+    .counter.done { border-top-color: var(--fresh); }
+
+    /* ---------- Controls ---------- */
+    .controls { padding: 8px 16px 4px; }
+
+    .search-wrap { position: relative; margin-bottom: 10px; }
+    .search-wrap input {
+      width: 100%;
+      padding: 12px 40px 12px 14px;
+      border: 1.5px solid var(--line-strong);
+      border-radius: 999px;
+      font-size: 15px;
+      font-family: inherit;
+      background: var(--surface);
+    }
+    .search-wrap input:focus { outline: none; border-color: var(--accent); }
+    .search-wrap .icn {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 16px; pointer-events: none;
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      border: 1.5px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 13px;
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .chips .sep { width: 1px; background: var(--line); margin: 2px 2px; }
+
+    /* ---------- Order list ---------- */
+    .list { padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+    .order-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 13px 14px;
+      border-right: 4px solid var(--line);
+      cursor: pointer;
+      transition: box-shadow .15s, transform .05s;
+    }
+    .order-card:hover { box-shadow: var(--shadow); }
+    .order-card:active { transform: scale(.995); }
+    .order-card.st-waiting { border-right-color: var(--amber); }
+    .order-card.st-picking { border-right-color: var(--accent); }
+    .order-card.st-done { border-right-color: var(--fresh); }
+    .order-card.st-partial { border-right-color: var(--fruit); }
+
+    .oc-top { display: flex; align-items: center; gap: 8px; }
+    .oc-name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .oc-time { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+
+    .badge {
+      font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+    }
+    .badge.st-waiting { background: var(--amber-soft); color: var(--amber); }
+    .badge.st-picking { background: var(--accent-soft); color: var(--accent); }
+    .badge.st-done { background: var(--fresh-soft); color: var(--fresh); }
+    .badge.st-partial { background: #fdebe2; color: var(--fruit); }
+
+    .oc-meta {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+      margin-top: 8px; font-size: 13.5px; color: var(--muted);
+    }
+    .oc-meta .tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--surface-2); padding: 3px 9px; border-radius: 999px;
+    }
+    .oc-meta .tag.deliver { background: var(--accent-soft); color: var(--accent); }
+    .oc-meta .tag.pickup { background: var(--fresh-soft); color: var(--fresh); }
+    .oc-total { font-weight: 700; color: var(--ink); margin-inline-start: auto; }
+
+    .oc-actions { display: flex; gap: 8px; margin-top: 11px; }
+    .mini-btn {
+      flex: 1;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1.5px solid var(--line-strong);
+      background: var(--surface-2);
+      color: var(--ink);
+      border-radius: var(--radius-sm);
+      padding: 9px;
+      font-size: 14px; font-weight: 600;
+      text-decoration: none;
+    }
+    .mini-btn:hover { background: #fff; }
+    .mini-btn.call { color: var(--accent); }
+    .mini-btn.wa { color: var(--fresh); }
+
+    .oc-pickedby { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+    .oc-pickedby b { color: var(--ink); }
+
+    .empty, .loading {
+      text-align: center; color: var(--muted); padding: 50px 20px; font-size: 15px;
+    }
+
+    /* ---------- Detail ---------- */
+    .detail { padding: 14px 16px 120px; }
+
+    .back-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .back-btn {
+      background: var(--surface); border: 1.5px solid var(--line-strong);
+      border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 14px; color: var(--ink);
+    }
+    .detail-status { margin-inline-start: auto; }
+
+    .panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 15px 16px;
+      margin-bottom: 12px;
+    }
+    .panel h2 {
+      font-size: 13px; text-transform: none; letter-spacing: .02em;
+      color: var(--muted); margin: 0 0 10px; font-weight: 700;
+    }
+
+    .cust-name { font-family: var(--display); font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+    .cust-line { font-size: 15px; color: var(--ink); margin: 6px 0; display: flex; gap: 7px; }
+    .cust-line .lbl { color: var(--muted); min-width: 64px; font-weight: 600; }
+    .cust-line .val { flex: 1; }
+    .note-block {
+      background: var(--amber-soft); color: #6b4d12; border-radius: var(--radius-sm);
+      padding: 10px 12px; font-size: 14.5px; margin-top: 10px;
+    }
+
+    .contact-row { display: flex; gap: 8px; margin-top: 12px; }
+    .contact-row .mini-btn { padding: 11px; font-size: 14.5px; }
+
+    /* Items checklist */
+    .items-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .items-head .summary { font-size: 13.5px; font-weight: 700; }
+    .items-head .summary .miss { color: var(--danger); }
+
+    .item-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 4px; border-bottom: 1px solid var(--line);
+    }
+    .item-row:last-child { border-bottom: none; }
+
+    .check {
+      flex-shrink: 0;
+      width: 30px; height: 30px; border-radius: 8px;
+      border: 2px solid var(--line-strong); background: var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: transparent; transition: all .12s;
+    }
+    .item-row.picked .check { background: var(--fresh); border-color: var(--fresh); color: #fff; }
+    .item-row.missing .check { background: var(--danger-soft); border-color: var(--danger); }
+
+    .item-main { flex: 1; min-width: 0; }
+    .item-name { font-weight: 600; font-size: 16px; }
+    .item-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .item-note { font-size: 13px; color: var(--amber); margin-top: 3px; }
+    .item-row.missing .item-name { text-decoration: line-through; color: var(--muted); }
+
+    .miss-toggle {
+      flex-shrink: 0;
+      border: 1.5px solid var(--line-strong); background: var(--surface);
+      border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted);
+    }
+    .item-row.missing .miss-toggle { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    /* sticky submit bar */
+    .submit-bar {
+      position: fixed; bottom: 0; right: 0; left: 0; z-index: 30;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(6px);
+      border-top: 1px solid var(--line);
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    }
+    .submit-bar .inner { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; }
+    .submit-bar .btn { width: auto; flex: 1; }
+    .submit-bar .btn-ghost { flex: 0 0 auto; padding-inline: 18px; }
+
+    .toast {
+      position: fixed; bottom: 88px; right: 50%; transform: translateX(50%);
+      background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 999px;
+      font-size: 14px; z-index: 60; box-shadow: var(--shadow); opacity: 0; transition: opacity .2s;
+      pointer-events: none; max-width: 90vw; text-align: center;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ---------- Print ---------- */
+    .print-only { display: none; }
+
+    @media print {
+      body { background: #fff; }
+      .topbar, .submit-bar, .back-row, .contact-row, .miss-toggle,
+      .controls, .counters, .toast { display: none !important; }
+      .detail { padding: 0; }
+      .panel { box-shadow: none; border: 1px solid #ccc; }
+      .item-row { break-inside: avoid; }
+      .check { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    @media (min-width: 620px) {
+      .oc-name { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login gate -->
+  <div id="gate" class="gate">
+    <form id="gate-form" class="gate-card" autocomplete="off">
+      <img class="gate-logo" src="/assets/prinuk-logo-round.png" alt="פרינוּק" />
+      <h1>ניהול הזמנות</h1>
+      <p>אזור לצוות הליקוט בלבד</p>
+      <div class="field">
+        <label for="member">השם שלך</label>
+        <input id="member" name="member" type="text" inputmode="text" placeholder="לדוגמה: יוסי" required />
+      </div>
+      <div class="field">
+        <label for="key">סיסמת צוות</label>
+        <input id="key" name="key" type="password" placeholder="••••••" required />
+      </div>
+      <button class="btn btn-primary" type="submit" id="gate-submit">כניסה</button>
+      <p class="form-error" id="gate-error"></p>
+    </form>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app hidden">
+    <div class="topbar">
+      <img src="/assets/prinuk-logo-round.png" alt="פרינוּק" />
+      <div class="titles">
+        <strong>ניהול הזמנות</strong>
+        <span>צוות פרינוּק</span>
+      </div>
+      <span class="who" id="who"></span>
+      <button class="logout-btn" id="logout">יציאה</button>
+    </div>
+
+    <!-- LIST VIEW -->
+    <div id="list-view">
+      <div class="counters">
+        <div class="counter waiting"><b id="c-waiting">0</b><span>ממתינות</span></div>
+        <div class="counter picking"><b id="c-picking">0</b><span>בליקוט</span></div>
+        <div class="counter done"><b id="c-done">0</b><span>נאספו</span></div>
+      </div>
+
+      <div class="controls">
+        <div class="search-wrap">
+          <span class="icn">🔍</span>
+          <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או מספר הזמנה" />
+        </div>
+        <div class="chips" id="status-chips">
+          <button class="chip active" data-status="all">הכל</button>
+          <button class="chip" data-status="חדש">חדש</button>
+          <button class="chip" data-status="בליקוט">בליקוט</button>
+          <button class="chip" data-status="נאסף">נאסף</button>
+          <span class="sep"></span>
+          <button class="chip" data-type="all" data-type-active="1">כל הסוגים</button>
+          <button class="chip" data-type="משלוח">משלוח</button>
+          <button class="chip" data-type="איסוף עצמי">איסוף</button>
+        </div>
+      </div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <!-- DETAIL VIEW -->
+    <div id="detail-view" class="detail hidden"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    'use strict';
+
+    var STATUS = { NEW: 'חדש', PICKING: 'בליקוט', DONE: 'נאסף', PARTIAL: 'נאסף חלקית' };
+
+    var state = {
+      member: localStorage.getItem('teamMember') || '',
+      key: localStorage.getItem('teamKey') || '',
+      orders: [],
+      current: null,        // detail order object
+      currentItems: [],     // [{name, ..., picked}]
+      filters: { search: '', status: 'all', type: 'all' },
+      refreshTimer: null,
+    };
+
+    var el = function (id) { return document.getElementById(id); };
+
+    function esc(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function statusClass(s) {
+      if (s === STATUS.NEW) return 'st-waiting';
+      if (s === STATUS.PICKING) return 'st-picking';
+      if (s === STATUS.PARTIAL) return 'st-partial';
+      if (s === STATUS.DONE) return 'st-done';
+      return '';
+    }
+
+    function formatMoney(n) {
+      if (n === '' || n == null || isNaN(n)) return '';
+      return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 });
+    }
+
+    function formatTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      var now = new Date();
+      var sameDay = d.toDateString() === now.toDateString();
+      var time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      if (sameDay) return 'היום ' + time;
+      var date = d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+      return date + ' ' + time;
+    }
+
+    function waNumber(phone) {
+      var p = String(phone || '').replace(/\D/g, '');
+      if (p.indexOf('0') === 0) p = '972' + p.slice(1);
+      return p;
+    }
+
+    function showToast(msg) {
+      var t = el('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+    }
+
+    // ---------- API ----------
+    function api(method, path, body) {
+      var opts = {
+        method: method,
+        headers: { 'x-dashboard-key': state.key },
+      };
+      if (body) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      return fetch('/api/dashboard' + path, opts).then(function (res) {
+        if (res.status === 401) { logout(); throw new Error('unauthorized'); }
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data && data.error || 'שגיאה');
+          return data;
+        });
+      });
+    }
+
+    // ---------- Auth ----------
+    function showGate() {
+      el('gate').classList.remove('hidden');
+      el('app').classList.add('hidden');
+      stopAutoRefresh();
+    }
+
+    function showApp() {
+      el('gate').classList.add('hidden');
+      el('app').classList.remove('hidden');
+      el('who').textContent = state.member;
+    }
+
+    function logout() {
+      state.key = '';
+      localStorage.removeItem('teamKey');
+      showGate();
+    }
+
+    el('gate-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var member = el('member').value.trim();
+      var key = el('key').value;
+      if (!member || !key) return;
+      var btn = el('gate-submit');
+      btn.disabled = true;
+      btn.textContent = 'בודק…';
+      el('gate-error').textContent = '';
+
+      state.member = member;
+      state.key = key;
+      // Verify the password by loading the list.
+      api('GET', '?action=list')
+        .then(function (data) {
+          localStorage.setItem('teamMember', member);
+          localStorage.setItem('teamKey', key);
+          state.orders = data.orders || [];
+          showApp();
+          renderList();
+          startAutoRefresh();
+        })
+        .catch(function (err) {
+          state.key = '';
+          el('gate-error').textContent = err.message === 'unauthorized'
+            ? 'הסיסמה שגויה. נסו שוב.'
+            : 'לא הצלחנו להתחבר. נסו שוב בעוד רגע.';
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'כניסה';
+        });
+    });
+
+    el('logout').addEventListener('click', logout);
+
+    // ---------- Auto refresh ----------
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      state.refreshTimer = setInterval(function () {
+        if (state.current) return; // pause while viewing an order
+        loadOrders(true);
+      }, 30000);
+    }
+    function stopAutoRefresh() {
+      if (state.refreshTimer) { clearInterval(state.refreshTimer); state.refreshTimer = null; }
+    }
+
+    function loadOrders(silent) {
+      return api('GET', '?action=list').then(function (data) {
+        state.orders = data.orders || [];
+        if (!state.current) renderList();
+      }).catch(function () {
+        if (!silent) showToast('שגיאה בטעינת ההזמנות');
+      });
+    }
+
+    // ---------- List ----------
+    function matchesFilters(o) {
+      var f = state.filters;
+      if (f.status !== 'all') {
+        if (f.status === STATUS.DONE) {
+          if (o.status !== STATUS.DONE && o.status !== STATUS.PARTIAL) return false;
+        } else if (o.status !== f.status) return false;
+      }
+      if (f.type !== 'all' && o.fulfillment !== f.type) return false;
+      if (f.search) {
+        var q = f.search.toLowerCase();
+        var hay = (o.fullName + ' ' + o.phone + ' ' + o.orderId).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    }
+
+    function renderCounters() {
+      var w = 0, p = 0, d = 0;
+      state.orders.forEach(function (o) {
+        if (o.status === STATUS.NEW) w++;
+        else if (o.status === STATUS.PICKING) p++;
+        else if (o.status === STATUS.DONE || o.status === STATUS.PARTIAL) d++;
+      });
+      el('c-waiting').textContent = w;
+      el('c-picking').textContent = p;
+      el('c-done').textContent = d;
+    }
+
+    function renderList() {
+      renderCounters();
+      var list = el('list');
+      var visible = state.orders.filter(matchesFilters);
+
+      if (!state.orders.length) {
+        list.innerHTML = '<div class="empty">אין הזמנות עדיין.</div>';
+        return;
+      }
+      if (!visible.length) {
+        list.innerHTML = '<div class="empty">לא נמצאו הזמנות שמתאימות לסינון.</div>';
+        return;
+      }
+
+      list.innerHTML = visible.map(function (o) {
+        var sc = statusClass(o.status);
+        var isDeliver = o.fulfillment === 'משלוח';
+        var wa = waNumber(o.phone);
+        var pickedBy = o.collectedBy
+          ? '<div class="oc-pickedby">' +
+              (o.status === STATUS.NEW ? '' :
+                (o.status === STATUS.PICKING ? 'בטיפול: ' : 'נאסף ע״י ') + '<b>' + esc(o.collectedBy) + '</b>') +
+            '</div>'
+          : '';
+        return '' +
+          '<div class="order-card ' + sc + '" data-id="' + esc(o.orderId) + '">' +
+            '<div class="oc-top">' +
+              '<span class="oc-name">' + esc(o.fullName || 'ללא שם') + '</span>' +
+              '<span class="badge ' + sc + '">' + esc(o.status || '—') + '</span>' +
+            '</div>' +
+            '<div class="oc-meta">' +
+              '<span class="oc-time">' + esc(formatTime(o.timestamp)) + '</span>' +
+              '<span class="tag ' + (isDeliver ? 'deliver' : 'pickup') + '">' +
+                (isDeliver ? '🚚 משלוח' : '🛍️ איסוף') + '</span>' +
+              '<span class="tag">' + o.itemCount + ' פריטים</span>' +
+              (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
+            '</div>' +
+            pickedBy +
+            '<div class="oc-actions">' +
+              '<a class="mini-btn call" href="tel:' + esc(o.phone) + '" onclick="event.stopPropagation()">📞 חיוג</a>' +
+              '<a class="mini-btn wa" href="https://wa.me/' + wa + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 וואטסאפ</a>' +
+            '</div>' +
+          '</div>';
+      }).join('');
+
+      Array.prototype.forEach.call(list.querySelectorAll('.order-card'), function (card) {
+        card.addEventListener('click', function () { openOrder(card.getAttribute('data-id')); });
+      });
+    }
+
+    // Search + filter wiring
+    el('search').addEventListener('input', function () {
+      state.filters.search = this.value.trim();
+      renderList();
+    });
+
+    el('status-chips').addEventListener('click', function (e) {
+      var chip = e.target.closest('.chip');
+      if (!chip) return;
+      if (chip.hasAttribute('data-status')) {
+        state.filters.status = chip.getAttribute('data-status');
+        Array.prototype.forEach.call(this.querySelectorAll('[data-status]'), function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      } else if (chip.hasAttribute('data-type')) {
+        state.filters.type = chip.getAttribute('data-type');
+        Array.prototype.forEach.call(this.querySelectorAll('[data-type]'), function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      }
+      renderList();
+    });
+
+    // ---------- Detail ----------
+    function openOrder(orderId) {
+      el('list-view').classList.add('hidden');
+      el('detail-view').classList.remove('hidden');
+      el('detail-view').innerHTML = '<div class="loading">טוען הזמנה…</div>';
+      window.scrollTo(0, 0);
+
+      api('GET', '?action=order&id=' + encodeURIComponent(orderId)).then(function (data) {
+        state.current = data.order;
+        state.currentItems = (data.order.items || []).map(function (it) {
+          return Object.assign({}, it, { picked: it.picked !== false });
+        });
+        // Claim a waiting order so others see it's being handled.
+        if (data.order.status === STATUS.NEW) {
+          api('POST', '', { action: 'claim', orderId: orderId, member: state.member })
+            .then(function (r) {
+              if (r && r.status) {
+                state.current.status = r.status;
+                if (r.claimed) state.current.collectedBy = state.member;
+                renderDetail();
+              }
+            }).catch(function () {});
+        }
+        renderDetail();
+      }).catch(function (err) {
+        if (err.message === 'unauthorized') return;
+        el('detail-view').innerHTML = '<div class="empty">לא הצלחנו לטעון את ההזמנה.<br><button class="back-btn" onclick="closeDetail()">חזרה</button></div>';
+      });
+    }
+
+    function closeDetail() {
+      state.current = null;
+      state.currentItems = [];
+      el('detail-view').classList.add('hidden');
+      el('detail-view').innerHTML = '';
+      el('list-view').classList.remove('hidden');
+      renderList();
+    }
+    window.closeDetail = closeDetail;
+
+    function itemSummary() {
+      var picked = 0, missing = 0;
+      state.currentItems.forEach(function (it) { if (it.picked) picked++; else missing++; });
+      return { picked: picked, missing: missing, total: state.currentItems.length };
+    }
+
+    function renderDetail() {
+      var o = state.current;
+      if (!o) return;
+      var isDeliver = o.fulfillment === 'משלוח';
+      var wa = waNumber(o.phone);
+      var sc = statusClass(o.status);
+      var sum = itemSummary();
+
+      var contactBlock =
+        '<div class="contact-row">' +
+          '<a class="mini-btn call" href="tel:' + esc(o.phone) + '">📞 ' + esc(o.phone) + '</a>' +
+          '<a class="mini-btn wa" href="https://wa.me/' + wa + '" target="_blank" rel="noopener">💬 וואטסאפ</a>' +
+        '</div>';
+
+      var addressLines = '';
+      if (isDeliver) {
+        addressLines =
+          '<div class="cust-line"><span class="lbl">כתובת</span><span class="val">' + esc(o.address || '—') + '</span></div>' +
+          (o.floor ? '<div class="cust-line"><span class="lbl">קומה</span><span class="val">' + esc(o.floor) + '</span></div>' : '') +
+          (o.apartment ? '<div class="cust-line"><span class="lbl">דירה</span><span class="val">' + esc(o.apartment) + '</span></div>' : '');
+      } else {
+        addressLines = '<div class="cust-line"><span class="lbl">שיטה</span><span class="val">איסוף עצמי</span></div>';
+      }
+
+      var notesBlock = o.notes ? '<div class="note-block">📝 ' + esc(o.notes) + '</div>' : '';
+      var pickedByLine = o.collectedBy
+        ? '<div class="cust-line"><span class="lbl">' + (o.status === STATUS.PICKING ? 'בטיפול' : 'נאסף ע״י') + '</span><span class="val">' + esc(o.collectedBy) + '</span></div>'
+        : '';
+
+      var itemsHtml = state.currentItems.map(function (it, idx) {
+        var cls = it.picked ? 'picked' : 'missing';
+        var qty = it.quantity + (it.orderUnit ? ' ' + it.orderUnit : '');
+        var lineTotal = (it.lineTotal !== '' && it.lineTotal != null) ? ' · ' + formatMoney(it.lineTotal) : '';
+        return '' +
+          '<div class="item-row ' + cls + '" data-idx="' + idx + '">' +
+            '<div class="check" data-action="toggle">✓</div>' +
+            '<div class="item-main" data-action="toggle">' +
+              '<div class="item-name">' + esc(it.name) + '</div>' +
+              '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
+              (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
+            '</div>' +
+            '<button class="miss-toggle" data-action="miss">' + (it.picked ? 'חסר?' : 'חסר') + '</button>' +
+          '</div>';
+      }).join('');
+
+      el('detail-view').innerHTML = '' +
+        '<div class="back-row">' +
+          '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
+          '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
+          '<span class="badge ' + sc + ' detail-status">' + esc(o.status) + '</span>' +
+        '</div>' +
+
+        '<div class="panel">' +
+          '<h2>פרטי הלקוח</h2>' +
+          '<div class="cust-name">' + esc(o.fullName || 'ללא שם') + '</div>' +
+          '<div class="cust-line"><span class="lbl">טלפון</span><span class="val">' + esc(o.phone || '—') + '</span></div>' +
+          (o.email ? '<div class="cust-line"><span class="lbl">אימייל</span><span class="val">' + esc(o.email) + '</span></div>' : '') +
+          addressLines +
+          pickedByLine +
+          notesBlock +
+          contactBlock +
+        '</div>' +
+
+        '<div class="panel">' +
+          '<div class="items-head">' +
+            '<h2 style="margin:0">פריטים (' + sum.total + ')</h2>' +
+            '<span class="summary" id="item-summary"></span>' +
+          '</div>' +
+          itemsHtml +
+        '</div>' +
+
+        '<div class="submit-bar"><div class="inner">' +
+          '<button class="btn btn-success" id="collect-btn">✓ עדכן הזמנה כנאספה</button>' +
+        '</div></div>';
+
+      updateSummaryLine();
+
+      var view = el('detail-view');
+      view.querySelectorAll('.item-row').forEach(function (row) {
+        var idx = Number(row.getAttribute('data-idx'));
+        row.querySelectorAll('[data-action="toggle"]').forEach(function (target) {
+          target.addEventListener('click', function () { setItemPicked(idx, true); });
+        });
+        row.querySelector('[data-action="miss"]').addEventListener('click', function (e) {
+          e.stopPropagation();
+          setItemPicked(idx, !state.currentItems[idx].picked ? true : false);
+        });
+      });
+      el('collect-btn').addEventListener('click', submitCollect);
+    }
+
+    function setItemPicked(idx, picked) {
+      var it = state.currentItems[idx];
+      if (!it) return;
+      it.picked = picked;
+      var row = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"]');
+      if (row) {
+        row.classList.toggle('picked', picked);
+        row.classList.toggle('missing', !picked);
+        var mt = row.querySelector('.miss-toggle');
+        if (mt) mt.textContent = picked ? 'חסר?' : 'חסר';
+      }
+      updateSummaryLine();
+    }
+
+    function updateSummaryLine() {
+      var sum = itemSummary();
+      var node = el('item-summary');
+      if (!node) return;
+      var txt = 'נאספו ' + sum.picked;
+      if (sum.missing) txt += ' · <span class="miss">חסרים ' + sum.missing + '</span>';
+      node.innerHTML = txt;
+      var btn = el('collect-btn');
+      if (btn) btn.textContent = sum.missing
+        ? '✓ עדכן (' + sum.missing + ' חסרים)'
+        : '✓ עדכן הזמנה כנאספה';
+    }
+
+    function submitCollect() {
+      var o = state.current;
+      if (!o) return;
+      var btn = el('collect-btn');
+      btn.disabled = true;
+      btn.textContent = 'מעדכן…';
+
+      var items = state.currentItems.map(function (it) {
+        return { name: it.name, picked: it.picked };
+      });
+
+      api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items })
+        .then(function (r) {
+          // Update local list state so the badge reflects immediately.
+          var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
+          if (match) { match.status = r.status; match.collectedBy = r.collectedBy; match.pickedAt = r.pickedAt; }
+          showToast(r.status === STATUS.PARTIAL ? 'עודכן: נאסף חלקית' : 'ההזמנה סומנה כנאספה ✓');
+          closeDetail();
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          if (err.message !== 'unauthorized') showToast('שגיאה בעדכון. נסו שוב.');
+          updateSummaryLine();
+        });
+    }
+
+    // ---------- Boot ----------
+    if (state.member && state.key) {
+      el('member').value = state.member;
+      // Try the stored credentials; fall back to the gate on failure.
+      api('GET', '?action=list')
+        .then(function (data) {
+          state.orders = data.orders || [];
+          showApp();
+          renderList();
+          startAutoRefresh();
+        })
+        .catch(function () { showGate(); });
+    } else {
+      showGate();
+      if (state.member) el('member').value = state.member;
+    }
+  </script>
+</body>
+</html>
