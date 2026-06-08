@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",
+    "@vercel/blob": "^1.1.1",
     "@vercel/edge-config": "^1.4.3",
     "googleapis": "^144.0.0",
     "puppeteer-core": "^23.11.1",

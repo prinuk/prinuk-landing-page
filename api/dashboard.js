@@ -19,6 +19,13 @@ function cleanProduct(raw) {
   const state = states.indexOf(p.state) !== -1 ? p.state : 'active';
   if (!name) return { error: 'חסר שם מוצר.' };
   if (!isFinite(price) || price < 0) return { error: 'מחיר לא תקין.' };
+
+  let weightPerUnitKg = '';
+  if (p.weightPerUnitKg !== '' && p.weightPerUnitKg != null) {
+    weightPerUnitKg = Number(p.weightPerUnitKg);
+    if (!isFinite(weightPerUnitKg) || weightPerUnitKg < 0) return { error: 'משקל לא תקין.' };
+  }
+
   return {
     product: {
       name,
@@ -27,8 +34,36 @@ function cleanProduct(raw) {
       priceUnit: String(p.priceUnit || '').trim(),
       price: price,
       state: state,
+      weightPerUnitKg: weightPerUnitKg,
+      imageUrl: String(p.imageUrl || '').trim(),
     },
   };
+}
+
+// Upload a (client-downscaled) image data URL to Vercel Blob, return its URL.
+async function uploadImage(dataUrl, name) {
+  const match = /^data:(image\/(png|jpe?g|webp));base64,(.+)$/i.exec(String(dataUrl || ''));
+  if (!match) throw new Error('קובץ תמונה לא תקין.');
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error('אחסון התמונות לא מוגדר. צרו Blob store ב-Vercel.');
+  }
+
+  const contentType = match[1];
+  const ext = contentType === 'image/png' ? 'png' : (contentType === 'image/webp' ? 'webp' : 'jpg');
+  const buffer = Buffer.from(match[3], 'base64');
+  if (buffer.length > 4 * 1024 * 1024) throw new Error('התמונה גדולה מדי.');
+
+  const slug = String(name || 'product')
+    .trim().replace(/[^0-9A-Za-z֐-׿]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'product';
+
+  const { put } = require('@vercel/blob');
+  const result = await put('products/' + slug + '-' + Date.now() + '.' + ext, buffer, {
+    access: 'public',
+    contentType: contentType,
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+
+  return result.url;
 }
 
 // Constant-time compare of the supplied key against DASHBOARD_PASSWORD.
@@ -80,6 +115,11 @@ module.exports = async function handler(req, res) {
       const action = String(body.action || '').trim();
 
       // --- Catalog management ---
+      if (action === 'image-upload') {
+        const url = await uploadImage(body.dataUrl, body.name);
+        return res.json({ ok: true, url: url });
+      }
+
       if (action === 'product-add') {
         const cleaned = cleanProduct(body.product);
         if (cleaned.error) return res.status(400).json({ error: cleaned.error });
