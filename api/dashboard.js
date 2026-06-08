@@ -100,6 +100,18 @@ function isAuthorized(req) {
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
+  // Unauthenticated diagnostic — booleans + non-secret env names only, no values.
+  if (req.method === 'GET' && req.query && req.query.action === 'health') {
+    return res.json({
+      ok: true,
+      commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
+      vercelEnv: process.env.VERCEL_ENV || process.env.VERCEL_TARGET_ENV || '',
+      hasDashboardPassword: Boolean(process.env.DASHBOARD_PASSWORD),
+      blobTokenFound: Boolean(getBlobToken()),
+      blobEnvKeys: Object.keys(process.env).filter((k) => /BLOB/i.test(k)),
+    });
+  }
+
   if (!isAuthorized(req)) {
     return res.status(401).json({ error: 'הסיסמה שגויה.' });
   }
