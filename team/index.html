@@ -909,6 +909,15 @@
     function submitCollect() {
       var o = state.current;
       if (!o) return;
+
+      var sum = itemSummary();
+      if (sum.missing > 0) {
+        var msg = sum.missing === 1
+          ? 'פריט אחד לא סומן כנאסף ויסומן כחסר. לעדכן בכל זאת?'
+          : sum.missing + ' פריטים לא סומנו כנאספו ויסומנו כחסרים. לעדכן בכל זאת?';
+        if (!window.confirm(msg)) return;
+      }
+
       var btn = el('collect-btn');
       btn.disabled = true;
       btn.textContent = 'מעדכן…';
