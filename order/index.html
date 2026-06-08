@@ -4158,6 +4158,38 @@
             display: none;
         }
 
+        .prefill-note {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .prefill-note > span {
+            flex: 1 1 auto;
+        }
+
+        .prefill-note button {
+            flex: 0 0 auto;
+            min-height: 32px;
+            padding: 5px 14px;
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--accent-dark);
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
         .edit-mode-banner {
             display: flex;
             align-items: center;
@@ -4228,7 +4260,15 @@
     <div id="orderStatusModal" class="notice-modal status-modal hidden" role="dialog" aria-modal="true"
         aria-labelledby="orderStatusTitle" aria-live="polite">
         <div class="notice-dialog status-dialog">
-            <div id="orderStatusLoading" class="status-state">
+            <div id="orderStatusConfirm" class="status-state hidden">
+                <h2 id="orderConfirmTitle">סקירה ואישור הזמנה</h2>
+                <p class="status-subtitle">בדקו שהפרטים נכונים לפני השליחה.</p>
+                <dl id="orderConfirmDetails" class="status-details"></dl>
+                <button id="orderConfirmSend" class="submit" type="button">אישור ושליחה</button>
+                <button id="orderConfirmBack" class="status-dismiss" type="button">חזרה לעריכה</button>
+            </div>
+
+            <div id="orderStatusLoading" class="status-state hidden">
                 <div class="status-spinner" aria-hidden="true"></div>
                 <h2 id="orderStatusTitle">שולחים את ההזמנה…</h2>
                 <p class="status-subtitle">רגע אחד, אנחנו קולטים את ההזמנה שלכם.</p>
@@ -4433,6 +4473,10 @@
 
                 <section id="customerDetailsPanel" class="panel">
                     <h2>פרטי הזמנה</h2>
+                    <div id="prefillNote" class="prefill-note hidden">
+                        <span>מילאנו את הפרטים מההזמנה הקודמת — בדקו שהם נכונים.</span>
+                        <button id="prefillClear" type="button">ניקוי</button>
+                    </div>
                     <div class="fields">
                         <label class="field">
                             <span>שם מלא <span class="required-star">*</span></span>
@@ -4638,6 +4682,7 @@
         var ORDER_DRAFT_STORAGE_KEY = 'prinukOrderDraft:v1';
         var ORDER_SCROLL_STORAGE_KEY = 'prinukOrderScroll:v1';
         var REGULAR_BASKET_STORAGE_KEY = 'prinukRegularBasket:v1';
+        var CUSTOMER_DETAILS_STORAGE_KEY = 'prinukCustomerDetails:v1';
         var KG_STEP = 0.5;
         var FREE_DELIVERY_THRESHOLD = 200;
         var DELIVERY_FEE = 25;
@@ -4712,6 +4757,11 @@
             cartFeedback: document.getElementById('cartFeedback'),
             message: document.getElementById('message'),
             statusModal: document.getElementById('orderStatusModal'),
+            statusConfirm: document.getElementById('orderStatusConfirm'),
+            orderConfirmDetails: document.getElementById('orderConfirmDetails'),
+            orderConfirmTitle: document.getElementById('orderConfirmTitle'),
+            orderConfirmSend: document.getElementById('orderConfirmSend'),
+            orderConfirmBack: document.getElementById('orderConfirmBack'),
             statusLoading: document.getElementById('orderStatusLoading'),
             statusSuccess: document.getElementById('orderStatusSuccess'),
             statusError: document.getElementById('orderStatusError'),
@@ -4731,7 +4781,9 @@
             regularBasketBannerLoad: document.getElementById('regularBasketBannerLoad'),
             editModeBanner: document.getElementById('editModeBanner'),
             editModeBannerText: document.getElementById('editModeBannerText'),
-            editModeCancel: document.getElementById('editModeCancel')
+            editModeCancel: document.getElementById('editModeCancel'),
+            prefillNote: document.getElementById('prefillNote'),
+            prefillClear: document.getElementById('prefillClear')
         };
 
         els.searchInput.addEventListener('input', applySearch);
@@ -4746,6 +4798,15 @@
         });
         els.statusClose.addEventListener('click', closeStatusModal);
         els.statusDismiss.addEventListener('click', closeStatusModal);
+        els.orderConfirmSend.addEventListener('click', function () {
+            if (pendingOrder) {
+                sendOrder(pendingOrder.payload, pendingOrder.collected);
+            }
+        });
+        els.orderConfirmBack.addEventListener('click', closeStatusModal);
+        if (els.prefillClear) {
+            els.prefillClear.addEventListener('click', clearPrefilledDetails);
+        }
         if (els.basketSaveButton) {
             els.basketSaveButton.addEventListener('click', saveRegularBasket);
         }
@@ -5294,6 +5355,94 @@
             }
         }
 
+        // --- Remember the customer's details across orders ------------------
+        // Stored separately from the cart draft (which is wiped on submit), so
+        // a returning customer doesn't re-type their details every week.
+        function readCustomerDetails() {
+            try {
+                var raw = window.localStorage.getItem(CUSTOMER_DETAILS_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function saveCustomerDetailsFromPayload(payload) {
+            var customer = payload.customer || {};
+            var delivery = payload.delivery || {};
+            try {
+                window.localStorage.setItem(CUSTOMER_DETAILS_STORAGE_KEY, JSON.stringify({
+                    fullName: customer.fullName || '',
+                    phone: customer.phone || '',
+                    email: customer.email || '',
+                    fulfillment: payload.fulfillment || '',
+                    neighborhood: delivery.neighborhood || '',
+                    address: delivery.address || '',
+                    floor: delivery.floor || '',
+                    apartment: delivery.apartment || ''
+                }));
+            } catch (error) { }
+        }
+
+        function clearSavedCustomerDetails() {
+            try {
+                window.localStorage.removeItem(CUSTOMER_DETAILS_STORAGE_KEY);
+            } catch (error) { }
+        }
+
+        function restoreSavedCustomerDetails() {
+            // Skip while editing an existing order (its own details are loaded).
+            if (getEditLinkParams()) {
+                return;
+            }
+
+            var saved = readCustomerDetails();
+            if (!saved) {
+                return;
+            }
+
+            // Don't override details already present (a draft, or typed input).
+            if (document.getElementById('fullName').value.trim() || document.getElementById('phone').value.trim()) {
+                return;
+            }
+
+            setInputValue('fullName', saved.fullName);
+            setInputValue('phone', saved.phone);
+            setInputValue('customerEmail', saved.email);
+
+            if (saved.fulfillment) {
+                var fulfillmentInput = els.form.querySelector('input[name="fulfillment"][value="' + cssEscape(saved.fulfillment) + '"]');
+                if (fulfillmentInput) {
+                    fulfillmentInput.checked = true;
+                }
+            }
+
+            setInputValue('neighborhood', saved.neighborhood);
+            setInputValue('address', saved.address);
+            setInputValue('floor', saved.floor);
+            setInputValue('apartment', saved.apartment);
+            toggleDeliveryFields();
+
+            if (els.prefillNote && (saved.fullName || saved.phone)) {
+                els.prefillNote.classList.remove('hidden');
+            }
+        }
+
+        function clearPrefilledDetails() {
+            ['fullName', 'phone', 'customerEmail', 'neighborhood', 'address', 'floor', 'apartment', 'notes'].forEach(function (id) {
+                setInputValue(id, '');
+            });
+            document.querySelectorAll('input[name="fulfillment"]').forEach(function (input) {
+                input.checked = false;
+            });
+            toggleDeliveryFields();
+            clearSavedCustomerDetails();
+            if (els.prefillNote) {
+                els.prefillNote.classList.add('hidden');
+            }
+            saveOrderDraft();
+        }
+
         function saveScrollPosition() {
             var scrollTop = getPageScrollTop();
 
@@ -5674,6 +5823,7 @@
             applyCategoryFilter();
 
             restoreOrderDraft();
+            restoreSavedCustomerDetails();
             renderSummary();
             restoreScrollPosition();
             maybeStartEditFromUrl();
@@ -6627,7 +6777,53 @@
                 payload.editToken = editState.token;
             }
 
-            sendOrder(payload, collected);
+            showOrderConfirm(payload, collected);
+        }
+
+        var pendingOrder = null;
+
+        // Review-and-approve step shown before the order is actually sent, so
+        // the customer always sees the details (especially auto-filled ones).
+        function showOrderConfirm(payload, collected) {
+            pendingOrder = { payload: payload, collected: collected };
+
+            var customer = payload.customer || {};
+            var delivery = payload.delivery || {};
+            var deliveryFee = deliveryFeeFor(collected.estimatedTotal);
+            var grandTotal = roundMoney(collected.estimatedTotal + deliveryFee);
+
+            var rows = [
+                ['שם', customer.fullName],
+                ['טלפון', customer.phone],
+                ['מייל', customer.email],
+                ['שיטת קבלה', payload.fulfillment]
+            ];
+
+            if (payload.fulfillment === 'משלוח') {
+                var addressParts = [delivery.neighborhood, delivery.address];
+                if (delivery.floor) { addressParts.push('קומה ' + delivery.floor); }
+                if (delivery.apartment) { addressParts.push('דירה ' + delivery.apartment); }
+                rows.push(['כתובת', addressParts.filter(Boolean).join(', ')]);
+            }
+
+            var totalText = '₪' + formatMoney(grandTotal);
+            if (deliveryFee > 0) {
+                totalText += ' (כולל ₪' + formatMoney(deliveryFee) + ' משלוח)';
+            }
+            rows.push([formatItemCountText(collected.items.length), totalText]);
+
+            els.orderConfirmDetails.innerHTML = rows
+                .filter(function (row) { return String(row[1] || '').trim(); })
+                .map(function (row) {
+                    return '<div class="status-detail-row"><dt>' + escapeHtml(row[0])
+                        + '</dt><dd>' + escapeHtml(row[1]) + '</dd></div>';
+                }).join('');
+
+            els.orderConfirmTitle.textContent = editState ? 'סקירה ואישור עדכון' : 'סקירה ואישור הזמנה';
+            els.orderConfirmSend.textContent = editState ? 'אישור ועדכון' : 'אישור ושליחה';
+
+            setStatusState('confirm');
+            els.statusModal.classList.remove('hidden');
         }
 
         var lastOrderAttempt = null;
@@ -6651,12 +6847,17 @@
                         exitEditMode();
                         clearEditUrlParams();
                     }
+                    saveCustomerDetailsFromPayload(payload);
                     showStatusSuccess(result.data, collected);
                     showMessage('', '');
                     resetProducts();
                     clearOrderDraft();
                     setCartSummaryOpen(false);
+                    if (els.prefillNote) {
+                        els.prefillNote.classList.add('hidden');
+                    }
                     lastOrderAttempt = null;
+                    pendingOrder = null;
                 })
                 .catch(function (error) {
                     setSubmitting(false);
@@ -6665,6 +6866,7 @@
         }
 
         function setStatusState(state) {
+            els.statusConfirm.classList.toggle('hidden', state !== 'confirm');
             els.statusLoading.classList.toggle('hidden', state !== 'loading');
             els.statusSuccess.classList.toggle('hidden', state !== 'success');
             els.statusError.classList.toggle('hidden', state !== 'error');
