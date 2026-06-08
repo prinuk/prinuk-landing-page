@@ -4134,6 +4134,30 @@
             margin-top: 14px;
         }
 
+        .field-note {
+            display: block;
+            margin-top: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted, #68767f);
+        }
+
+        .status-edit-note {
+            margin: 14px 0 0;
+            padding: 10px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            background: var(--accent-soft);
+            color: var(--accent-dark);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
+        .status-edit-note:empty {
+            display: none;
+        }
+
         .edit-mode-banner {
             display: flex;
             align-items: center;
@@ -4216,7 +4240,7 @@
                 <p id="orderStatusSuccessSubtitle" class="status-subtitle">תודה רבה, נחזור אליכם בהקדם.</p>
                 <dl id="orderStatusDetails" class="status-details"></dl>
                 <p id="orderStatusFineprint" class="status-fineprint"></p>
-                <button id="orderStatusEdit" class="basket-action status-save-basket" type="button">✏️ צריך לשנות? עריכת ההזמנה</button>
+                <p id="orderStatusEditNote" class="status-edit-note"></p>
                 <button id="orderStatusSaveBasket" class="basket-action status-save-basket" type="button">⭐ שמירת ההזמנה כסל קבוע לשבוע הבא</button>
                 <button id="orderStatusClose" class="submit" type="button">סגירה</button>
             </div>
@@ -4422,8 +4446,9 @@
                         </label>
 
                         <label class="field field-wide">
-                            <span>כתובת מייל (לא חובה)</span>
+                            <span>כתובת מייל <span class="required-star">*</span></span>
                             <input id="customerEmail" name="customerEmail" type="email" autocomplete="email">
+                            <small class="field-note">לכתובת זו יישלחו אישור ההזמנה וקישור לעריכת ההזמנה</small>
                         </label>
                     </div>
 
@@ -4697,7 +4722,7 @@
             statusRetry: document.getElementById('orderStatusRetry'),
             statusDismiss: document.getElementById('orderStatusDismiss'),
             statusSaveBasket: document.getElementById('orderStatusSaveBasket'),
-            statusEdit: document.getElementById('orderStatusEdit'),
+            statusEditNote: document.getElementById('orderStatusEditNote'),
             statusSuccessTitle: document.getElementById('orderStatusSuccessTitle'),
             statusSuccessSubtitle: document.getElementById('orderStatusSuccessSubtitle'),
             basketSaveButton: document.getElementById('basketSaveButton'),
@@ -4732,15 +4757,6 @@
         }
         if (els.statusSaveBasket) {
             els.statusSaveBasket.addEventListener('click', saveSubmittedBasket);
-        }
-        if (els.statusEdit) {
-            els.statusEdit.addEventListener('click', function () {
-                if (!lastOrderEditLink) {
-                    return;
-                }
-                window.location.search = '?order=' + encodeURIComponent(lastOrderEditLink.orderId)
-                    + '&token=' + encodeURIComponent(lastOrderEditLink.token);
-            });
         }
         if (els.editModeCancel) {
             els.editModeCancel.addEventListener('click', function () {
@@ -6668,8 +6684,6 @@
             setStatusState('error');
         }
 
-        var lastOrderEditLink = null;
-
         function showStatusSuccess(result, collected) {
             var isUpdate = !!(result && result.updated);
 
@@ -6680,11 +6694,15 @@
                 els.statusSuccessSubtitle.textContent = isUpdate ? 'השינויים נקלטו אצלנו. תודה רבה!' : 'תודה רבה, נחזור אליכם בהקדם.';
             }
 
-            lastOrderEditLink = (result && result.orderId && result.editToken)
-                ? { orderId: result.orderId, token: result.editToken }
-                : null;
-            if (els.statusEdit) {
-                els.statusEdit.classList.toggle('hidden', !lastOrderEditLink);
+            if (els.statusEditNote) {
+                var customerEmail = (document.getElementById('customerEmail').value || '').trim();
+                if (result.customerEmailStatus === 'נכשל') {
+                    els.statusEditNote.textContent = 'לא הצלחנו לשלוח כעת את קישור העריכה למייל. ההזמנה נקלטה — לכל שינוי אפשר ליצור איתנו קשר.';
+                } else {
+                    els.statusEditNote.textContent = customerEmail
+                        ? '📧 קישור לעריכת ההזמנה נשלח לכתובת ' + customerEmail + ' — אפשר לעדכן את ההזמנה עד סגירת ההזמנות.'
+                        : '📧 קישור לעריכת ההזמנה נשלח לכתובת המייל שלך — אפשר לעדכן עד סגירת ההזמנות.';
+                }
             }
 
             var estimatedTotal = result && typeof result.estimatedTotal === 'number'
@@ -6788,7 +6806,14 @@
                 };
             }
 
-            if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+            if (!customerEmail) {
+                return {
+                    message: 'יש למלא כתובת מייל — לשם יישלחו אישור ההזמנה וקישור לעריכה.',
+                    field: customerEmailInput
+                };
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
                 return {
                     message: 'כתובת המייל אינה תקינה.',
                     field: customerEmailInput

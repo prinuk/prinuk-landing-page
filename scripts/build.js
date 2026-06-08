@@ -169,7 +169,7 @@ function validatePhoneRules() {
     customer: {
       fullName: 'ישראל ישראלי',
       phone: '+972-53-523-4975',
-      email: '',
+      email: 'test@example.com',
     },
     fulfillment: 'איסוף עצמי',
     delivery: {},
@@ -196,6 +196,19 @@ function validatePhoneRules() {
     throw new Error('Expected landline phone validation to fail.');
   } catch (error) {
     assert(String(error.message || error).includes('מספר הטלפון הנייד אינו תקין'), 'Unexpected invalid phone error.');
+  }
+
+  try {
+    validateAndBuildOrder({
+      ...basePayload,
+      customer: {
+        ...basePayload.customer,
+        email: '',
+      },
+    }, products);
+    throw new Error('Expected missing email validation to fail.');
+  } catch (error) {
+    assert(String(error.message || error).includes('יש למלא כתובת מייל'), 'Unexpected missing email error.');
   }
 }
 
