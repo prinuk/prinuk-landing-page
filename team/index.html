@@ -305,6 +305,11 @@
     .mini-btn.call { color: var(--accent); }
     .mini-btn.wa { color: var(--fresh); }
 
+    .oc-address {
+      font-size: 13.5px; color: var(--muted); margin-top: 8px;
+      background: var(--accent-soft); color: var(--accent-dark);
+      padding: 6px 10px; border-radius: var(--radius-sm); line-height: 1.4;
+    }
     .oc-pickedby { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
     .oc-pickedby b { color: var(--ink); }
 
@@ -688,6 +693,10 @@
         var sc = statusClass(o.status);
         var isDeliver = o.fulfillment === 'משלוח';
         var wa = waNumber(o.phone);
+        var addr = isDeliver
+          ? [o.address, o.floor ? 'קומה ' + o.floor : '', o.apartment ? 'דירה ' + o.apartment : ''].filter(Boolean).join(', ')
+          : '';
+        var addrLine = addr ? '<div class="oc-address">📍 ' + esc(addr) + '</div>' : '';
         var pickedBy = o.collectedBy
           ? '<div class="oc-pickedby">' +
               (o.status === STATUS.NEW ? '' :
@@ -707,6 +716,7 @@
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
               (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
             '</div>' +
+            addrLine +
             pickedBy +
             '<div class="oc-actions">' +
               '<a class="mini-btn call" href="tel:' + esc(o.phone) + '" onclick="event.stopPropagation()">📞 חיוג</a>' +
@@ -751,7 +761,7 @@
       api('GET', '?action=order&id=' + encodeURIComponent(orderId)).then(function (data) {
         state.current = data.order;
         state.currentItems = (data.order.items || []).map(function (it) {
-          return Object.assign({}, it, { picked: it.picked !== false });
+          return Object.assign({}, it, { picked: it.picked === true });
         });
         // Claim a waiting order so others see it's being handled.
         if (data.order.status === STATUS.NEW) {
@@ -817,18 +827,17 @@
         : '';
 
       var itemsHtml = state.currentItems.map(function (it, idx) {
-        var cls = it.picked ? 'picked' : 'missing';
+        var cls = it.picked ? 'picked' : '';
         var qty = it.quantity + (it.orderUnit ? ' ' + it.orderUnit : '');
         var lineTotal = (it.lineTotal !== '' && it.lineTotal != null) ? ' · ' + formatMoney(it.lineTotal) : '';
         return '' +
           '<div class="item-row ' + cls + '" data-idx="' + idx + '">' +
-            '<div class="check" data-action="toggle">✓</div>' +
-            '<div class="item-main" data-action="toggle">' +
+            '<div class="check">✓</div>' +
+            '<div class="item-main">' +
               '<div class="item-name">' + esc(it.name) + '</div>' +
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
             '</div>' +
-            '<button class="miss-toggle" data-action="miss">' + (it.picked ? 'חסר?' : 'חסר') + '</button>' +
           '</div>';
       }).join('');
 
@@ -867,12 +876,8 @@
       var view = el('detail-view');
       view.querySelectorAll('.item-row').forEach(function (row) {
         var idx = Number(row.getAttribute('data-idx'));
-        row.querySelectorAll('[data-action="toggle"]').forEach(function (target) {
-          target.addEventListener('click', function () { setItemPicked(idx, true); });
-        });
-        row.querySelector('[data-action="miss"]').addEventListener('click', function (e) {
-          e.stopPropagation();
-          setItemPicked(idx, !state.currentItems[idx].picked ? true : false);
+        row.addEventListener('click', function () {
+          setItemPicked(idx, !state.currentItems[idx].picked);
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
@@ -883,25 +888,21 @@
       if (!it) return;
       it.picked = picked;
       var row = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"]');
-      if (row) {
-        row.classList.toggle('picked', picked);
-        row.classList.toggle('missing', !picked);
-        var mt = row.querySelector('.miss-toggle');
-        if (mt) mt.textContent = picked ? 'חסר?' : 'חסר';
-      }
+      if (row) row.classList.toggle('picked', picked);
       updateSummaryLine();
     }
 
     function updateSummaryLine() {
       var sum = itemSummary();
       var node = el('item-summary');
-      if (!node) return;
-      var txt = 'נאספו ' + sum.picked;
-      if (sum.missing) txt += ' · <span class="miss">חסרים ' + sum.missing + '</span>';
-      node.innerHTML = txt;
+      if (node) {
+        node.innerHTML = sum.missing
+          ? 'נאספו ' + sum.picked + ' מתוך ' + sum.total
+          : '<span style="color:var(--fresh)">הכל נאסף ✓</span>';
+      }
       var btn = el('collect-btn');
       if (btn) btn.textContent = sum.missing
-        ? '✓ עדכן (' + sum.missing + ' חסרים)'
+        ? '✓ עדכן הזמנה (' + sum.picked + '/' + sum.total + ' נאספו)'
         : '✓ עדכן הזמנה כנאספה';
     }
 
