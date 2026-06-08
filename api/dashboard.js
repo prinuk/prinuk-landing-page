@@ -116,8 +116,13 @@ module.exports = async function handler(req, res) {
 
       // --- Catalog management ---
       if (action === 'image-upload') {
-        const url = await uploadImage(body.dataUrl, body.name);
-        return res.json({ ok: true, url: url });
+        try {
+          const url = await uploadImage(body.dataUrl, body.name);
+          return res.json({ ok: true, url: url });
+        } catch (err) {
+          console.error('Image upload failed:', err);
+          return res.status(400).json({ error: err.message || 'שגיאה בהעלאת התמונה.' });
+        }
       }
 
       if (action === 'product-add') {
