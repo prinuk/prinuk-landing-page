@@ -4233,6 +4233,57 @@
         .edit-mode-banner.is-error .edit-mode-cancel {
             color: var(--danger);
         }
+
+        /* Location-move notice (top of the order page) */
+        .move-banner {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(180deg, #fff8e8 0%, #fdf0d2 100%);
+            border: 1.5px solid #e3b452;
+            border-radius: 16px;
+            padding: 15px 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 6px 20px rgba(180, 110, 22, 0.14);
+        }
+
+        .move-banner-icon {
+            font-size: 28px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .move-banner-text {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .move-banner-text strong {
+            font-size: 16.5px;
+            font-weight: 800;
+            color: #7a5512;
+            line-height: 1.25;
+        }
+
+        .move-banner-text span {
+            font-size: 15px;
+            color: #8a6a2e;
+            line-height: 1.35;
+        }
+
+        .move-banner-text .move-banner-address {
+            font-weight: 800;
+            color: #6b4d12;
+        }
+
+        @media (max-width: 480px) {
+            .move-banner { padding: 13px 15px; gap: 11px; }
+            .move-banner-icon { font-size: 24px; }
+            .move-banner-text strong { font-size: 15.5px; }
+            .move-banner-text span { font-size: 14px; }
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4363,6 +4414,13 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <div class="move-banner" role="status">
+                    <span class="move-banner-icon" aria-hidden="true">📍</span>
+                    <div class="move-banner-text">
+                        <strong>שימו לב — המכירה עברה לכתובת חדשה</strong>
+                        <span>מעכשיו אנחנו ברחוב <span class="move-banner-address">הפסגה 63</span>, ירושלים</span>
+                    </div>
+                </div>
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
                     <div class="hero-leaves" aria-hidden="true">
                         <span class="leaf leaf-1">🍃</span>
@@ -4414,7 +4472,7 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21c4-4 7-7.5 7-11a7 7 0 1 0-14 0c0 3.5 3 7 7 11zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
                             <div class="info-card-body">
                                 <div class="info-card-title">המכירה השבועית</div>
-                                <p id="pickupInfo" class="info-card-text">המכירה מתקיימת מדי יום רביעי ברחוב עוזיאל 101 בין השעות 10:00-19:00</p>
+                                <p id="pickupInfo" class="info-card-text">המכירה מתקיימת מדי יום רביעי ברחוב הפסגה 63 בין השעות 10:00-19:00</p>
                             </div>
                         </div>
 
@@ -4627,7 +4685,7 @@
                 <div class="store-footer-links">
                     <a href="tel:+972535234975">053-5234975</a>
                     <a href="mailto:prinuk10@gmail.com">prinuk10@gmail.com</a>
-                    <span>הרב עוזיאל 101, ירושלים</span>
+                    <span>הפסגה 63, ירושלים</span>
                 </div>
             </div>
         </div>

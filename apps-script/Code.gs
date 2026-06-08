@@ -15,7 +15,7 @@ var PRINOK_CONFIG = {
   DEFAULT_FORM_TITLE: 'פרינוּק - המכירה השבועית',
   DEFAULT_FORM_DESCRIPTION: 'בחרו את הפירות והירקות שתרצו להזמין.',
   DEFAULT_CLOSED_MESSAGE: 'ההזמנות עוד לא נפתחו. הטופס ייפתח בקרוב.',
-  DEFAULT_PICKUP_TEXT: 'המכירה תתקיים ביום שלישי ברחוב עוזיאל 101 בין השעות 10:00-19:00',
+  DEFAULT_PICKUP_TEXT: 'המכירה תתקיים ביום שלישי ברחוב הפסגה 63 בין השעות 10:00-19:00',
   DEFAULT_CONTACT_PHONE: '0535234975',
   DEFAULT_CONTACT_EMAIL: 'prinuk10@gmail.com'
 };
