@@ -266,6 +266,11 @@ function createProductSignsPdf() {
   var result = createProductSignsPdf_();
   var message = 'שלטי המוצרים נוצרו בהצלחה: ' + result.fileName + '\n' + result.url;
 
+  if (result.missingNames && result.missingNames.length) {
+    message += '\n\nשמות שלא נמצאו עם מחיר פעיל בגיליון המוצרים (לא הופק עבורם שלט):\n- ' +
+      result.missingNames.join('\n- ');
+  }
+
   Logger.log(message);
   getSpreadsheet_().toast('שלטי המוצרים נוצרו ונשמרו בדרייב.', 'פרינוּק', 8);
 
@@ -2641,17 +2646,48 @@ function createPrintableOrderFormPdf_() {
 
 function createProductSignsPdf_() {
   var ss = getSpreadsheet_();
-  var settings = getSettings_(ss, getProductSheet_(ss));
+  var productSheet = getProductSheet_(ss);
+  var settings = getSettings_(ss, productSheet);
   var signSheet = ss.getSheetByName(PRINOK_CONFIG.SIGN_LIST_SHEET_NAME);
 
   if (!signSheet) {
     throw new Error('לא נמצא גיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
   }
 
-  var products = readSignList_(signSheet);
+  var signNames = readSignListNames_(signSheet);
+
+  if (!signNames.length) {
+    throw new Error('אין מוצרים בגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
+  }
+
+  // Prices come live from the מוצרים sheet (the same source as every other
+  // PDF), matched by normalized product name — the sign list only decides
+  // WHICH products get a sign, not their price.
+  var productsByName = {};
+  readProducts_(productSheet).forEach(function(product) {
+    productsByName[normalizeProductName_(product.name)] = product;
+  });
+
+  var products = [];
+  var missing = [];
+
+  signNames.forEach(function(name) {
+    var product = productsByName[normalizeProductName_(name)];
+
+    if (product) {
+      products.push({
+        name: name,
+        price: product.price,
+        priceUnit: product.priceUnit || product.unit,
+        priceDisplay: product.priceDisplay
+      });
+    } else {
+      missing.push(name);
+    }
+  });
 
   if (!products.length) {
-    throw new Error('אין מוצרים עם מחיר בגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
+    throw new Error('אף מוצר מהגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" לא נמצא עם מחיר פעיל בגיליון "' + productSheet.getName() + '".');
   }
 
   var html = buildProductSignsPdfHtml_(products);
@@ -2668,13 +2704,16 @@ function createProductSignsPdf_() {
   return {
     fileName: file.getName(),
     url: file.getUrl(),
-    productCount: products.length
+    productCount: products.length,
+    missingNames: missing
   };
 }
 
-// Reads the רשימה לשלטים sheet (name / price / unit, detected by header).
-// Rows without a name or without a positive price are skipped.
-function readSignList_(sheet) {
+// Reads the product NAMES from the רשימה לשלטים sheet (name column detected
+// by header). Prices/units are intentionally NOT read here — they are looked
+// up live from the מוצרים sheet so signs always match the current price list.
+// Rows without a name are skipped.
+function readSignListNames_(sheet) {
   var values = sheet.getDataRange().getValues();
 
   if (values.length < 2) {
@@ -2682,30 +2721,17 @@ function readSignList_(sheet) {
   }
 
   var columns = buildColumnMap_(values[0]);
-  var items = [];
+  var names = [];
 
   for (var i = 1; i < values.length; i++) {
-    var row = values[i];
-    var name = String(row[columns.name] || '').trim();
-    var price = parsePrice_(row[columns.price]);
-    var unit = String(row[columns.unit] || '').trim();
-    var priceUnit = columns.priceUnit !== null
-      ? String(row[columns.priceUnit] || '').trim() || unit
-      : unit;
+    var name = String(values[i][columns.name] || '').trim();
 
-    if (!name || !price || price <= 0) {
-      continue;
+    if (name) {
+      names.push(name);
     }
-
-    items.push({
-      name: name,
-      price: price,
-      priceUnit: priceUnit || unit,
-      priceDisplay: formatPrice_(price)
-    });
   }
 
-  return items;
+  return names;
 }
 
 // One A4 page per two products (half a page each): big bold black name,
@@ -3932,6 +3958,15 @@ function normalizeHeader_(value) {
     .trim()
     .replace(/[״"]/g, '"')
     .replace(/[׳']/g, "'")
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function normalizeProductName_(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[״"]/g, '')
+    .replace(/[׳']/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase();
 }
