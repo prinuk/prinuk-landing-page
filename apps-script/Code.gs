@@ -4,7 +4,6 @@ var PRINOK_CONFIG = {
   SETTINGS_SHEET_NAME: 'הגדרות',
   ORDERS_SHEET_NAME: 'הזמנות',
   ORDER_ITEMS_SHEET_NAME: 'פריטי הזמנות',
-  SIGN_LIST_SHEET_NAME: 'רשימה לשלטים',
   PICKING_SHEET_NAME: 'דפי ליקוט',
   ARCHIVE_SPREADSHEET_NAME: 'ארכיון הזמנות פרינוּק',
   PDF_LOGO_FILE_NAME: 'prinuk-logo-for-pdf.jpg',
@@ -265,11 +264,6 @@ function runCompactPriceListMenu_(opts, alertTitle) {
 function createProductSignsPdf() {
   var result = createProductSignsPdf_();
   var message = 'שלטי המוצרים נוצרו בהצלחה: ' + result.fileName + '\n' + result.url;
-
-  if (result.missingNames && result.missingNames.length) {
-    message += '\n\nפריטים ללא מחיר (לא בגיליון המוצרים ולא בגיליון השלטים) — לא הופק עבורם שלט:\n- ' +
-      result.missingNames.join('\n- ');
-  }
 
   Logger.log(message);
   getSpreadsheet_().toast('שלטי המוצרים נוצרו ונשמרו בדרייב.', 'פרינוּק', 8);
@@ -2648,54 +2642,14 @@ function createProductSignsPdf_() {
   var ss = getSpreadsheet_();
   var productSheet = getProductSheet_(ss);
   var settings = getSettings_(ss, productSheet);
-  var signSheet = ss.getSheetByName(PRINOK_CONFIG.SIGN_LIST_SHEET_NAME);
 
-  if (!signSheet) {
-    throw new Error('לא נמצא גיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
-  }
-
-  var signRows = readSignListRows_(signSheet);
-
-  if (!signRows.length) {
-    throw new Error('אין מוצרים בגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
-  }
-
-  // Prefer the live price from the מוצרים sheet (the same source as every
-  // other PDF), matched by normalized product name. If the item isn't found
-  // there, fall back to the price written in the sign-list row, so every
-  // item that has a price gets a sign. Only price-less rows are skipped.
-  var productsByName = {};
-  readProducts_(productSheet).forEach(function(product) {
-    productsByName[normalizeProductName_(product.name)] = product;
-  });
-
-  var products = [];
-  var missing = [];
-
-  signRows.forEach(function(row) {
-    var product = productsByName[normalizeProductName_(row.name)];
-
-    if (product) {
-      products.push({
-        name: row.name,
-        price: product.price,
-        priceUnit: product.priceUnit || product.unit,
-        priceDisplay: product.priceDisplay
-      });
-    } else if (row.price > 0) {
-      products.push({
-        name: row.name,
-        price: row.price,
-        priceUnit: row.priceUnit || row.unit,
-        priceDisplay: formatPrice_(row.price)
-      });
-    } else {
-      missing.push(row.name);
-    }
-  });
+  // One sign per active product with a price, straight from the מוצרים sheet
+  // (readProducts_ already filters to active rows with price > 0) — the same
+  // source as every other PDF.
+  var products = readProducts_(productSheet);
 
   if (!products.length) {
-    throw new Error('אף מוצר מהגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" אינו כולל מחיר (לא בגיליון "' + productSheet.getName() + '" ולא בגיליון השלטים).');
+    throw new Error('אין מוצרים פעילים עם מחיר בגיליון "' + productSheet.getName() + '" ליצירת שלטים.');
   }
 
   var html = buildProductSignsPdfHtml_(products);
@@ -2712,47 +2666,8 @@ function createProductSignsPdf_() {
   return {
     fileName: file.getName(),
     url: file.getUrl(),
-    productCount: products.length,
-    missingNames: missing
+    productCount: products.length
   };
-}
-
-// Reads the rows of the רשימה לשלטים sheet (name / price / unit, detected by
-// header). The caller prefers the live price from the מוצרים sheet and uses
-// the price here only as a fallback when the item isn't found there.
-// Rows without a name are skipped.
-function readSignListRows_(sheet) {
-  var values = sheet.getDataRange().getValues();
-
-  if (values.length < 2) {
-    return [];
-  }
-
-  var columns = buildColumnMap_(values[0]);
-  var rows = [];
-
-  for (var i = 1; i < values.length; i++) {
-    var row = values[i];
-    var name = String(row[columns.name] || '').trim();
-
-    if (!name) {
-      continue;
-    }
-
-    var unit = String(row[columns.unit] || '').trim();
-    var priceUnit = columns.priceUnit !== null
-      ? String(row[columns.priceUnit] || '').trim() || unit
-      : unit;
-
-    rows.push({
-      name: name,
-      price: parsePrice_(row[columns.price]) || 0,
-      unit: unit,
-      priceUnit: priceUnit
-    });
-  }
-
-  return rows;
 }
 
 // One A4 page per two products (half a page each): big bold black name,
@@ -3979,15 +3894,6 @@ function normalizeHeader_(value) {
     .trim()
     .replace(/[״"]/g, '"')
     .replace(/[׳']/g, "'")
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-
-function normalizeProductName_(value) {
-  return String(value || '')
-    .trim()
-    .replace(/[״"]/g, '')
-    .replace(/[׳']/g, '')
     .replace(/\s+/g, ' ')
     .toLowerCase();
 }
