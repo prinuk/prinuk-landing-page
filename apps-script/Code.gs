@@ -267,7 +267,7 @@ function createProductSignsPdf() {
   var message = 'שלטי המוצרים נוצרו בהצלחה: ' + result.fileName + '\n' + result.url;
 
   if (result.missingNames && result.missingNames.length) {
-    message += '\n\nשמות שלא נמצאו עם מחיר פעיל בגיליון המוצרים (לא הופק עבורם שלט):\n- ' +
+    message += '\n\nפריטים ללא מחיר (לא בגיליון המוצרים ולא בגיליון השלטים) — לא הופק עבורם שלט:\n- ' +
       result.missingNames.join('\n- ');
   }
 
@@ -2654,15 +2654,16 @@ function createProductSignsPdf_() {
     throw new Error('לא נמצא גיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
   }
 
-  var signNames = readSignListNames_(signSheet);
+  var signRows = readSignListRows_(signSheet);
 
-  if (!signNames.length) {
+  if (!signRows.length) {
     throw new Error('אין מוצרים בגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" ליצירת שלטים.');
   }
 
-  // Prices come live from the מוצרים sheet (the same source as every other
-  // PDF), matched by normalized product name — the sign list only decides
-  // WHICH products get a sign, not their price.
+  // Prefer the live price from the מוצרים sheet (the same source as every
+  // other PDF), matched by normalized product name. If the item isn't found
+  // there, fall back to the price written in the sign-list row, so every
+  // item that has a price gets a sign. Only price-less rows are skipped.
   var productsByName = {};
   readProducts_(productSheet).forEach(function(product) {
     productsByName[normalizeProductName_(product.name)] = product;
@@ -2671,23 +2672,30 @@ function createProductSignsPdf_() {
   var products = [];
   var missing = [];
 
-  signNames.forEach(function(name) {
-    var product = productsByName[normalizeProductName_(name)];
+  signRows.forEach(function(row) {
+    var product = productsByName[normalizeProductName_(row.name)];
 
     if (product) {
       products.push({
-        name: name,
+        name: row.name,
         price: product.price,
         priceUnit: product.priceUnit || product.unit,
         priceDisplay: product.priceDisplay
       });
+    } else if (row.price > 0) {
+      products.push({
+        name: row.name,
+        price: row.price,
+        priceUnit: row.priceUnit || row.unit,
+        priceDisplay: formatPrice_(row.price)
+      });
     } else {
-      missing.push(name);
+      missing.push(row.name);
     }
   });
 
   if (!products.length) {
-    throw new Error('אף מוצר מהגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" לא נמצא עם מחיר פעיל בגיליון "' + productSheet.getName() + '".');
+    throw new Error('אף מוצר מהגיליון "' + PRINOK_CONFIG.SIGN_LIST_SHEET_NAME + '" אינו כולל מחיר (לא בגיליון "' + productSheet.getName() + '" ולא בגיליון השלטים).');
   }
 
   var html = buildProductSignsPdfHtml_(products);
@@ -2709,11 +2717,11 @@ function createProductSignsPdf_() {
   };
 }
 
-// Reads the product NAMES from the רשימה לשלטים sheet (name column detected
-// by header). Prices/units are intentionally NOT read here — they are looked
-// up live from the מוצרים sheet so signs always match the current price list.
+// Reads the rows of the רשימה לשלטים sheet (name / price / unit, detected by
+// header). The caller prefers the live price from the מוצרים sheet and uses
+// the price here only as a fallback when the item isn't found there.
 // Rows without a name are skipped.
-function readSignListNames_(sheet) {
+function readSignListRows_(sheet) {
   var values = sheet.getDataRange().getValues();
 
   if (values.length < 2) {
@@ -2721,17 +2729,30 @@ function readSignListNames_(sheet) {
   }
 
   var columns = buildColumnMap_(values[0]);
-  var names = [];
+  var rows = [];
 
   for (var i = 1; i < values.length; i++) {
-    var name = String(values[i][columns.name] || '').trim();
+    var row = values[i];
+    var name = String(row[columns.name] || '').trim();
 
-    if (name) {
-      names.push(name);
+    if (!name) {
+      continue;
     }
+
+    var unit = String(row[columns.unit] || '').trim();
+    var priceUnit = columns.priceUnit !== null
+      ? String(row[columns.priceUnit] || '').trim() || unit
+      : unit;
+
+    rows.push({
+      name: name,
+      price: parsePrice_(row[columns.price]) || 0,
+      unit: unit,
+      priceUnit: priceUnit
+    });
   }
 
-  return names;
+  return rows;
 }
 
 // One A4 page per two products (half a page each): big bold black name,
