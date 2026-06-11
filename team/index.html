@@ -264,6 +264,7 @@
     .order-card.st-picking { border-right-color: var(--accent); }
     .order-card.st-done { border-right-color: var(--fresh); }
     .order-card.st-partial { border-right-color: var(--fruit); }
+    .order-card.st-sent { border-right-color: var(--muted); }
 
     .oc-top { display: flex; align-items: center; gap: 8px; }
     .oc-name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -276,6 +277,13 @@
     .badge.st-picking { background: var(--accent-soft); color: var(--accent); }
     .badge.st-done { background: var(--fresh-soft); color: var(--fresh); }
     .badge.st-partial { background: #fdebe2; color: var(--fruit); }
+    .badge.st-sent { background: var(--surface-2); color: var(--muted); }
+
+    .status-select {
+      font-size: 13px; font-weight: 600; color: var(--ink);
+      border: 1.5px solid var(--line-strong); background: var(--surface);
+      border-radius: 999px; padding: 5px 10px; margin-inline-start: auto;
+    }
 
     .oc-meta {
       display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
@@ -370,7 +378,7 @@
       font-size: 18px; color: transparent; transition: all .12s;
     }
     .item-row.picked .check { background: var(--fresh); border-color: var(--fresh); color: #fff; }
-    .item-row.missing .check { background: var(--danger-soft); border-color: var(--danger); }
+    .item-row.missing .check { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
 
     .item-main { flex: 1; min-width: 0; }
     .item-name { font-weight: 600; font-size: 16px; }
@@ -384,6 +392,11 @@
       border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted);
     }
     .item-row.missing .miss-toggle { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    .finish-msg { color: var(--muted); font-size: 14.5px; margin: 4px 0 4px; line-height: 1.5; }
+    .finish-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+    .finish-actions .btn { width: 100%; }
+    .finish-actions .btn-link { align-self: center; }
 
     /* sticky submit bar */
     .submit-bar {
@@ -565,7 +578,8 @@
           <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או מספר הזמנה" />
         </div>
         <div class="chips" id="status-chips">
-          <button class="chip active" data-status="all">הכל</button>
+          <button class="chip active" data-status="active">לטיפול</button>
+          <button class="chip" data-status="all">הכל</button>
           <button class="chip" data-status="חדש">חדש</button>
           <button class="chip" data-status="בליקוט">בליקוט</button>
           <button class="chip" data-status="נאסף">נאסף</button>
@@ -666,12 +680,25 @@
     </datalist>
   </div>
 
+  <!-- Finish-order choice modal (when items are missing) -->
+  <div id="finish-overlay" class="modal-overlay hidden">
+    <div class="modal finish-modal">
+      <h2>פריטים חסרים</h2>
+      <p class="finish-msg" id="finish-msg"></p>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="finish-close">סמן כחסרים וסגור הזמנה</button>
+        <button type="button" class="btn btn-ghost" id="finish-keep">שמור והשאר בליקוט</button>
+        <button type="button" class="btn-link" id="finish-cancel">ביטול</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
     'use strict';
 
-    var STATUS = { NEW: 'חדש', PICKING: 'בליקוט', DONE: 'נאסף', PARTIAL: 'נאסף חלקית' };
+    var STATUS = { NEW: 'חדש', PICKING: 'בליקוט', DONE: 'נאסף', PARTIAL: 'נאסף חלקית', SENT: 'נשלח' };
 
     var state = {
       member: localStorage.getItem('teamMember') || '',
@@ -679,7 +706,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'all', type: 'all' },
+      filters: { search: '', status: 'active', type: 'all' },
       refreshTimer: null,
       tab: 'orders',
       products: [],
@@ -699,6 +726,7 @@
       if (s === STATUS.PICKING) return 'st-picking';
       if (s === STATUS.PARTIAL) return 'st-partial';
       if (s === STATUS.DONE) return 'st-done';
+      if (s === STATUS.SENT) return 'st-sent';
       return '';
     }
 
@@ -832,7 +860,9 @@
     function matchesFilters(o) {
       var f = state.filters;
       if (f.status !== 'all') {
-        if (f.status === STATUS.DONE) {
+        if (f.status === 'active') {
+          if (o.status !== STATUS.NEW && o.status !== STATUS.PICKING) return false;
+        } else if (f.status === STATUS.DONE) {
           if (o.status !== STATUS.DONE && o.status !== STATUS.PARTIAL) return false;
         } else if (o.status !== f.status) return false;
       }
@@ -903,6 +933,9 @@
             '<div class="oc-actions">' +
               '<a class="mini-btn call" href="tel:' + esc(o.phone) + '" onclick="event.stopPropagation()">📞 חיוג</a>' +
               '<a class="mini-btn wa" href="https://wa.me/' + wa + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 וואטסאפ</a>' +
+              ((o.status === STATUS.DONE || o.status === STATUS.PARTIAL)
+                ? '<button class="mini-btn sent" onclick="event.stopPropagation(); markSent(\'' + esc(o.orderId) + '\')">📦 סמן כנשלח</button>'
+                : '') +
             '</div>' +
           '</div>';
       }).join('');
@@ -933,6 +966,21 @@
       renderList();
     });
 
+    // Mark a collected order as sent, straight from the list.
+    function markSent(orderId) {
+      api('POST', '', { action: 'set-status', orderId: orderId, status: STATUS.SENT, member: state.member })
+        .then(function (r) {
+          var match = state.orders.find(function (x) { return x.orderId === orderId; });
+          if (match) match.status = (r && r.status) || STATUS.SENT;
+          renderList();
+          showToast('סומן כנשלח ✓');
+        })
+        .catch(function (err) {
+          if (err.message !== 'unauthorized') showToast('שגיאה בעדכון. נסו שוב.');
+        });
+    }
+    window.markSent = markSent;
+
     // ---------- Detail ----------
     function openOrder(orderId) {
       el('list-view').classList.add('hidden');
@@ -942,8 +990,24 @@
 
       api('GET', '?action=order&id=' + encodeURIComponent(orderId)).then(function (data) {
         state.current = data.order;
+        // Track the status on entry + whether the picker did anything, so we can
+        // offer to revert an order we auto-claimed but left untouched.
+        state.current._openStatus = data.order.status;
+        state.current._touched = false;
+        state.current._skipRevert = false;
+
+        // Warn if someone else is already handling this order.
+        if (data.order.status === STATUS.PICKING && data.order.collectedBy &&
+            data.order.collectedBy !== state.member) {
+          if (!window.confirm('הזמנה זו כבר בליקוט של ' + data.order.collectedBy + '. להמשיך בכל זאת?')) {
+            state.current._skipRevert = true;
+            closeDetail();
+            return;
+          }
+        }
+
         state.currentItems = (data.order.items || []).map(function (it) {
-          return Object.assign({}, it, { picked: it.picked === true });
+          return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
         });
         // Claim a waiting order so others see it's being handled.
         if (data.order.status === STATUS.NEW) {
@@ -964,6 +1028,20 @@
     }
 
     function closeDetail() {
+      var o = state.current;
+      // If we auto-claimed a waiting order this session and the picker did
+      // nothing, offer to release it back to 'חדש'.
+      if (o && !o._skipRevert && !o._touched && o._openStatus === STATUS.NEW && o.status === STATUS.PICKING) {
+        if (window.confirm('לא בוצעה פעולה בהזמנה. להחזיר אותה לסטטוס "חדש"?')) {
+          api('POST', '', { action: 'set-status', orderId: o.orderId, status: STATUS.NEW, member: state.member })
+            .then(function () {
+              var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
+              if (match) { match.status = STATUS.NEW; match.collectedBy = ''; }
+              renderList();
+            })
+            .catch(function () {});
+        }
+      }
       state.current = null;
       state.currentItems = [];
       el('detail-view').classList.add('hidden');
@@ -984,7 +1062,6 @@
       if (!o) return;
       var isDeliver = o.fulfillment === 'משלוח';
       var wa = waNumber(o.phone);
-      var sc = statusClass(o.status);
       var sum = itemSummary();
 
       var contactBlock =
@@ -1009,12 +1086,13 @@
         : '';
 
       var itemsHtml = state.currentItems.map(function (it, idx) {
-        var cls = it.picked ? 'picked' : '';
+        var cls = it.picked ? 'picked' : (it.missing ? 'missing' : '');
+        var glyph = it.picked ? '✓' : (it.missing ? '✗' : '');
         var qty = it.quantity + (it.orderUnit ? ' ' + it.orderUnit : '');
         var lineTotal = (it.lineTotal !== '' && it.lineTotal != null) ? ' · ' + formatMoney(it.lineTotal) : '';
         return '' +
           '<div class="item-row ' + cls + '" data-idx="' + idx + '">' +
-            '<div class="check">✓</div>' +
+            '<div class="check">' + glyph + '</div>' +
             '<div class="item-main">' +
               '<div class="item-name">' + esc(it.name) + '</div>' +
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
@@ -1027,7 +1105,11 @@
         '<div class="back-row">' +
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
           '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
-          '<span class="badge ' + sc + ' detail-status">' + esc(o.status) + '</span>' +
+          '<select id="status-select" class="status-select">' +
+            [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT].map(function (s) {
+              return '<option value="' + esc(s) + '"' + (s === o.status ? ' selected' : '') + '>' + esc(s) + '</option>';
+            }).join('') +
+          '</select>' +
         '</div>' +
 
         '<div class="panel">' +
@@ -1063,14 +1145,46 @@
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
+      el('status-select').addEventListener('change', onManualStatusChange);
+    }
+
+    // Manual status override from the order screen.
+    function onManualStatusChange() {
+      var o = state.current;
+      if (!o) return;
+      var sel = el('status-select');
+      var newStatus = sel.value;
+      var prev = o.status;
+      if (newStatus === prev) return;
+      o._touched = true;
+      api('POST', '', { action: 'set-status', orderId: o.orderId, status: newStatus, member: state.member })
+        .then(function (r) {
+          o.status = (r && r.status) || newStatus;
+          if (newStatus === STATUS.NEW) o.collectedBy = '';
+          var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
+          if (match) { match.status = o.status; if (newStatus === STATUS.NEW) match.collectedBy = ''; }
+          renderDetail();
+          showToast('הסטטוס עודכן ל' + o.status);
+        })
+        .catch(function (err) {
+          sel.value = prev;
+          if (err.message !== 'unauthorized') showToast('שגיאה בעדכון הסטטוס.');
+        });
     }
 
     function setItemPicked(idx, picked) {
       var it = state.currentItems[idx];
       if (!it) return;
+      if (state.current) state.current._touched = true;
       it.picked = picked;
+      if (picked) it.missing = false;
       var row = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"]');
-      if (row) row.classList.toggle('picked', picked);
+      if (row) {
+        row.classList.toggle('picked', picked);
+        if (picked) row.classList.remove('missing');
+        var chk = row.querySelector('.check');
+        if (chk) chk.textContent = picked ? '✓' : (it.missing ? '✗' : '');
+      }
       updateSummaryLine();
     }
 
@@ -1088,17 +1202,54 @@
         : '✓ עדכן הזמנה כנאספה';
     }
 
+    // Ask how to finish an order that still has unpicked items.
+    // Resolves to 'close' (mark missing & close as נאסף חלקית), 'keep' (save
+    // progress, stay בליקוט), or null (cancel).
+    function askFinishChoice(missing) {
+      return new Promise(function (resolve) {
+        var overlay = el('finish-overlay');
+        el('finish-msg').textContent = (missing === 1
+          ? 'פריט אחד לא סומן כנאסף.'
+          : missing + ' פריטים לא סומנו כנאספו.') + ' איך לסגור את ההזמנה?';
+        var btnClose = el('finish-close'), btnKeep = el('finish-keep'), btnCancel = el('finish-cancel');
+        function cleanup(result) {
+          overlay.classList.add('hidden');
+          btnClose.removeEventListener('click', onClose);
+          btnKeep.removeEventListener('click', onKeep);
+          btnCancel.removeEventListener('click', onCancel);
+          overlay.removeEventListener('click', onBackdrop);
+          resolve(result);
+        }
+        function onClose() { cleanup('close'); }
+        function onKeep() { cleanup('keep'); }
+        function onCancel() { cleanup(null); }
+        function onBackdrop(e) { if (e.target === overlay) cleanup(null); }
+        btnClose.addEventListener('click', onClose);
+        btnKeep.addEventListener('click', onKeep);
+        btnCancel.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onBackdrop);
+        overlay.classList.remove('hidden');
+      });
+    }
+
     function submitCollect() {
       var o = state.current;
       if (!o) return;
 
       var sum = itemSummary();
       if (sum.missing > 0) {
-        var msg = sum.missing === 1
-          ? 'פריט אחד לא סומן כנאסף ויסומן כחסר. לעדכן בכל זאת?'
-          : sum.missing + ' פריטים לא סומנו כנאספו ויסומנו כחסרים. לעדכן בכל זאת?';
-        if (!window.confirm(msg)) return;
+        askFinishChoice(sum.missing).then(function (choice) {
+          if (!choice) return;            // cancelled
+          doCollect(choice === 'close');  // close → mark missing; keep → leave open
+        });
+        return;
       }
+      doCollect(true);
+    }
+
+    function doCollect(closeMissing) {
+      var o = state.current;
+      if (!o) return;
 
       var btn = el('collect-btn');
       btn.disabled = true;
@@ -1108,12 +1259,14 @@
         return { name: it.name, picked: it.picked };
       });
 
-      api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items })
+      api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })
         .then(function (r) {
           // Update local list state so the badge reflects immediately.
           var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
           if (match) { match.status = r.status; match.collectedBy = r.collectedBy; match.pickedAt = r.pickedAt; }
-          showToast(r.status === STATUS.PARTIAL ? 'עודכן: נאסף חלקית' : 'ההזמנה סומנה כנאספה ✓');
+          o._touched = true;
+          if (r.status === STATUS.PICKING) showToast('התקדמות נשמרה, ההזמנה עדיין בליקוט');
+          else showToast(r.status === STATUS.PARTIAL ? 'עודכן: נאסף חלקית' : 'ההזמנה סומנה כנאספה ✓');
           closeDetail();
         })
         .catch(function (err) {

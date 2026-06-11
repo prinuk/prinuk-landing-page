@@ -4,11 +4,25 @@ const {
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
+  setOrderStatus,
+  ORDER_STATUS_NEW,
+  ORDER_STATUS_PICKING,
+  ORDER_STATUS_COLLECTED,
+  ORDER_STATUS_PARTIAL,
+  ORDER_STATUS_SENT,
   readCatalogSheet,
   addProduct,
   updateProduct,
   deleteProduct,
 } = require('../lib/sheets');
+
+const ALLOWED_STATUSES = [
+  ORDER_STATUS_NEW,
+  ORDER_STATUS_PICKING,
+  ORDER_STATUS_COLLECTED,
+  ORDER_STATUS_PARTIAL,
+  ORDER_STATUS_SENT,
+];
 
 // Validate + normalize a product payload from the client.
 function cleanProduct(raw) {
@@ -177,7 +191,17 @@ module.exports = async function handler(req, res) {
 
       if (action === 'collect') {
         const items = Array.isArray(body.items) ? body.items : [];
-        const result = await updateOrderCollection(orderId, { member, items });
+        const result = await updateOrderCollection(orderId, { member, items, closeMissing: body.closeMissing !== false });
+        if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
+        return res.json(result);
+      }
+
+      if (action === 'set-status') {
+        const status = String(body.status || '').trim();
+        if (ALLOWED_STATUSES.indexOf(status) === -1) {
+          return res.status(400).json({ error: 'סטטוס לא תקין.' });
+        }
+        const result = await setOrderStatus(orderId, status, member);
         if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
         return res.json(result);
       }
