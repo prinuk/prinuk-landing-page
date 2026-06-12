@@ -196,7 +196,7 @@
     /* ---------- Counters ---------- */
     .counters {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       padding: 14px 16px 6px;
     }
@@ -213,6 +213,7 @@
     .counter.waiting { border-top-color: var(--amber); }
     .counter.picking { border-top-color: var(--accent); }
     .counter.done { border-top-color: var(--fresh); }
+    .counter.sent { border-top-color: var(--muted); }
 
     /* ---------- Controls ---------- */
     .controls { padding: 8px 16px 4px; }
@@ -570,6 +571,7 @@
         <div class="counter waiting"><b id="c-waiting">0</b><span>ממתינות</span></div>
         <div class="counter picking"><b id="c-picking">0</b><span>בליקוט</span></div>
         <div class="counter done"><b id="c-done">0</b><span>נאספו</span></div>
+        <div class="counter sent"><b id="c-sent">0</b><span>נשלחו</span></div>
       </div>
 
       <div class="controls">
@@ -583,6 +585,7 @@
           <button class="chip" data-status="חדש">חדש</button>
           <button class="chip" data-status="בליקוט">בליקוט</button>
           <button class="chip" data-status="נאסף">נאסף</button>
+          <button class="chip" data-status="נשלח">נשלח</button>
           <span class="sep"></span>
           <button class="chip" data-type="all" data-type-active="1">כל הסוגים</button>
           <button class="chip" data-type="משלוח">משלוח</button>
@@ -876,12 +879,14 @@
     }
 
     function renderCounters() {
-      var w = 0, p = 0, d = 0;
+      var w = 0, p = 0, d = 0, s = 0;
       state.orders.forEach(function (o) {
         if (o.status === STATUS.NEW) w++;
         else if (o.status === STATUS.PICKING) p++;
         else if (o.status === STATUS.DONE || o.status === STATUS.PARTIAL) d++;
+        else if (o.status === STATUS.SENT) s++;
       });
+      el('c-sent').textContent = s;
       el('c-waiting').textContent = w;
       el('c-picking').textContent = p;
       el('c-done').textContent = d;
