@@ -10,6 +10,7 @@ const {
   ORDER_STATUS_COLLECTED,
   ORDER_STATUS_PARTIAL,
   ORDER_STATUS_SENT,
+  ORDER_STATUS_HANDED,
   readCatalogSheet,
   addProduct,
   updateProduct,
@@ -22,6 +23,7 @@ const ALLOWED_STATUSES = [
   ORDER_STATUS_COLLECTED,
   ORDER_STATUS_PARTIAL,
   ORDER_STATUS_SENT,
+  ORDER_STATUS_HANDED,
 ];
 
 // Validate + normalize a product payload from the client.

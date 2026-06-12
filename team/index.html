@@ -196,7 +196,7 @@
     /* ---------- Counters ---------- */
     .counters {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       padding: 14px 16px 6px;
     }
@@ -394,6 +394,7 @@
     }
     .item-row.missing .miss-toggle { background: var(--danger); color: #fff; border-color: var(--danger); }
 
+    .confirm-msg { color: var(--ink); font-size: 16px; margin: 4px 0; line-height: 1.5; text-align: center; }
     .finish-msg { color: var(--muted); font-size: 14.5px; margin: 4px 0 4px; line-height: 1.5; }
     .finish-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
     .finish-actions .btn { width: 100%; }
@@ -507,6 +508,7 @@
     @media (min-width: 620px) {
       .modal-overlay { align-items: center; }
       .modal { border-radius: 18px; }
+      .counters { grid-template-columns: repeat(4, 1fr); }
     }
 
     /* ---------- Print ---------- */
@@ -696,12 +698,23 @@
     </div>
   </div>
 
+  <!-- Generic yes/no confirm modal -->
+  <div id="confirm-overlay" class="modal-overlay hidden">
+    <div class="modal confirm-modal">
+      <p class="confirm-msg" id="confirm-msg"></p>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="confirm-yes">כן</button>
+        <button type="button" class="btn btn-ghost" id="confirm-no">לא</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
     'use strict';
 
-    var STATUS = { NEW: 'חדש', PICKING: 'בליקוט', DONE: 'נאסף', PARTIAL: 'נאסף חלקית', SENT: 'נשלח' };
+    var STATUS = { NEW: 'חדש', PICKING: 'בליקוט', DONE: 'נאסף', PARTIAL: 'נאסף חלקית', SENT: 'נשלח', HANDED: 'נמסר' };
 
     var state = {
       member: localStorage.getItem('teamMember') || '',
@@ -729,7 +742,7 @@
       if (s === STATUS.PICKING) return 'st-picking';
       if (s === STATUS.PARTIAL) return 'st-partial';
       if (s === STATUS.DONE) return 'st-done';
-      if (s === STATUS.SENT) return 'st-sent';
+      if (s === STATUS.SENT || s === STATUS.HANDED) return 'st-sent';
       return '';
     }
 
@@ -867,6 +880,8 @@
           if (o.status !== STATUS.NEW && o.status !== STATUS.PICKING) return false;
         } else if (f.status === STATUS.DONE) {
           if (o.status !== STATUS.DONE && o.status !== STATUS.PARTIAL) return false;
+        } else if (f.status === STATUS.SENT) {
+          if (o.status !== STATUS.SENT && o.status !== STATUS.HANDED) return false;
         } else if (o.status !== f.status) return false;
       }
       if (f.type !== 'all' && o.fulfillment !== f.type) return false;
@@ -884,7 +899,7 @@
         if (o.status === STATUS.NEW) w++;
         else if (o.status === STATUS.PICKING) p++;
         else if (o.status === STATUS.DONE || o.status === STATUS.PARTIAL) d++;
-        else if (o.status === STATUS.SENT) s++;
+        else if (o.status === STATUS.SENT || o.status === STATUS.HANDED) s++;
       });
       el('c-sent').textContent = s;
       el('c-waiting').textContent = w;
@@ -929,7 +944,7 @@
             '<div class="oc-meta">' +
               '<span class="oc-time">' + esc(formatTime(o.timestamp)) + '</span>' +
               '<span class="tag ' + (isDeliver ? 'deliver' : 'pickup') + '">' +
-                (isDeliver ? '🚚 משלוח' : '🛍️ איסוף') + '</span>' +
+                (isDeliver ? '🚚 משלוח' : '🛍️ איסוף עצמי') + '</span>' +
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
               (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
             '</div>' +
@@ -939,7 +954,9 @@
               '<a class="mini-btn call" href="tel:' + esc(o.phone) + '" onclick="event.stopPropagation()">📞 חיוג</a>' +
               '<a class="mini-btn wa" href="https://wa.me/' + wa + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 וואטסאפ</a>' +
               ((o.status === STATUS.DONE || o.status === STATUS.PARTIAL)
-                ? '<button class="mini-btn sent" onclick="event.stopPropagation(); markSent(\'' + esc(o.orderId) + '\')">📦 סמן כנשלח</button>'
+                ? (isDeliver
+                    ? '<button class="mini-btn sent" onclick="event.stopPropagation(); markDone(\'' + esc(o.orderId) + '\', \'' + STATUS.SENT + '\')">📦 סמן כנשלח</button>'
+                    : '<button class="mini-btn sent" onclick="event.stopPropagation(); markDone(\'' + esc(o.orderId) + '\', \'' + STATUS.HANDED + '\')">🛍️ סמן כנמסר</button>')
                 : '') +
             '</div>' +
           '</div>';
@@ -971,20 +988,45 @@
       renderList();
     });
 
-    // Mark a collected order as sent, straight from the list.
-    function markSent(orderId) {
-      api('POST', '', { action: 'set-status', orderId: orderId, status: STATUS.SENT, member: state.member })
+    // Hebrew yes/no confirm (native confirm shows English OK/Cancel). Resolves
+    // to true (כן) / false (לא).
+    function askYesNo(message) {
+      return new Promise(function (resolve) {
+        var overlay = el('confirm-overlay');
+        el('confirm-msg').textContent = message;
+        var yes = el('confirm-yes'), no = el('confirm-no');
+        function cleanup(result) {
+          overlay.classList.add('hidden');
+          yes.removeEventListener('click', onYes);
+          no.removeEventListener('click', onNo);
+          overlay.removeEventListener('click', onBackdrop);
+          resolve(result);
+        }
+        function onYes() { cleanup(true); }
+        function onNo() { cleanup(false); }
+        function onBackdrop(e) { if (e.target === overlay) cleanup(false); }
+        yes.addEventListener('click', onYes);
+        no.addEventListener('click', onNo);
+        overlay.addEventListener('click', onBackdrop);
+        overlay.classList.remove('hidden');
+      });
+    }
+
+    // Mark a collected order as gone, straight from the list: 'נשלח' for
+    // delivery, 'נמסר' for self-pickup.
+    function markDone(orderId, status) {
+      api('POST', '', { action: 'set-status', orderId: orderId, status: status, member: state.member })
         .then(function (r) {
           var match = state.orders.find(function (x) { return x.orderId === orderId; });
-          if (match) match.status = (r && r.status) || STATUS.SENT;
+          if (match) match.status = (r && r.status) || status;
           renderList();
-          showToast('סומן כנשלח ✓');
+          showToast(status === STATUS.HANDED ? 'סומן כנמסר ✓' : 'סומן כנשלח ✓');
         })
         .catch(function (err) {
           if (err.message !== 'unauthorized') showToast('שגיאה בעדכון. נסו שוב.');
         });
     }
-    window.markSent = markSent;
+    window.markDone = markDone;
 
     // ---------- Detail ----------
     function openOrder(orderId) {
@@ -1001,31 +1043,34 @@
         state.current._touched = false;
         state.current._skipRevert = false;
 
+        function proceed() {
+          state.currentItems = (data.order.items || []).map(function (it) {
+            return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
+          });
+          // Claim a waiting order so others see it's being handled.
+          if (data.order.status === STATUS.NEW) {
+            api('POST', '', { action: 'claim', orderId: orderId, member: state.member })
+              .then(function (r) {
+                if (r && r.status) {
+                  state.current.status = r.status;
+                  if (r.claimed) state.current.collectedBy = state.member;
+                  renderDetail();
+                }
+              }).catch(function () {});
+          }
+          renderDetail();
+        }
+
         // Warn if someone else is already handling this order.
         if (data.order.status === STATUS.PICKING && data.order.collectedBy &&
             data.order.collectedBy !== state.member) {
-          if (!window.confirm('הזמנה זו כבר בליקוט של ' + data.order.collectedBy + '. להמשיך בכל זאת?')) {
-            state.current._skipRevert = true;
-            closeDetail();
-            return;
-          }
+          askYesNo('הזמנה זו כבר בליקוט של ' + data.order.collectedBy + '. להמשיך בכל זאת?').then(function (yes) {
+            if (!yes) { state.current._skipRevert = true; closeDetail(); return; }
+            proceed();
+          });
+          return;
         }
-
-        state.currentItems = (data.order.items || []).map(function (it) {
-          return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
-        });
-        // Claim a waiting order so others see it's being handled.
-        if (data.order.status === STATUS.NEW) {
-          api('POST', '', { action: 'claim', orderId: orderId, member: state.member })
-            .then(function (r) {
-              if (r && r.status) {
-                state.current.status = r.status;
-                if (r.claimed) state.current.collectedBy = state.member;
-                renderDetail();
-              }
-            }).catch(function () {});
-        }
-        renderDetail();
+        proceed();
       }).catch(function (err) {
         if (err.message === 'unauthorized') return;
         el('detail-view').innerHTML = '<div class="empty">לא הצלחנו לטעון את ההזמנה.<br><button class="back-btn" onclick="closeDetail()">חזרה</button></div>';
@@ -1036,8 +1081,19 @@
       var o = state.current;
       // If we auto-claimed a waiting order this session and the picker did
       // nothing, offer to release it back to 'חדש'.
-      if (o && !o._skipRevert && !o._touched && o._openStatus === STATUS.NEW && o.status === STATUS.PICKING) {
-        if (window.confirm('לא בוצעה פעולה בהזמנה. להחזיר אותה לסטטוס "חדש"?')) {
+      var needRevert = o && !o._skipRevert && !o._touched &&
+        o._openStatus === STATUS.NEW && o.status === STATUS.PICKING;
+
+      state.current = null;
+      state.currentItems = [];
+      el('detail-view').classList.add('hidden');
+      el('detail-view').innerHTML = '';
+      el('list-view').classList.remove('hidden');
+      renderList();
+
+      if (needRevert) {
+        askYesNo('לא בוצעה פעולה בהזמנה. להחזיר אותה לסטטוס "חדש"?').then(function (yes) {
+          if (!yes) return;
           api('POST', '', { action: 'set-status', orderId: o.orderId, status: STATUS.NEW, member: state.member })
             .then(function () {
               var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
@@ -1045,14 +1101,8 @@
               renderList();
             })
             .catch(function () {});
-        }
+        });
       }
-      state.current = null;
-      state.currentItems = [];
-      el('detail-view').classList.add('hidden');
-      el('detail-view').innerHTML = '';
-      el('list-view').classList.remove('hidden');
-      renderList();
     }
     window.closeDetail = closeDetail;
 
@@ -1111,7 +1161,7 @@
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
           '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
           '<select id="status-select" class="status-select">' +
-            [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT].map(function (s) {
+            [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED].map(function (s) {
               return '<option value="' + esc(s) + '"' + (s === o.status ? ' selected' : '') + '>' + esc(s) + '</option>';
             }).join('') +
           '</select>' +
