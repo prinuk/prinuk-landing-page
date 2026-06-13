@@ -5,7 +5,12 @@
     "build": "node scripts/build.js",
     "test": "node scripts/test-email-toggle.js && node scripts/smoke-order.js",
     "test:email": "node scripts/test-email-toggle.js",
-    "test:smoke": "node scripts/smoke-order.js"
+    "test:smoke": "node scripts/smoke-order.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file=.env node_modules/.bin/drizzle-kit migrate",
+    "db:push": "node --env-file=.env node_modules/.bin/drizzle-kit push",
+    "db:studio": "node --env-file=.env node_modules/.bin/drizzle-kit studio",
+    "db:verify": "node --env-file=.env scripts/db-verify.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -14,8 +19,13 @@
     "@sparticuz/chromium": "^131.0.1",
     "@vercel/blob": "^1.1.1",
     "@vercel/edge-config": "^1.4.3",
+    "drizzle-orm": "^0.36.4",
     "googleapis": "^144.0.0",
+    "postgres": "^3.4.5",
     "puppeteer-core": "^23.11.1",
     "resend": "^4.8.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.1"
   }
 }
