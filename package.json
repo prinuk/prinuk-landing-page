@@ -10,7 +10,8 @@
     "db:migrate": "node --env-file=.env node_modules/.bin/drizzle-kit migrate",
     "db:push": "node --env-file=.env node_modules/.bin/drizzle-kit push",
     "db:studio": "node --env-file=.env node_modules/.bin/drizzle-kit studio",
-    "db:verify": "node --env-file=.env scripts/db-verify.mjs"
+    "db:verify": "node --env-file=.env scripts/db-verify.mjs",
+    "db:test": "node --env-file=.env scripts/db-test.mjs"
   },
   "engines": {
     "node": ">=18"
