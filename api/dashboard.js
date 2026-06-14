@@ -234,6 +234,8 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Dashboard error:', error);
-    return res.status(500).json({ error: 'שגיאה בטעינת הנתונים. נסו שוב בעוד רגע.' });
+    // Internal tool — surface the actual (Hebrew) reason to help the team
+    // diagnose (e.g. missing PRICING_SPREADSHEET_ID), not just a generic message.
+    return res.status(500).json({ error: error.message || 'שגיאה בטעינת הנתונים. נסו שוב בעוד רגע.' });
   }
 };
