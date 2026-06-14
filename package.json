@@ -12,7 +12,9 @@
     "db:studio": "node --env-file=.env node_modules/.bin/drizzle-kit studio",
     "db:verify": "node --env-file=.env scripts/db-verify.mjs",
     "db:test": "node --env-file=.env scripts/db-test.mjs",
-    "db:backfill": "node --env-file=.env scripts/backfill.mjs"
+    "db:backfill": "node --env-file=.env scripts/backfill.mjs",
+    "db:products": "node --env-file=.env scripts/db-products.mjs",
+    "sale": "node --env-file=.env scripts/sale.mjs"
   },
   "engines": {
     "node": ">=18"

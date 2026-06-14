@@ -16,6 +16,7 @@ const {
   updateProduct,
   deleteProduct,
 } = require('../lib/store');
+const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -137,6 +138,11 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, products: data.products, departments: data.departments });
       }
 
+      if (action === 'sale-status') {
+        const data = await getSaleStatus();
+        return res.json({ ok: true, ...data });
+      }
+
       const orders = await listOrdersForDashboard();
       return res.json({ ok: true, orders });
     }
@@ -177,6 +183,17 @@ module.exports = async function handler(req, res) {
         if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
         await deleteProduct(id);
         return res.json({ ok: true });
+      }
+
+      // --- Sale management ---
+      if (action === 'publish-sale') {
+        const result = await publishSale({ saleName: String(body.saleName || '').trim() });
+        return res.json(result);
+      }
+
+      if (action === 'set-sale-status') {
+        const result = await setSaleStatus(String(body.status || '').trim());
+        return res.json(result);
       }
 
       // --- Order actions ---
