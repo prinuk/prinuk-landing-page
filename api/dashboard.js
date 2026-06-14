@@ -15,7 +15,7 @@ const {
   addProduct,
   updateProduct,
   deleteProduct,
-} = require('../lib/sheets');
+} = require('../lib/store');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -164,18 +164,18 @@ module.exports = async function handler(req, res) {
       }
 
       if (action === 'product-update') {
-        const rowNumber = Number(body.rowNumber);
-        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
+        const id = String(body.id || '').trim();
+        if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
         const cleaned = cleanProduct(body.product);
         if (cleaned.error) return res.status(400).json({ error: cleaned.error });
-        await updateProduct(rowNumber, cleaned.product);
+        await updateProduct(id, cleaned.product);
         return res.json({ ok: true });
       }
 
       if (action === 'product-delete') {
-        const rowNumber = Number(body.rowNumber);
-        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
-        await deleteProduct(rowNumber);
+        const id = String(body.id || '').trim();
+        if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
+        await deleteProduct(id);
         return res.json({ ok: true });
       }
 

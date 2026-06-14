@@ -1378,7 +1378,7 @@
       var price = p.price ? formatMoney(p.price) + (unit ? ' / ' + esc(unit) : '') : 'ללא מחיר';
       var thumb = '<div class="prod-thumb">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy">' : '🥬') + '</div>';
       return '' +
-        '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + '" data-row="' + p.rowNumber + '">' +
+        '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + '" data-row="' + p.id + '">' +
           thumb +
           '<div class="prod-main">' +
             '<div class="prod-name">' + esc(p.name) + productPill(p.state) + '</div>' +
@@ -1416,17 +1416,17 @@
       list.innerHTML = html;
 
       Array.prototype.forEach.call(list.querySelectorAll('.prod-row'), function (row) {
-        var rn = Number(row.getAttribute('data-row'));
+        var rn = row.getAttribute('data-row');
         row.querySelector('[data-act="edit"]').addEventListener('click', function () { openProductForm(rn); });
         row.querySelector('[data-act="stock"]').addEventListener('click', function () { toggleStock(rn); });
       });
     }
 
     function toggleStock(rowNumber) {
-      var p = state.products.find(function (x) { return x.rowNumber === rowNumber; });
+      var p = state.products.find(function (x) { return x.id === rowNumber; });
       if (!p) return;
       var newState = p.state === 'oos' ? 'active' : 'oos';
-      api('POST', '', { action: 'product-update', rowNumber: rowNumber, product: {
+      api('POST', '', { action: 'product-update', id: rowNumber, product: {
         name: p.name, department: p.department, unit: p.unit, priceUnit: p.priceUnit, price: p.price, state: newState,
         weightPerUnitKg: p.weightPerUnitKg, imageUrl: p.image,
       } }).then(function () {
@@ -1442,7 +1442,7 @@
 
     function openProductForm(rowNumber) {
       editingRow = rowNumber || null;
-      var p = rowNumber ? state.products.find(function (x) { return x.rowNumber === rowNumber; }) : null;
+      var p = rowNumber ? state.products.find(function (x) { return x.id === rowNumber; }) : null;
 
       var depts = (state.departments && state.departments.length) ? state.departments.slice() : ['ירקות', 'פירות', 'עלים', 'מיוחדים'];
       if (p && depts.indexOf(p.department) === -1) depts.push(p.department);
@@ -1562,7 +1562,7 @@
       btn.textContent = 'שומר…';
 
       var payload = editingRow
-        ? { action: 'product-update', rowNumber: editingRow, product: product }
+        ? { action: 'product-update', id: editingRow, product: product }
         : { action: 'product-add', product: product };
 
       api('POST', '', payload).then(function () {
@@ -1579,9 +1579,9 @@
 
     el('pf-delete').addEventListener('click', function () {
       if (!editingRow) return;
-      var p = state.products.find(function (x) { return x.rowNumber === editingRow; });
+      var p = state.products.find(function (x) { return x.id === editingRow; });
       if (!window.confirm('למחוק את "' + (p ? p.name : 'המוצר') + '" לצמיתות?')) return;
-      api('POST', '', { action: 'product-delete', rowNumber: editingRow }).then(function () {
+      api('POST', '', { action: 'product-delete', id: editingRow }).then(function () {
         closeProductForm();
         showToast('המוצר נמחק');
         loadProducts();

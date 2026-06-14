@@ -1,4 +1,4 @@
-const { readCatalog } = require('../lib/sheets');
+const { readCatalog } = require('../lib/store');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
