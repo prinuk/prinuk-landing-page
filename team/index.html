@@ -451,6 +451,13 @@
       .sale-toggle { flex: 1; }
       .sale-toggle .btn { flex: 1; }
     }
+    .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
+    .set-field { margin-bottom: 16px; }
+    .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
+    .set-field .hint { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+    .set-field input, .set-field textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
+    .set-field textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+    .settings-actions { position: sticky; bottom: 0; background: var(--surface, #fff); padding: 12px 0; border-top: 1px solid #eee; }
     .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
     .prod-toolbar .search-wrap { flex: 1; margin: 0; }
     .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
@@ -585,6 +592,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="orders">📋 הזמנות</button>
       <button class="tab" data-tab="products">🥬 מוצרים</button>
+      <button class="tab" data-tab="settings">⚙️ הגדרות</button>
     </div>
 
    <div id="orders-tab">
@@ -648,6 +656,11 @@
         <button class="btn btn-primary add-btn" id="add-product">+ הוסף מוצר</button>
       </div>
       <div id="prod-list"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settings-tab" class="hidden">
+      <div id="settings-body" class="settings-wrap"><div class="loading">טוען הגדרות…</div></div>
     </div>
   </div>
 
@@ -1370,20 +1383,22 @@
     // ---------- Tabs ----------
     function showTab(tab) {
       state.tab = tab;
-      var isOrders = tab === 'orders';
-      el('orders-tab').classList.toggle('hidden', !isOrders);
-      el('products-tab').classList.toggle('hidden', isOrders);
+      el('orders-tab').classList.toggle('hidden', tab !== 'orders');
+      el('products-tab').classList.toggle('hidden', tab !== 'products');
+      el('settings-tab').classList.toggle('hidden', tab !== 'settings');
       Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
         t.classList.toggle('active', t.getAttribute('data-tab') === tab);
       });
-      if (isOrders) {
+      if (tab === 'orders') {
         state.current = null;
         el('detail-view').classList.add('hidden');
         el('detail-view').innerHTML = '';
         el('list-view').classList.remove('hidden');
         renderList();
-      } else {
+      } else if (tab === 'products') {
         loadProducts();
+      } else if (tab === 'settings') {
+        loadSettings();
       }
     }
 
@@ -1463,6 +1478,61 @@
         btn.textContent = 'פרסם מכירה';
       });
     });
+
+    // ---------- Settings ----------
+    var SETTINGS_FIELDS = [
+      { key: 'title', label: 'כותרת האתר', type: 'input' },
+      { key: 'description', label: 'תיאור', type: 'textarea' },
+      { key: 'closedMessage', label: 'הודעה כשההזמנות סגורות', type: 'textarea' },
+      { key: 'pickupText', label: 'פרטי איסוף', type: 'textarea' },
+      { key: 'saleName', label: 'שם המכירה', hint: 'חייב להיות זהה לשם הגיליון בקובץ חישוב מחירים', type: 'input' },
+      { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
+      { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
+      { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
+      { key: 'logoUrl', label: 'קישור ללוגו', type: 'input' },
+    ];
+
+    function loadSettings() {
+      el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
+      api('GET', '?action=settings').then(function (data) {
+        renderSettings(data.settings || {});
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
+      });
+    }
+
+    function renderSettings(s) {
+      var html = '';
+      SETTINGS_FIELDS.forEach(function (f) {
+        var val = esc(s[f.key] == null ? '' : s[f.key]);
+        var hint = f.hint ? ' <span class="hint">— ' + esc(f.hint) + '</span>' : '';
+        html += '<div class="set-field">' +
+          '<label for="set-' + f.key + '">' + esc(f.label) + hint + '</label>' +
+          (f.type === 'textarea'
+            ? '<textarea id="set-' + f.key + '">' + val + '</textarea>'
+            : '<input id="set-' + f.key + '" type="text" value="' + val + '">') +
+          '</div>';
+      });
+      html += '<div class="settings-actions"><button class="btn btn-primary" id="set-save">שמירת הגדרות</button></div>';
+      el('settings-body').innerHTML = html;
+      el('set-save').addEventListener('click', saveSettings);
+    }
+
+    function saveSettings() {
+      var payload = {};
+      SETTINGS_FIELDS.forEach(function (f) { payload[f.key] = el('set-' + f.key).value; });
+      var btn = el('set-save');
+      btn.disabled = true;
+      btn.textContent = 'שומר…';
+      api('POST', '', { action: 'settings-update', settings: payload }).then(function () {
+        showToast('ההגדרות נשמרו');
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשמירה');
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'שמירת הגדרות';
+      });
+    }
 
     function productPill(stateVal) {
       if (stateVal === 'oos') return '<span class="pill oos">אזל</span>';

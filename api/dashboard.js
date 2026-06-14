@@ -15,6 +15,8 @@ const {
   addProduct,
   updateProduct,
   deleteProduct,
+  getSettings,
+  updateSettings,
 } = require('../lib/store');
 const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 
@@ -143,6 +145,11 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, ...data });
       }
 
+      if (action === 'settings') {
+        const settings = await getSettings();
+        return res.json({ ok: true, settings });
+      }
+
       const orders = await listOrdersForDashboard();
       return res.json({ ok: true, orders });
     }
@@ -196,6 +203,11 @@ module.exports = async function handler(req, res) {
 
       if (action === 'set-sale-status') {
         const result = await setSaleStatus(String(body.status || '').trim());
+        return res.json(result);
+      }
+
+      if (action === 'settings-update') {
+        const result = await updateSettings(body.settings || {});
         return res.json(result);
       }
 
