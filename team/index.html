@@ -456,6 +456,13 @@
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .report-title { padding: 0 16px; margin: 6px 0 10px; font-size: 16px; }
+    .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
+    .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+    .report-table .dept-row td { background: #f6f8f6; font-weight: 700; }
+    .report-table .num { text-align: center; white-space: nowrap; }
+    .report-flag { color: var(--danger, #d23030); font-size: 12px; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
     .set-field { margin-bottom: 16px; }
     .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
@@ -597,6 +604,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="orders">📋 הזמנות</button>
       <button class="tab" data-tab="products">🥬 מוצרים</button>
+      <button class="tab" data-tab="reports">📊 דוחות</button>
       <button class="tab" data-tab="settings">⚙️ הגדרות</button>
     </div>
 
@@ -672,6 +680,22 @@
         <button class="btn btn-primary add-btn" id="add-product">+ הוסף מוצר</button>
       </div>
       <div id="prod-list"></div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div id="reports-tab" class="hidden">
+      <div class="scope-bar">
+        <span class="scope-label">דוח עבור:</span>
+        <select id="rep-scope-select"><option value="current">מכירה נוכחית</option></select>
+        <span id="rep-scope-range" class="hidden">
+          <input type="date" id="rep-scope-from" />
+          <span>–</span>
+          <input type="date" id="rep-scope-to" />
+          <button class="btn" id="rep-scope-apply">הצג</button>
+        </span>
+      </div>
+      <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
+      <div id="weight-summary-body"><div class="loading">טוען…</div></div>
     </div>
 
     <!-- SETTINGS TAB -->
@@ -789,6 +813,7 @@
       currentItems: [],     // [{name, ..., picked}]
       filters: { search: '', status: 'active', type: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
+      reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       refreshTimer: null,
       tab: 'orders',
       products: [],
@@ -815,6 +840,11 @@
     function formatMoney(n) {
       if (n === '' || n == null || isNaN(n)) return '';
       return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 });
+    }
+
+    function formatQuantity(n) {
+      if (n === '' || n == null || isNaN(n)) return '0';
+      return Number(n).toLocaleString('he-IL', { maximumFractionDigits: 3 });
     }
 
     function formatTime(iso) {
@@ -930,42 +960,99 @@
       if (state.refreshTimer) { clearInterval(state.refreshTimer); state.refreshTimer = null; }
     }
 
-    // ---------- Order scope (which sale / date range the list shows) ----------
-    function scopeParams() {
-      var s = state.scope || {};
+    // ---------- Scope (which sale / date range a list or report covers) ----------
+    function scopeParamsFor(s) {
+      s = s || {};
       if (s.kind === 'all') return '&all=1';
       if (s.kind === 'range') return '&from=' + encodeURIComponent(s.from || '') + '&to=' + encodeURIComponent(s.to || '');
       if (s.kind === 'sale') return '&saleName=' + encodeURIComponent(s.saleName || '');
       return ''; // current sale (default, resolved server-side)
     }
-    function ordersListUrl() { return '?action=list' + scopeParams(); }
+    function ordersListUrl() { return '?action=list' + scopeParamsFor(state.scope); }
 
+    // Fill a scope <select> with: current sale, each past sale, all, date range.
+    function fillScopeOptions(selectEl, sales) {
+      var opts = '<option value="current">מכירה נוכחית</option>';
+      (sales || []).forEach(function (s) {
+        opts += '<option value="sale:' + esc(s.saleName) + '">' + esc(s.saleName) + ' (' + s.count + ')</option>';
+      });
+      opts += '<option value="all">כל ההזמנות</option>';
+      opts += '<option value="range">טווח תאריכים…</option>';
+      selectEl.innerHTML = opts;
+    }
     function populateScopeSelect() {
       return api('GET', '?action=sales').then(function (data) {
-        var sales = data.sales || [];
-        var opts = '<option value="current">מכירה נוכחית</option>';
-        sales.forEach(function (s) {
-          opts += '<option value="sale:' + esc(s.saleName) + '">' + esc(s.saleName) + ' (' + s.count + ')</option>';
-        });
-        opts += '<option value="all">כל ההזמנות</option>';
-        opts += '<option value="range">טווח תאריכים…</option>';
-        el('scope-select').innerHTML = opts;
+        fillScopeOptions(el('scope-select'), data.sales || []);
+        fillScopeOptions(el('rep-scope-select'), data.sales || []);
       }).catch(function () {});
+    }
+    // Translate a <select> value + date inputs into a scope object.
+    function readScope(value, fromEl, toEl) {
+      if (value === 'all') return { kind: 'all' };
+      if (value === 'range') return { kind: 'range', from: el(fromEl).value, to: el(toEl).value };
+      if (value.indexOf('sale:') === 0) return { kind: 'sale', saleName: value.slice(5) };
+      return { kind: 'current' };
     }
 
     el('scope-select').addEventListener('change', function () {
-      var v = this.value;
-      if (v === 'range') { el('scope-range').classList.remove('hidden'); return; }
+      if (this.value === 'range') { el('scope-range').classList.remove('hidden'); return; }
       el('scope-range').classList.add('hidden');
-      if (v === 'all') state.scope = { kind: 'all' };
-      else if (v.indexOf('sale:') === 0) state.scope = { kind: 'sale', saleName: v.slice(5) };
-      else state.scope = { kind: 'current' };
+      state.scope = readScope(this.value, 'scope-from', 'scope-to');
       loadOrders();
     });
     el('scope-apply').addEventListener('click', function () {
       state.scope = { kind: 'range', from: el('scope-from').value, to: el('scope-to').value };
       loadOrders();
     });
+
+    el('rep-scope-select').addEventListener('change', function () {
+      if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
+      el('rep-scope-range').classList.add('hidden');
+      state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
+      loadWeightSummary();
+    });
+    el('rep-scope-apply').addEventListener('click', function () {
+      state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
+      loadWeightSummary();
+    });
+
+    // ---------- Reports ----------
+    function loadReports() {
+      loadWeightSummary();
+    }
+
+    function loadWeightSummary() {
+      el('weight-summary-body').innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=weight-summary' + scopeParamsFor(state.reportScope)).then(function (data) {
+        renderWeightSummary(data);
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('weight-summary-body').innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
+    }
+
+    function renderWeightSummary(data) {
+      var items = data.items || [];
+      if (!items.length) {
+        el('weight-summary-body').innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>';
+        return;
+      }
+      var html = '<table class="report-table"><thead><tr>' +
+        '<th>מוצר</th><th class="num">יחידות</th><th class="num">ק״ג משוער</th></tr></thead><tbody>';
+      var lastDept = null;
+      items.forEach(function (it) {
+        if (it.department !== lastDept) {
+          html += '<tr class="dept-row"><td colspan="3">' + esc(it.department || 'אחר') + '</td></tr>';
+          lastDept = it.department;
+        }
+        var kg = it.estWeightKg != null ? formatQuantity(it.estWeightKg) : '—';
+        var flag = it.needsManualWeight ? ' <span class="report-flag">(לשקול ידנית)</span>' : '';
+        html += '<tr><td>' + esc(it.name) + flag + '</td>' +
+          '<td class="num">' + formatQuantity(it.totalUnits) + '</td>' +
+          '<td class="num">' + kg + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el('weight-summary-body').innerHTML = html;
+    }
 
     function loadOrders(silent) {
       return api('GET', ordersListUrl()).then(function (data) {
@@ -1440,6 +1527,7 @@
       state.tab = tab;
       el('orders-tab').classList.toggle('hidden', tab !== 'orders');
       el('products-tab').classList.toggle('hidden', tab !== 'products');
+      el('reports-tab').classList.toggle('hidden', tab !== 'reports');
       el('settings-tab').classList.toggle('hidden', tab !== 'settings');
       Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
         t.classList.toggle('active', t.getAttribute('data-tab') === tab);
@@ -1452,6 +1540,8 @@
         renderList();
       } else if (tab === 'products') {
         loadProducts();
+      } else if (tab === 'reports') {
+        loadReports();
       } else if (tab === 'settings') {
         loadSettings();
       }

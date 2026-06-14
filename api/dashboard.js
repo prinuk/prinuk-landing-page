@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const {
   listOrdersForDashboard,
   getSalesList,
+  getWeightSummary,
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
@@ -159,6 +160,11 @@ module.exports = async function handler(req, res) {
       if (action === 'sales') {
         const sales = await getSalesList();
         return res.json({ ok: true, sales });
+      }
+
+      if (action === 'weight-summary') {
+        const summary = await getWeightSummary(parseOrderScope(req.query));
+        return res.json({ ok: true, ...summary });
       }
 
       if (action === 'settings') {
