@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const {
   listOrdersForDashboard,
+  getSalesList,
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
@@ -116,6 +117,16 @@ function isAuthorized(req) {
   return crypto.timingSafeEqual(a, b);
 }
 
+// Parse the order-list scope from query params: ?all=1 | ?from=&to= | ?saleName=
+// Default (no params) → current sale (resolved in the store).
+function parseOrderScope(query) {
+  const q = query || {};
+  if (q.all === '1' || q.all === 'true') return { all: true };
+  if (q.from || q.to) return { from: q.from || '', to: q.to || '' };
+  if (q.saleName != null && q.saleName !== '') return { saleName: String(q.saleName) };
+  return {};
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -145,12 +156,17 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, ...data });
       }
 
+      if (action === 'sales') {
+        const sales = await getSalesList();
+        return res.json({ ok: true, sales });
+      }
+
       if (action === 'settings') {
         const settings = await getSettings();
         return res.json({ ok: true, settings });
       }
 
-      const orders = await listOrdersForDashboard();
+      const orders = await listOrdersForDashboard(parseOrderScope(req.query));
       return res.json({ ok: true, orders });
     }
 

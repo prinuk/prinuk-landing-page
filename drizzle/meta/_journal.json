@@ -8,6 +8,13 @@
       "when": 1781387522403,
       "tag": "0000_dry_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781477807605,
+      "tag": "0001_thin_firebird",
+      "breakpoints": true
     }
   ]
 }

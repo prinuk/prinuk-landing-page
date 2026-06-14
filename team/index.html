@@ -451,6 +451,11 @@
       .sale-toggle { flex: 1; }
       .sale-toggle .btn { flex: 1; }
     }
+    .scope-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
+    .scope-bar .scope-label { color: var(--muted); }
+    .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
+    .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
     .set-field { margin-bottom: 16px; }
     .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
@@ -624,6 +629,17 @@
         </div>
       </div>
 
+      <div class="scope-bar">
+        <span class="scope-label">מציג הזמנות:</span>
+        <select id="scope-select"><option value="current">מכירה נוכחית</option></select>
+        <span id="scope-range" class="hidden">
+          <input type="date" id="scope-from" />
+          <span>–</span>
+          <input type="date" id="scope-to" />
+          <button class="btn" id="scope-apply">הצג</button>
+        </span>
+      </div>
+
       <div class="list" id="list"></div>
     </div>
 
@@ -772,6 +788,7 @@
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
       filters: { search: '', status: 'active', type: 'all' },
+      scope: { kind: 'current', from: '', to: '', saleName: '' },
       refreshTimer: null,
       tab: 'orders',
       products: [],
@@ -856,6 +873,7 @@
       el('gate').classList.add('hidden');
       el('app').classList.remove('hidden');
       el('who').textContent = state.member;
+      populateScopeSelect();
     }
 
     function logout() {
@@ -877,7 +895,7 @@
       state.member = member;
       state.key = key;
       // Verify the password by loading the list.
-      api('GET', '?action=list')
+      api('GET', ordersListUrl())
         .then(function (data) {
           localStorage.setItem('teamMember', member);
           localStorage.setItem('teamKey', key);
@@ -912,8 +930,45 @@
       if (state.refreshTimer) { clearInterval(state.refreshTimer); state.refreshTimer = null; }
     }
 
+    // ---------- Order scope (which sale / date range the list shows) ----------
+    function scopeParams() {
+      var s = state.scope || {};
+      if (s.kind === 'all') return '&all=1';
+      if (s.kind === 'range') return '&from=' + encodeURIComponent(s.from || '') + '&to=' + encodeURIComponent(s.to || '');
+      if (s.kind === 'sale') return '&saleName=' + encodeURIComponent(s.saleName || '');
+      return ''; // current sale (default, resolved server-side)
+    }
+    function ordersListUrl() { return '?action=list' + scopeParams(); }
+
+    function populateScopeSelect() {
+      return api('GET', '?action=sales').then(function (data) {
+        var sales = data.sales || [];
+        var opts = '<option value="current">מכירה נוכחית</option>';
+        sales.forEach(function (s) {
+          opts += '<option value="sale:' + esc(s.saleName) + '">' + esc(s.saleName) + ' (' + s.count + ')</option>';
+        });
+        opts += '<option value="all">כל ההזמנות</option>';
+        opts += '<option value="range">טווח תאריכים…</option>';
+        el('scope-select').innerHTML = opts;
+      }).catch(function () {});
+    }
+
+    el('scope-select').addEventListener('change', function () {
+      var v = this.value;
+      if (v === 'range') { el('scope-range').classList.remove('hidden'); return; }
+      el('scope-range').classList.add('hidden');
+      if (v === 'all') state.scope = { kind: 'all' };
+      else if (v.indexOf('sale:') === 0) state.scope = { kind: 'sale', saleName: v.slice(5) };
+      else state.scope = { kind: 'current' };
+      loadOrders();
+    });
+    el('scope-apply').addEventListener('click', function () {
+      state.scope = { kind: 'range', from: el('scope-from').value, to: el('scope-to').value };
+      loadOrders();
+    });
+
     function loadOrders(silent) {
-      return api('GET', '?action=list').then(function (data) {
+      return api('GET', ordersListUrl()).then(function (data) {
         state.orders = data.orders || [];
         if (!state.current) renderList();
       }).catch(function () {
@@ -1761,7 +1816,7 @@
     if (state.member && state.key) {
       el('member').value = state.member;
       // Try the stored credentials; fall back to the gate on failure.
-      api('GET', '?action=list')
+      api('GET', ordersListUrl())
         .then(function (data) {
           state.orders = data.orders || [];
           showApp();
