@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="prinuk-signs.pdf"');
     res.setHeader('Cache-Control', 'no-store');
-    res.send(pdf);
+    res.send(Buffer.from(pdf)); // page.pdf() returns a Uint8Array; send raw bytes
   } catch (error) {
     console.error('Signs PDF error:', error);
     res.status(500).json({ error: 'שגיאה ביצירת השלטים.' });
