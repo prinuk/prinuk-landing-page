@@ -456,7 +456,9 @@
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .report-title { padding: 0 16px; margin: 6px 0 10px; font-size: 16px; }
+    .report-title { padding: 0 16px; margin: 12px 0 10px; font-size: 16px; }
+    .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
+    .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
     .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
@@ -684,6 +686,13 @@
 
     <!-- REPORTS TAB -->
     <div id="reports-tab" class="hidden">
+      <h3 class="report-title">הדפסות (מחיר נוכחי)</h3>
+      <div class="report-prints">
+        <a class="btn" href="/api/price-list" target="_blank" rel="noopener">📄 מחירון</a>
+        <a class="btn" href="/api/flyer" target="_blank" rel="noopener">🪧 פלייר מחירים</a>
+        <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
+      </div>
+
       <div class="scope-bar">
         <span class="scope-label">דוח עבור:</span>
         <select id="rep-scope-select"><option value="current">מכירה נוכחית</option></select>
