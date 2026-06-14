@@ -51,10 +51,14 @@ function main() {
   ].filter(file => fs.existsSync(path.join(ROOT, file)));
 
   files.forEach(checkNodeSyntax);
-  const inlineScriptCount = checkInlineScripts('order/index.html');
+
+  const htmlFiles = ['order/index.html', 'team/index.html'].filter(file =>
+    fs.existsSync(path.join(ROOT, file)),
+  );
+  const inlineScriptCount = htmlFiles.reduce((sum, file) => sum + checkInlineScripts(file), 0);
 
   console.log('JS syntax OK:', files.length, 'files');
-  console.log('Inline scripts OK:', inlineScriptCount, 'scripts');
+  console.log('Inline scripts OK:', inlineScriptCount, 'scripts in', htmlFiles.length, 'HTML files');
 }
 
 try {

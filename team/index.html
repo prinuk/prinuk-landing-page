@@ -430,6 +430,14 @@
     .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
     /* ---------- Products ---------- */
+    .sale-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; margin: 10px 16px 0; background: #fff; border: 1px solid #e6e6e6; border-radius: 14px; }
+    .sale-bar-status { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .sale-dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; flex: none; }
+    .sale-dot.open { background: #2e9e4f; }
+    .sale-dot.closed { background: #d23030; }
+    .sale-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sale-bar-actions input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; min-width: 150px; }
+    @media (max-width: 560px) { .sale-bar-actions { width: 100%; } .sale-bar-actions input { flex: 1; min-width: 0; } }
     .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
     .prod-toolbar .search-wrap { flex: 1; margin: 0; }
     .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
@@ -604,6 +612,18 @@
 
     <!-- PRODUCTS TAB -->
     <div id="products-tab" class="hidden">
+      <div class="sale-bar">
+        <div class="sale-bar-status">
+          <span class="sale-dot" id="sale-dot"></span>
+          <span id="sale-status-text">טוען…</span>
+        </div>
+        <div class="sale-bar-actions">
+          <input id="sale-name-input" type="text" placeholder="שם המכירה" />
+          <button class="btn btn-primary" id="sale-publish">פרסם מכירה</button>
+          <button class="btn" id="sale-open">פתח</button>
+          <button class="btn" id="sale-close">סגור</button>
+        </div>
+      </div>
       <div class="prod-toolbar">
         <div class="search-wrap">
           <span class="icn">🔍</span>
@@ -1358,6 +1378,7 @@
     // ---------- Products ----------
     function loadProducts() {
       el('prod-list').innerHTML = '<div class="loading">טוען מוצרים…</div>';
+      loadSaleStatus();
       return api('GET', '?action=products').then(function (data) {
         state.products = data.products || [];
         state.departments = data.departments || [];
@@ -1366,6 +1387,51 @@
         if (err.message !== 'unauthorized') el('prod-list').innerHTML = '<div class="empty">שגיאה בטעינת המוצרים.</div>';
       });
     }
+
+    // ---------- Sale control (publish / open / close) ----------
+    function renderSaleStatus(data) {
+      var open = !data || data.saleStatus !== 'closed';
+      el('sale-dot').className = 'sale-dot ' + (open ? 'open' : 'closed');
+      el('sale-status-text').textContent =
+        (open ? 'המכירה פתוחה' : 'המכירה סגורה') + (data && data.saleName ? ' · ' + data.saleName : '');
+      if (data && data.saleName && !el('sale-name-input').value) el('sale-name-input').value = data.saleName;
+      el('sale-open').disabled = open;
+      el('sale-close').disabled = !open;
+    }
+
+    function loadSaleStatus() {
+      return api('GET', '?action=sale-status').then(renderSaleStatus).catch(function () {});
+    }
+
+    function setSaleStatusUI(status) {
+      return api('POST', '', { action: 'set-sale-status', status: status }).then(function () {
+        showToast(status === 'open' ? 'המכירה נפתחה' : 'המכירה נסגרה');
+        return loadSaleStatus();
+      }).catch(function (err) { if (err.message !== 'unauthorized') showToast('שגיאה'); });
+    }
+
+    el('sale-open').addEventListener('click', function () { setSaleStatusUI('open'); });
+    el('sale-close').addEventListener('click', function () {
+      if (!window.confirm('לסגור את המכירה? האתר יציג הודעת סגירה. המחירים יישמרו.')) return;
+      setSaleStatusUI('closed');
+    });
+    el('sale-publish').addEventListener('click', function () {
+      var name = (el('sale-name-input').value || '').trim();
+      if (!name) { showToast('יש להזין שם מכירה'); return; }
+      if (!window.confirm('לפרסם את המכירה "' + name + '"? ייובאו המחירים מקובץ חישוב מחירים והמכירה תיפתח.')) return;
+      var btn = el('sale-publish');
+      btn.disabled = true;
+      btn.textContent = 'מפרסם…';
+      api('POST', '', { action: 'publish-sale', saleName: name }).then(function (r) {
+        showToast('פורסם: ' + r.updated + ' עודכנו · ' + r.added + ' נוספו · ' + r.hidden + ' הוסתרו');
+        loadProducts();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בפרסום');
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'פרסם מכירה';
+      });
+    });
 
     function productPill(stateVal) {
       if (stateVal === 'oos') return '<span class="pill oos">אזל</span>';
