@@ -117,17 +117,6 @@ function isAuthorized(req) {
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  // TEMPORARY diagnostic (no secrets): reports which env vars this deployment
-  // sees, to debug Vercel env scoping. Remove after debugging.
-  if (req.method === 'GET' && req.query && req.query.action === 'env-check') {
-    return res.json({
-      DATABASE_URL: !!process.env.DATABASE_URL,
-      GOOGLE_CREDENTIALS: !!process.env.GOOGLE_CREDENTIALS,
-      PRICING_SPREADSHEET_ID: !!process.env.PRICING_SPREADSHEET_ID,
-      DASHBOARD_PASSWORD: !!process.env.DASHBOARD_PASSWORD,
-    });
-  }
-
   if (!isAuthorized(req)) {
     return res.status(401).json({ error: 'הסיסמה שגויה.' });
   }
