@@ -430,16 +430,27 @@
     .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
     /* ---------- Products ---------- */
-    .sale-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; margin: 10px 16px 0; background: #fff; border: 1px solid #e6e6e6; border-radius: 14px; }
-    .sale-bar-status { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .sale-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; margin: 10px 16px 0; background: #fff; border: 1px solid #e9e9e9; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+    .sale-bar-status { display: flex; align-items: center; gap: 9px; font-weight: 700; }
     .sale-dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; flex: none; }
-    .sale-dot.open { background: #2e9e4f; }
-    .sale-dot.closed { background: #d23030; }
-    .sale-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .sale-bar-actions input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; min-width: 150px; }
-    .sale-toggle { display: inline-flex; gap: 6px; background: #f1f3f5; border-radius: 10px; padding: 4px; }
-    .sale-hint { margin: 8px 18px 0; font-size: 12px; color: #888; line-height: 1.6; }
-    @media (max-width: 560px) { .sale-bar-actions { width: 100%; } .sale-bar-actions input { flex: 1; min-width: 0; } .sale-toggle { flex: 1; } .sale-toggle .btn { flex: 1; } }
+    .sale-dot.open { background: #2e9e4f; box-shadow: 0 0 0 3px rgba(46,158,79,.15); }
+    .sale-dot.closed { background: #d23030; box-shadow: 0 0 0 3px rgba(210,48,48,.15); }
+    .sale-bar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .sale-bar-actions .btn { width: auto; font-size: 15px; padding: 10px 18px; }
+    .sale-bar-actions input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font: inherit; width: 150px; }
+    #sale-publish { white-space: nowrap; }
+    .sale-toggle { display: inline-flex; gap: 4px; background: #f1f3f5; border-radius: 12px; padding: 4px; }
+    .sale-toggle .btn { background: transparent; color: #555; font-size: 14px; font-weight: 600; padding: 8px 16px; }
+    .sale-toggle .btn:not(:disabled):hover { background: #e7eaee; }
+    .sale-toggle .btn:disabled { background: #fff; color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.1); opacity: 1; cursor: default; }
+    .sale-hint { margin: 8px 18px 0; font-size: 12px; color: #8a8a8a; line-height: 1.6; }
+    @media (max-width: 600px) {
+      .sale-bar-actions { width: 100%; }
+      .sale-bar-actions input { flex: 1 1 100%; width: auto; }
+      #sale-publish { flex: 1 1 100%; }
+      .sale-toggle { flex: 1; }
+      .sale-toggle .btn { flex: 1; }
+    }
     .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
     .prod-toolbar .search-wrap { flex: 1; margin: 0; }
     .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
