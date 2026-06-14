@@ -437,7 +437,9 @@
     .sale-dot.closed { background: #d23030; }
     .sale-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .sale-bar-actions input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; min-width: 150px; }
-    @media (max-width: 560px) { .sale-bar-actions { width: 100%; } .sale-bar-actions input { flex: 1; min-width: 0; } }
+    .sale-toggle { display: inline-flex; gap: 6px; background: #f1f3f5; border-radius: 10px; padding: 4px; }
+    .sale-hint { margin: 8px 18px 0; font-size: 12px; color: #888; line-height: 1.6; }
+    @media (max-width: 560px) { .sale-bar-actions { width: 100%; } .sale-bar-actions input { flex: 1; min-width: 0; } .sale-toggle { flex: 1; } .sale-toggle .btn { flex: 1; } }
     .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
     .prod-toolbar .search-wrap { flex: 1; margin: 0; }
     .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
@@ -619,11 +621,14 @@
         </div>
         <div class="sale-bar-actions">
           <input id="sale-name-input" type="text" placeholder="שם המכירה" />
-          <button class="btn btn-primary" id="sale-publish">פרסם מכירה</button>
-          <button class="btn" id="sale-open">פתח</button>
-          <button class="btn" id="sale-close">סגור</button>
+          <button class="btn btn-primary" id="sale-publish" title="ייבוא המחירים מקובץ חישוב מחירים ופתיחת המכירה">פרסם מכירה</button>
+          <span class="sale-toggle">
+            <button class="btn" id="sale-open" title="פתיחת האתר עם המחירים הקיימים, ללא ייבוא">פתח</button>
+            <button class="btn" id="sale-close" title="סגירת האתר. המחירים נשמרים">סגור</button>
+          </span>
         </div>
       </div>
+      <div class="sale-hint"><strong>פרסם מכירה</strong> = ייבוא מחירים מחישוב מחירים + פתיחה (הפעולה השבועית). <strong>פתח / סגור</strong> = הדלקה/כיבוי של האתר ללא שינוי מחירים.</div>
       <div class="prod-toolbar">
         <div class="search-wrap">
           <span class="icn">🔍</span>
