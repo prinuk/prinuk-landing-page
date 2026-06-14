@@ -14,6 +14,8 @@
     "db:test": "node --env-file=.env scripts/db-test.mjs",
     "db:backfill": "node --env-file=.env scripts/backfill.mjs",
     "db:products": "node --env-file=.env scripts/db-products.mjs",
+    "db:dupes": "node --env-file=.env scripts/db-dupes.mjs",
+    "db:dedupe": "node --env-file=.env scripts/dedupe.mjs",
     "sale": "node --env-file=.env scripts/sale.mjs"
   },
   "engines": {

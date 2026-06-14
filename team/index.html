@@ -1434,11 +1434,26 @@
     el('sale-publish').addEventListener('click', function () {
       var name = (el('sale-name-input').value || '').trim();
       if (!name) { showToast('יש להזין שם מכירה'); return; }
-      if (!window.confirm('לפרסם את המכירה "' + name + '"? ייובאו המחירים מקובץ חישוב מחירים והמכירה תיפתח.')) return;
       var btn = el('sale-publish');
       btn.disabled = true;
-      btn.textContent = 'מפרסם…';
-      api('POST', '', { action: 'publish-sale', saleName: name }).then(function (r) {
+      btn.textContent = 'בודק…';
+      // Dry-run first: show exactly what will change so a renamed product is not
+      // silently duplicated, then commit on confirm.
+      api('POST', '', { action: 'publish-sale', saleName: name, dryRun: true }).then(function (plan) {
+        var newList = (plan.newNames && plan.newNames.length)
+          ? ':\n   • ' + plan.newNames.slice(0, 20).join('\n   • ') + (plan.newNames.length > 20 ? '\n   • …' : '')
+          : '';
+        var msg = 'פרסום המכירה "' + plan.saleName + '":\n\n' +
+          '• ' + plan.updated + ' מוצרים יעודכנו\n' +
+          '• ' + plan.added + ' מוצרים חדשים' + newList + '\n' +
+          '• ' + plan.hidden + ' מוצרים יוסתרו (לא במכירה השבוע)\n\n' +
+          (plan.added > 0 ? 'שימו לב: ודאו שהמוצרים ה"חדשים" אינם מוצרים קיימים בשם שונה (כדי למנוע כפילות).\n\n' : '') +
+          'להמשיך ולפרסם?';
+        if (!window.confirm(msg)) return null;
+        btn.textContent = 'מפרסם…';
+        return api('POST', '', { action: 'publish-sale', saleName: name });
+      }).then(function (r) {
+        if (!r) return; // cancelled
         showToast('פורסם: ' + r.updated + ' עודכנו · ' + r.added + ' נוספו · ' + r.hidden + ' הוסתרו');
         loadProducts();
       }).catch(function (err) {

@@ -187,7 +187,10 @@ module.exports = async function handler(req, res) {
 
       // --- Sale management ---
       if (action === 'publish-sale') {
-        const result = await publishSale({ saleName: String(body.saleName || '').trim() });
+        const result = await publishSale({
+          saleName: String(body.saleName || '').trim(),
+          dryRun: body.dryRun === true,
+        });
         return res.json(result);
       }
 
