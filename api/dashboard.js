@@ -290,13 +290,22 @@ module.exports = async function handler(req, res) {
 
         // When the pick is finalized (not kept open for missing items), send a
         // summary + the order PDF to the dedicated Telegram channel. Best-effort:
-        // a notification failure must never fail the collect itself.
-        if (result.status !== 'בליקוט') {
+        // a notification failure must never fail the collect itself. The reason
+        // is always surfaced on result.telegram so the dashboard can show it.
+        if (result.status === 'בליקוט') {
+          result.telegram = { sent: false, reason: 'pick-kept-open' };
+        } else {
           try {
             const detailed = await getOrdersDetailed({ codes: [orderId] });
             const order = detailed[0];
-            const settings = order ? await getSettings() : null;
-            if (order && settings && settings.telegramBotToken && settings.telegramPickedChatId) {
+            const settings = await getSettings();
+            if (!order) {
+              result.telegram = { sent: false, reason: 'order-not-found' };
+            } else if (!settings.telegramBotToken) {
+              result.telegram = { sent: false, reason: 'no-bot-token' };
+            } else if (!settings.telegramPickedChatId) {
+              result.telegram = { sent: false, reason: 'no-picked-chat-id' };
+            } else {
               const pdf = await createOrdersFullPdf([order], settings);
               result.telegram = await sendPickedOrderTelegram(settings, order, Buffer.from(pdf));
             }

@@ -1807,6 +1807,13 @@
           o._touched = true;
           if (r.status === STATUS.PICKING) showToast('התקדמות נשמרה, ההזמנה עדיין בליקוט');
           else showToast(r.status === STATUS.PARTIAL ? 'עודכן: נאסף חלקית' : 'ההזמנה סומנה כנאספה ✓');
+          // Surface the Telegram result so a misconfigured channel is visible.
+          if (r.telegram && r.status !== STATUS.PICKING) {
+            if (r.telegram.sent) showToast('📨 סיכום נשלח לטלגרם');
+            else if (r.telegram.reason === 'no-picked-chat-id') showToast('⚠️ לא הוגדר ערוץ טלגרם לליקוט (הגדרות)');
+            else if (r.telegram.reason === 'no-bot-token') showToast('⚠️ חסר טוקן בוט טלגרם');
+            else showToast('⚠️ שליחת טלגרם נכשלה: ' + (r.telegram.reason || 'לא ידוע'));
+          }
           closeDetail();
         })
         .catch(function (err) {
