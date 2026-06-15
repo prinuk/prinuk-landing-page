@@ -7,7 +7,8 @@ module.exports = async function handler(req, res) {
 
   try {
     const catalog = await getActiveCatalog();
-    const pdf = await createFlyerPdf(catalog);
+    const perCategory = req.query && (req.query.perCategory === '1' || req.query.perCategory === 'true');
+    const pdf = await createFlyerPdf(catalog, { perCategory });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="prinuk-flyer.pdf"');
