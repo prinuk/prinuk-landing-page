@@ -1446,9 +1446,11 @@
             '<div class="item-main">' +
               '<div class="item-name">' + esc(it.name) + '</div>' +
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
-              (it.isWeightPriced
-                ? '<div class="item-weigh" onclick="event.stopPropagation()">⚖️ <input class="wkg" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ק״ג בפועל" value="' + (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') + '" data-idx="' + idx + '"><span class="wkg-line" data-idx="' + idx + '"></span></div>'
-                : '') +
+              '<div class="item-weigh" onclick="event.stopPropagation()">' +
+                (it.isWeightPriced ? '⚖️ ' : '🔢 ') +
+                '<input class="wkg" type="number" min="0" step="' + (it.isWeightPriced ? '0.01' : '1') + '" inputmode="decimal" placeholder="' + (it.isWeightPriced ? 'ק״ג בפועל' : 'כמות בפועל') + '" value="' + (it.isWeightPriced ? (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') : (it.actualQuantity != null ? esc(it.actualQuantity) : '')) + '" data-idx="' + idx + '">' +
+                '<span class="wkg-line" data-idx="' + idx + '"></span>' +
+              '</div>' +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
             '</div>' +
           '</div>';
@@ -1503,7 +1505,10 @@
       view.querySelectorAll('.wkg').forEach(function (inp) {
         inp.addEventListener('input', function () {
           var idx = Number(this.getAttribute('data-idx'));
-          state.currentItems[idx].actualWeightKg = this.value === '' ? null : Number(this.value);
+          var it = state.currentItems[idx];
+          var v = this.value === '' ? null : Number(this.value);
+          if (it.isWeightPriced) it.actualWeightKg = v; else it.actualQuantity = v;
+          if (v != null && v > 0 && !it.picked) setItemPicked(idx, true); // auto-mark on entry
           recomputeWeigh();
         });
       });
@@ -1518,19 +1523,23 @@
     // Live final total from the collected weights (kg items) + fixed lines.
     function recomputeWeigh() {
       var total = 0;
-      var anyWeight = false;
+      var anyActual = false;
       state.currentItems.forEach(function (it, idx) {
         var lineActual = (it.lineTotal !== '' && it.lineTotal != null) ? Number(it.lineTotal) : 0;
-        if (it.isWeightPriced) {
-          var w = (it.actualWeightKg != null && it.actualWeightKg !== '' && Number(it.actualWeightKg) > 0) ? Number(it.actualWeightKg) : null;
-          var span = el('detail-view') && el('detail-view').querySelector('.wkg-line[data-idx="' + idx + '"]');
-          if (w != null) { lineActual = w * (it.unitPrice || 0); anyWeight = true; if (span) span.textContent = '= ' + formatMoney(lineActual); }
-          else if (span) { span.textContent = ''; }
+        var span = el('detail-view') && el('detail-view').querySelector('.wkg-line[data-idx="' + idx + '"]');
+        var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+        var n = (v != null && v !== '' && Number(v) >= 0) ? Number(v) : null;
+        if (n != null && (it.isWeightPriced ? n > 0 : true)) {
+          lineActual = n * (it.unitPrice || 0);
+          anyActual = true;
+          if (span) span.textContent = '= ' + formatMoney(lineActual);
+        } else if (span) {
+          span.textContent = '';
         }
         if (it.picked) total += lineActual;
       });
       var elT = el('weigh-total');
-      if (elT) elT.innerHTML = anyWeight ? 'סה״כ סופי (שקילה): <b>' + formatMoney(total) + '</b>' : '';
+      if (elT) elT.innerHTML = anyActual ? 'סה״כ סופי: <b>' + formatMoney(total) + '</b>' : '';
     }
 
     // Print one order as a PDF (includes collected weights + final total).
@@ -1679,6 +1688,12 @@
       it.picked = picked;
       if (picked) it.missing = false;
       var row = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"]');
+      // For unit items, picking defaults the collected amount to the ordered qty.
+      if (picked && !it.isWeightPriced && (it.actualQuantity == null || it.actualQuantity === '')) {
+        it.actualQuantity = it.quantity;
+        var qinp = row && row.querySelector('.wkg');
+        if (qinp) qinp.value = it.quantity;
+      }
       if (row) {
         row.classList.toggle('picked', picked);
         if (picked) row.classList.remove('missing');
@@ -1757,7 +1772,7 @@
       btn.textContent = 'מעדכן…';
 
       var items = state.currentItems.map(function (it) {
-        return { name: it.name, picked: it.picked, actualWeightKg: it.actualWeightKg };
+        return { name: it.name, picked: it.picked, actualWeightKg: it.actualWeightKg, actualQuantity: it.actualQuantity };
       });
 
       api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })

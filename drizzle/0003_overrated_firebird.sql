@@ -1,0 +1,1 @@
+ALTER TABLE "order_items" ADD COLUMN "actual_quantity" numeric(10, 3);
