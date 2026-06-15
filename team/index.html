@@ -1518,7 +1518,11 @@
           var it = state.currentItems[idx];
           var v = this.value === '' ? null : Number(this.value);
           if (it.isWeightPriced) it.actualWeightKg = v; else it.actualQuantity = v;
-          if (v != null && v > 0 && !it.picked) setItemPicked(idx, true); // auto-mark on entry
+          if (v != null && v > 0 && !it.picked) {
+            setItemPicked(idx, true); // auto-mark on entry
+          } else if (it.isWeightPriced && (v == null || v <= 0) && it.picked) {
+            setItemPicked(idx, false); // clearing the weight un-collects a kg item
+          }
           recomputeWeigh();
         });
       });
@@ -1708,6 +1712,14 @@
     function setItemPicked(idx, picked) {
       var it = state.currentItems[idx];
       if (!it) return;
+      // A kg-priced item can't be marked collected without a weighed amount
+      // (unit items auto-fill the ordered qty below, so they're exempt).
+      if (picked && it.isWeightPriced && !(it.actualWeightKg != null && it.actualWeightKg !== '' && Number(it.actualWeightKg) > 0)) {
+        showToast('יש להזין משקל בפועל לפני סימון כנאסף');
+        var winp = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"] .wkg');
+        if (winp) winp.focus();
+        return;
+      }
       if (state.current) state.current._touched = true;
       it.picked = picked;
       if (picked) it.missing = false;
