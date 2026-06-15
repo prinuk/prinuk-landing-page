@@ -465,6 +465,15 @@
     .report-table .dept-row td { background: #f6f8f6; font-weight: 700; }
     .report-table .num { text-align: center; white-space: nowrap; }
     .report-flag { color: var(--danger, #d23030); font-size: 12px; }
+    .back-btn.danger { color: var(--danger, #d23030); }
+    .ed-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; background: #fff; }
+    textarea.ed-input { min-height: 60px; resize: vertical; }
+    .cust-line .ed-input { max-width: 60%; }
+    .ed-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #eee; }
+    .ed-item-name { flex: 1; font-weight: 600; }
+    .ed-qty { width: 64px; padding: 7px 8px; border: 1px solid #ddd; border-radius: 8px; font: inherit; text-align: center; }
+    .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
+    .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
     .set-field { margin-bottom: 16px; }
     .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
@@ -1230,6 +1239,7 @@
 
     // ---------- Detail ----------
     function openOrder(orderId) {
+      state.editing = false;
       el('list-view').classList.add('hidden');
       el('detail-view').classList.remove('hidden');
       el('detail-view').innerHTML = '<div class="loading">טוען הזמנה…</div>';
@@ -1315,6 +1325,7 @@
     function renderDetail() {
       var o = state.current;
       if (!o) return;
+      if (state.editing) return renderDetailEdit();
       var isDeliver = o.fulfillment === 'משלוח';
       var wa = waNumber(o.phone);
       var sum = itemSummary();
@@ -1359,6 +1370,8 @@
       el('detail-view').innerHTML = '' +
         '<div class="back-row">' +
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
+          '<button class="back-btn" id="edit-order-btn">✏️ ערוך</button>' +
+          '<button class="back-btn danger" id="cancel-order-btn">🗑️ בטל</button>' +
           '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
           '<select id="status-select" class="status-select">' +
             [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED].map(function (s) {
@@ -1401,6 +1414,102 @@
       });
       el('collect-btn').addEventListener('click', submitCollect);
       el('status-select').addEventListener('change', onManualStatusChange);
+      el('edit-order-btn').addEventListener('click', startEdit);
+      el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
+    }
+
+    // ---------- Edit / cancel order ----------
+    function startEdit() { state.editing = true; renderDetail(); }
+
+    function renderDetailEdit() {
+      var o = state.current;
+      function field(label, id, val) {
+        return '<div class="cust-line"><span class="lbl">' + label + '</span>' +
+          '<input class="ed-input" id="' + id + '" value="' + esc(val == null ? '' : val) + '"></div>';
+      }
+      var fulfillOpts = ['איסוף עצמי', 'משלוח'].map(function (s) {
+        return '<option value="' + esc(s) + '"' + (s === o.fulfillment ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('');
+      var itemsEdit = state.currentItems.map(function (it, idx) {
+        if (it.removed) return '';
+        return '<div class="ed-item" data-idx="' + idx + '">' +
+          '<span class="ed-item-name">' + esc(it.name) + '</span>' +
+          '<input class="ed-qty" type="number" min="0" step="1" value="' + esc(it.quantity) + '" data-idx="' + idx + '">' +
+          '<span class="ed-unit">' + esc(it.orderUnit || '') + '</span>' +
+          '<button class="ed-remove" data-idx="' + idx + '" title="הסר">✕</button>' +
+          '</div>';
+      }).join('');
+
+      el('detail-view').innerHTML = '' +
+        '<div class="back-row"><button class="back-btn" id="edit-back">→ חזרה</button><strong>עריכת הזמנה</strong></div>' +
+        '<div class="panel"><h2>פרטי הלקוח</h2>' +
+          field('שם', 'ed-name', o.fullName) + field('טלפון', 'ed-phone', o.phone) + field('אימייל', 'ed-email', o.email) +
+          '<div class="cust-line"><span class="lbl">שיטה</span><select class="ed-input" id="ed-fulfillment">' + fulfillOpts + '</select></div>' +
+          field('כתובת', 'ed-address', o.address) + field('קומה', 'ed-floor', o.floor) + field('דירה', 'ed-apartment', o.apartment) +
+          '<div class="cust-line"><span class="lbl">הערות</span><textarea class="ed-input" id="ed-notes">' + esc(o.notes || '') + '</textarea></div>' +
+        '</div>' +
+        '<div class="panel"><h2>פריטים</h2><div class="ed-items">' + itemsEdit + '</div></div>' +
+        '<div class="submit-bar"><div class="inner">' +
+          '<button class="btn btn-success" id="save-edit">שמירת שינויים</button>' +
+          '<button class="btn" id="cancel-edit">ביטול</button>' +
+        '</div></div>';
+
+      var view = el('detail-view');
+      view.querySelectorAll('.ed-qty').forEach(function (inp) {
+        inp.addEventListener('change', function () { state.currentItems[Number(this.getAttribute('data-idx'))].quantity = Number(this.value); });
+      });
+      view.querySelectorAll('.ed-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () { state.currentItems[Number(this.getAttribute('data-idx'))].removed = true; renderDetailEdit(); });
+      });
+      el('save-edit').addEventListener('click', saveEdit);
+      el('cancel-edit').addEventListener('click', function () { state.editing = false; openOrder(o.orderId); });
+      el('edit-back').addEventListener('click', function () { state.editing = false; openOrder(o.orderId); });
+    }
+
+    function saveEdit() {
+      var o = state.current;
+      el('detail-view').querySelectorAll('.ed-qty').forEach(function (inp) {
+        state.currentItems[Number(inp.getAttribute('data-idx'))].quantity = Number(inp.value);
+      });
+      var items = state.currentItems
+        .filter(function (it) { return !it.removed && Number(it.quantity) > 0; })
+        .map(function (it) { return { id: it.id, quantity: Number(it.quantity) }; });
+      if (!items.length) { showToast('חייב להישאר מוצר אחד לפחות (לביטול ההזמנה השתמשו בכפתור בטל)'); return; }
+      var payload = {
+        fullName: el('ed-name').value, phone: el('ed-phone').value, email: el('ed-email').value,
+        fulfillment: el('ed-fulfillment').value, address: el('ed-address').value,
+        floor: el('ed-floor').value, apartment: el('ed-apartment').value, notes: el('ed-notes').value,
+        items: items,
+      };
+      var btn = el('save-edit');
+      btn.disabled = true;
+      btn.textContent = 'שומר…';
+      api('POST', '', { action: 'order-update', orderId: o.orderId, payload: payload }).then(function () {
+        showToast('ההזמנה עודכנה');
+        state.editing = false;
+        openOrder(o.orderId);
+        loadOrders(true);
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בעדכון');
+        btn.disabled = false;
+        btn.textContent = 'שמירת שינויים';
+      });
+    }
+
+    function cancelOrderConfirm() {
+      var o = state.current;
+      if (!o) return;
+      askYesNo('לבטל את ההזמנה של ' + (o.fullName || '') + '? היא תוסר מהרשימה ומהדוחות (הרשומה נשמרת).').then(function (yes) {
+        if (!yes) return;
+        api('POST', '', { action: 'set-status', orderId: o.orderId, status: 'מבוטל', member: state.member }).then(function () {
+          showToast('ההזמנה בוטלה');
+          state.current = null;
+          el('detail-view').classList.add('hidden');
+          el('detail-view').innerHTML = '';
+          el('list-view').classList.remove('hidden');
+          loadOrders(true);
+        }).catch(function (err) { if (err.message !== 'unauthorized') showToast('שגיאה בביטול'); });
+      });
     }
 
     // Manual status override from the order screen.

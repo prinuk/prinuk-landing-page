@@ -15,6 +15,13 @@
       "when": 1781477807605,
       "tag": "0001_thin_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781509330196,
+      "tag": "0002_striped_psylocke",
+      "breakpoints": true
     }
   ]
 }

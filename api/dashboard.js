@@ -7,6 +7,7 @@ const {
   claimOrderForPicking,
   updateOrderCollection,
   setOrderStatus,
+  adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
   ORDER_STATUS_COLLECTED,
@@ -29,6 +30,7 @@ const ALLOWED_STATUSES = [
   ORDER_STATUS_PARTIAL,
   ORDER_STATUS_SENT,
   ORDER_STATUS_HANDED,
+  'מבוטל', // cancelled (soft delete via set-status)
 ];
 
 // Validate + normalize a product payload from the client.
@@ -260,6 +262,15 @@ module.exports = async function handler(req, res) {
         const result = await setOrderStatus(orderId, status, member);
         if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
         return res.json(result);
+      }
+
+      if (action === 'order-update') {
+        try {
+          const result = await adminUpdateOrder(orderId, body.payload || {});
+          return res.json(result);
+        } catch (err) {
+          return res.status(400).json({ error: err.message || 'שגיאה בעדכון ההזמנה.' });
+        }
       }
 
       return res.status(400).json({ error: 'פעולה לא תקינה.' });
