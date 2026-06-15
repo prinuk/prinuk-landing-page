@@ -430,6 +430,62 @@
     .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
     /* ---------- Products ---------- */
+    .sale-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; margin: 10px 16px 0; background: #fff; border: 1px solid #e9e9e9; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+    .sale-bar-status { display: flex; align-items: center; gap: 9px; font-weight: 700; }
+    .sale-dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; flex: none; }
+    .sale-dot.open { background: #2e9e4f; box-shadow: 0 0 0 3px rgba(46,158,79,.15); }
+    .sale-dot.closed { background: #d23030; box-shadow: 0 0 0 3px rgba(210,48,48,.15); }
+    .sale-bar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .sale-bar-actions .btn { width: auto; font-size: 15px; padding: 10px 18px; }
+    .sale-bar-actions input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font: inherit; width: 150px; }
+    #sale-publish { white-space: nowrap; }
+    .sale-toggle { display: inline-flex; gap: 4px; background: #f1f3f5; border-radius: 12px; padding: 4px; }
+    .sale-toggle .btn { background: transparent; color: #555; font-size: 14px; font-weight: 600; padding: 8px 16px; }
+    .sale-toggle .btn:not(:disabled):hover { background: #e7eaee; }
+    .sale-toggle .btn:disabled { background: #fff; color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.1); opacity: 1; cursor: default; }
+    .sale-hint { margin: 8px 18px 0; font-size: 12px; color: #8a8a8a; line-height: 1.6; }
+    @media (max-width: 600px) {
+      .sale-bar-actions { width: 100%; }
+      .sale-bar-actions input { flex: 1 1 100%; width: auto; }
+      #sale-publish { flex: 1 1 100%; }
+      .sale-toggle { flex: 1; }
+      .sale-toggle .btn { flex: 1; }
+    }
+    .scope-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
+    .scope-bar .scope-label { color: var(--muted); }
+    .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
+    .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
+    .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
+    .print-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    .print-bar .select-count { color: var(--muted); }
+    .oc-select { width: 18px; height: 18px; margin-inline-end: 8px; flex: none; }
+    .report-title { padding: 0 16px; margin: 12px 0 10px; font-size: 16px; }
+    .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
+    .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
+    .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
+    .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+    .report-table .dept-row td { background: #f6f8f6; font-weight: 700; }
+    .report-table .num { text-align: center; white-space: nowrap; }
+    .report-flag { color: var(--danger, #d23030); font-size: 12px; }
+    .back-btn.danger { color: var(--danger, #d23030); }
+    .ed-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; background: #fff; }
+    textarea.ed-input { min-height: 60px; resize: vertical; }
+    .cust-line .ed-input { max-width: 60%; }
+    .ed-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #eee; }
+    .ed-item-name { flex: 1; font-weight: 600; }
+    .ed-qty { width: 64px; padding: 7px 8px; border: 1px solid #ddd; border-radius: 8px; font: inherit; text-align: center; }
+    .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
+    .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+    .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
+    .set-field { margin-bottom: 16px; }
+    .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
+    .set-field .hint { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+    .set-field input, .set-field textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
+    .set-field textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+    .settings-actions { position: sticky; bottom: 0; background: var(--surface, #fff); padding: 12px 0; border-top: 1px solid #eee; }
     .prod-toolbar { display: flex; gap: 8px; padding: 12px 16px 4px; }
     .prod-toolbar .search-wrap { flex: 1; margin: 0; }
     .add-btn { width: auto; flex: 0 0 auto; padding: 12px 16px; white-space: nowrap; }
@@ -564,6 +620,8 @@
     <div class="tabs">
       <button class="tab active" data-tab="orders">📋 הזמנות</button>
       <button class="tab" data-tab="products">🥬 מוצרים</button>
+      <button class="tab" data-tab="reports">📊 דוחות</button>
+      <button class="tab" data-tab="settings">⚙️ הגדרות</button>
     </div>
 
    <div id="orders-tab">
@@ -595,6 +653,24 @@
         </div>
       </div>
 
+      <div class="scope-bar">
+        <span class="scope-label">מציג הזמנות:</span>
+        <select id="scope-select"><option value="current">מכירה נוכחית</option></select>
+        <span id="scope-range" class="hidden">
+          <input type="date" id="scope-from" />
+          <span>–</span>
+          <input type="date" id="scope-to" />
+          <button class="btn" id="scope-apply">הצג</button>
+        </span>
+      </div>
+
+      <div class="print-bar">
+        <label class="print-all"><input type="checkbox" id="select-all-orders"> בחר הכל</label>
+        <span id="select-count" class="select-count"></span>
+        <button class="btn" id="print-full">🖨️ הדפס מלא</button>
+        <button class="btn" id="print-headers">🖨️ כותרות בלבד</button>
+      </div>
+
       <div class="list" id="list"></div>
     </div>
 
@@ -604,6 +680,21 @@
 
     <!-- PRODUCTS TAB -->
     <div id="products-tab" class="hidden">
+      <div class="sale-bar">
+        <div class="sale-bar-status">
+          <span class="sale-dot" id="sale-dot"></span>
+          <span id="sale-status-text">טוען…</span>
+        </div>
+        <div class="sale-bar-actions">
+          <input id="sale-name-input" type="text" placeholder="שם המכירה" />
+          <button class="btn btn-primary" id="sale-publish" title="ייבוא המחירים מקובץ חישוב מחירים ופתיחת המכירה">פרסם מכירה</button>
+          <span class="sale-toggle">
+            <button class="btn" id="sale-open" title="פתיחת האתר עם המחירים הקיימים, ללא ייבוא">פתח</button>
+            <button class="btn" id="sale-close" title="סגירת האתר. המחירים נשמרים">סגור</button>
+          </span>
+        </div>
+      </div>
+      <div class="sale-hint"><strong>פרסם מכירה</strong> = ייבוא מחירים מחישוב מחירים + פתיחה (הפעולה השבועית). <strong>פתח / סגור</strong> = הדלקה/כיבוי של האתר ללא שינוי מחירים.</div>
       <div class="prod-toolbar">
         <div class="search-wrap">
           <span class="icn">🔍</span>
@@ -612,6 +703,35 @@
         <button class="btn btn-primary add-btn" id="add-product">+ הוסף מוצר</button>
       </div>
       <div id="prod-list"></div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div id="reports-tab" class="hidden">
+      <h3 class="report-title">הדפסות (מחיר נוכחי)</h3>
+      <div class="report-prints">
+        <a class="btn" href="/api/price-list" target="_blank" rel="noopener">📄 מחירון</a>
+        <a class="btn" href="/api/flyer" target="_blank" rel="noopener">🪧 פלייר מחירים</a>
+        <a class="btn" href="/api/flyer?perCategory=1" target="_blank" rel="noopener">🪧 פלייר לפי קטגוריה</a>
+        <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
+      </div>
+
+      <div class="scope-bar">
+        <span class="scope-label">דוח עבור:</span>
+        <select id="rep-scope-select"><option value="current">מכירה נוכחית</option></select>
+        <span id="rep-scope-range" class="hidden">
+          <input type="date" id="rep-scope-from" />
+          <span>–</span>
+          <input type="date" id="rep-scope-to" />
+          <button class="btn" id="rep-scope-apply">הצג</button>
+        </span>
+      </div>
+      <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
+      <div id="weight-summary-body"><div class="loading">טוען…</div></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settings-tab" class="hidden">
+      <div id="settings-body" class="settings-wrap"><div class="loading">טוען הגדרות…</div></div>
     </div>
   </div>
 
@@ -723,6 +843,9 @@
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
       filters: { search: '', status: 'active', type: 'all' },
+      scope: { kind: 'current', from: '', to: '', saleName: '' },
+      reportScope: { kind: 'current', from: '', to: '', saleName: '' },
+      selected: {},
       refreshTimer: null,
       tab: 'orders',
       products: [],
@@ -749,6 +872,11 @@
     function formatMoney(n) {
       if (n === '' || n == null || isNaN(n)) return '';
       return '₪' + Number(n).toLocaleString('he-IL', { maximumFractionDigits: 2 });
+    }
+
+    function formatQuantity(n) {
+      if (n === '' || n == null || isNaN(n)) return '0';
+      return Number(n).toLocaleString('he-IL', { maximumFractionDigits: 3 });
     }
 
     function formatTime(iso) {
@@ -807,6 +935,7 @@
       el('gate').classList.add('hidden');
       el('app').classList.remove('hidden');
       el('who').textContent = state.member;
+      populateScopeSelect();
     }
 
     function logout() {
@@ -828,7 +957,7 @@
       state.member = member;
       state.key = key;
       // Verify the password by loading the list.
-      api('GET', '?action=list')
+      api('GET', ordersListUrl())
         .then(function (data) {
           localStorage.setItem('teamMember', member);
           localStorage.setItem('teamKey', key);
@@ -863,8 +992,102 @@
       if (state.refreshTimer) { clearInterval(state.refreshTimer); state.refreshTimer = null; }
     }
 
+    // ---------- Scope (which sale / date range a list or report covers) ----------
+    function scopeParamsFor(s) {
+      s = s || {};
+      if (s.kind === 'all') return '&all=1';
+      if (s.kind === 'range') return '&from=' + encodeURIComponent(s.from || '') + '&to=' + encodeURIComponent(s.to || '');
+      if (s.kind === 'sale') return '&saleName=' + encodeURIComponent(s.saleName || '');
+      return ''; // current sale (default, resolved server-side)
+    }
+    function ordersListUrl() { return '?action=list' + scopeParamsFor(state.scope); }
+
+    // Fill a scope <select> with: current sale, each past sale, all, date range.
+    function fillScopeOptions(selectEl, sales) {
+      var opts = '<option value="current">מכירה נוכחית</option>';
+      (sales || []).forEach(function (s) {
+        opts += '<option value="sale:' + esc(s.saleName) + '">' + esc(s.saleName) + ' (' + s.count + ')</option>';
+      });
+      opts += '<option value="all">כל ההזמנות</option>';
+      opts += '<option value="range">טווח תאריכים…</option>';
+      selectEl.innerHTML = opts;
+    }
+    function populateScopeSelect() {
+      return api('GET', '?action=sales').then(function (data) {
+        fillScopeOptions(el('scope-select'), data.sales || []);
+        fillScopeOptions(el('rep-scope-select'), data.sales || []);
+      }).catch(function () {});
+    }
+    // Translate a <select> value + date inputs into a scope object.
+    function readScope(value, fromEl, toEl) {
+      if (value === 'all') return { kind: 'all' };
+      if (value === 'range') return { kind: 'range', from: el(fromEl).value, to: el(toEl).value };
+      if (value.indexOf('sale:') === 0) return { kind: 'sale', saleName: value.slice(5) };
+      return { kind: 'current' };
+    }
+
+    el('scope-select').addEventListener('change', function () {
+      if (this.value === 'range') { el('scope-range').classList.remove('hidden'); return; }
+      el('scope-range').classList.add('hidden');
+      state.scope = readScope(this.value, 'scope-from', 'scope-to');
+      loadOrders();
+    });
+    el('scope-apply').addEventListener('click', function () {
+      state.scope = { kind: 'range', from: el('scope-from').value, to: el('scope-to').value };
+      loadOrders();
+    });
+
+    el('rep-scope-select').addEventListener('change', function () {
+      if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
+      el('rep-scope-range').classList.add('hidden');
+      state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
+      loadWeightSummary();
+    });
+    el('rep-scope-apply').addEventListener('click', function () {
+      state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
+      loadWeightSummary();
+    });
+
+    // ---------- Reports ----------
+    function loadReports() {
+      loadWeightSummary();
+    }
+
+    function loadWeightSummary() {
+      el('weight-summary-body').innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=weight-summary' + scopeParamsFor(state.reportScope)).then(function (data) {
+        renderWeightSummary(data);
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('weight-summary-body').innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
+    }
+
+    function renderWeightSummary(data) {
+      var items = data.items || [];
+      if (!items.length) {
+        el('weight-summary-body').innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>';
+        return;
+      }
+      var html = '<table class="report-table"><thead><tr>' +
+        '<th>מוצר</th><th class="num">יחידות</th><th class="num">ק״ג משוער</th></tr></thead><tbody>';
+      var lastDept = null;
+      items.forEach(function (it) {
+        if (it.department !== lastDept) {
+          html += '<tr class="dept-row"><td colspan="3">' + esc(it.department || 'אחר') + '</td></tr>';
+          lastDept = it.department;
+        }
+        var kg = it.estWeightKg != null ? formatQuantity(it.estWeightKg) : '—';
+        var flag = it.needsManualWeight ? ' <span class="report-flag">(לשקול ידנית)</span>' : '';
+        html += '<tr><td>' + esc(it.name) + flag + '</td>' +
+          '<td class="num">' + formatQuantity(it.totalUnits) + '</td>' +
+          '<td class="num">' + kg + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      el('weight-summary-body').innerHTML = html;
+    }
+
     function loadOrders(silent) {
-      return api('GET', '?action=list').then(function (data) {
+      return api('GET', ordersListUrl()).then(function (data) {
         state.orders = data.orders || [];
         if (!state.current) renderList();
       }).catch(function () {
@@ -938,6 +1161,7 @@
         return '' +
           '<div class="order-card ' + sc + '" data-id="' + esc(o.orderId) + '">' +
             '<div class="oc-top">' +
+              '<input type="checkbox" class="oc-select" data-id="' + esc(o.orderId) + '"' + (state.selected[o.orderId] ? ' checked' : '') + ' onclick="event.stopPropagation()">' +
               '<span class="oc-name">' + esc(o.fullName || 'ללא שם') + '</span>' +
               '<span class="badge ' + sc + '">' + esc(o.status || '—') + '</span>' +
             '</div>' +
@@ -965,7 +1189,71 @@
       Array.prototype.forEach.call(list.querySelectorAll('.order-card'), function (card) {
         card.addEventListener('click', function () { openOrder(card.getAttribute('data-id')); });
       });
+      Array.prototype.forEach.call(list.querySelectorAll('.oc-select'), function (cb) {
+        cb.addEventListener('change', function () {
+          var id = this.getAttribute('data-id');
+          if (this.checked) state.selected[id] = true; else delete state.selected[id];
+          updateSelectionUI();
+        });
+      });
+      updateSelectionUI();
     }
+
+    // ---------- Print orders (full / headers) ----------
+    function visibleOrderIds() {
+      return state.orders.filter(matchesFilters).map(function (o) { return o.orderId; });
+    }
+    function selectedIds() {
+      return Object.keys(state.selected);
+    }
+    function updateSelectionUI() {
+      var n = selectedIds().length;
+      el('select-count').textContent = n ? (n + ' נבחרו') : '';
+      var vis = visibleOrderIds();
+      var allSel = vis.length > 0 && vis.every(function (id) { return state.selected[id]; });
+      var sa = el('select-all-orders');
+      if (sa) sa.checked = allSel;
+    }
+    el('select-all-orders').addEventListener('change', function () {
+      var vis = visibleOrderIds();
+      if (this.checked) vis.forEach(function (id) { state.selected[id] = true; });
+      else vis.forEach(function (id) { delete state.selected[id]; });
+      renderList();
+    });
+
+    function scopeToObj(s) {
+      s = s || {};
+      if (s.kind === 'all') return { all: true };
+      if (s.kind === 'range') return { from: s.from || '', to: s.to || '' };
+      if (s.kind === 'sale') return { saleName: s.saleName || '' };
+      return {}; // current
+    }
+
+    function printOrders(mode) {
+      var codes = selectedIds();
+      var body = codes.length ? { action: 'orders-pdf', mode: mode, codes: codes }
+                              : { action: 'orders-pdf', mode: mode, scope: scopeToObj(state.scope) };
+      if (!codes.length && !visibleOrderIds().length) { showToast('אין הזמנות להדפסה'); return; }
+      var w = window.open('', '_blank'); // open synchronously to avoid popup blocking
+      fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'x-dashboard-key': state.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(function (r) {
+        if (r.status === 401) { if (w) w.close(); logout(); throw new Error('unauthorized'); }
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d && d.error || 'שגיאה'); });
+        return r.blob();
+      }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        if (w) w.location = url; else window.open(url, '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }).catch(function (err) {
+        if (w) w.close();
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהדפסה');
+      });
+    }
+    el('print-full').addEventListener('click', function () { printOrders('full'); });
+    el('print-headers').addEventListener('click', function () { printOrders('headers'); });
 
     // Search + filter wiring
     el('search').addEventListener('input', function () {
@@ -1030,6 +1318,7 @@
 
     // ---------- Detail ----------
     function openOrder(orderId) {
+      state.editing = false;
       el('list-view').classList.add('hidden');
       el('detail-view').classList.remove('hidden');
       el('detail-view').innerHTML = '<div class="loading">טוען הזמנה…</div>';
@@ -1115,6 +1404,7 @@
     function renderDetail() {
       var o = state.current;
       if (!o) return;
+      if (state.editing) return renderDetailEdit();
       var isDeliver = o.fulfillment === 'משלוח';
       var wa = waNumber(o.phone);
       var sum = itemSummary();
@@ -1159,6 +1449,8 @@
       el('detail-view').innerHTML = '' +
         '<div class="back-row">' +
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
+          '<button class="back-btn" id="edit-order-btn">✏️ ערוך</button>' +
+          '<button class="back-btn danger" id="cancel-order-btn">🗑️ בטל</button>' +
           '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
           '<select id="status-select" class="status-select">' +
             [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED].map(function (s) {
@@ -1201,6 +1493,102 @@
       });
       el('collect-btn').addEventListener('click', submitCollect);
       el('status-select').addEventListener('change', onManualStatusChange);
+      el('edit-order-btn').addEventListener('click', startEdit);
+      el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
+    }
+
+    // ---------- Edit / cancel order ----------
+    function startEdit() { state.editing = true; renderDetail(); }
+
+    function renderDetailEdit() {
+      var o = state.current;
+      function field(label, id, val) {
+        return '<div class="cust-line"><span class="lbl">' + label + '</span>' +
+          '<input class="ed-input" id="' + id + '" value="' + esc(val == null ? '' : val) + '"></div>';
+      }
+      var fulfillOpts = ['איסוף עצמי', 'משלוח'].map(function (s) {
+        return '<option value="' + esc(s) + '"' + (s === o.fulfillment ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('');
+      var itemsEdit = state.currentItems.map(function (it, idx) {
+        if (it.removed) return '';
+        return '<div class="ed-item" data-idx="' + idx + '">' +
+          '<span class="ed-item-name">' + esc(it.name) + '</span>' +
+          '<input class="ed-qty" type="number" min="0" step="1" value="' + esc(it.quantity) + '" data-idx="' + idx + '">' +
+          '<span class="ed-unit">' + esc(it.orderUnit || '') + '</span>' +
+          '<button class="ed-remove" data-idx="' + idx + '" title="הסר">✕</button>' +
+          '</div>';
+      }).join('');
+
+      el('detail-view').innerHTML = '' +
+        '<div class="back-row"><button class="back-btn" id="edit-back">→ חזרה</button><strong>עריכת הזמנה</strong></div>' +
+        '<div class="panel"><h2>פרטי הלקוח</h2>' +
+          field('שם', 'ed-name', o.fullName) + field('טלפון', 'ed-phone', o.phone) + field('אימייל', 'ed-email', o.email) +
+          '<div class="cust-line"><span class="lbl">שיטה</span><select class="ed-input" id="ed-fulfillment">' + fulfillOpts + '</select></div>' +
+          field('כתובת', 'ed-address', o.address) + field('קומה', 'ed-floor', o.floor) + field('דירה', 'ed-apartment', o.apartment) +
+          '<div class="cust-line"><span class="lbl">הערות</span><textarea class="ed-input" id="ed-notes">' + esc(o.notes || '') + '</textarea></div>' +
+        '</div>' +
+        '<div class="panel"><h2>פריטים</h2><div class="ed-items">' + itemsEdit + '</div></div>' +
+        '<div class="submit-bar"><div class="inner">' +
+          '<button class="btn btn-success" id="save-edit">שמירת שינויים</button>' +
+          '<button class="btn" id="cancel-edit">ביטול</button>' +
+        '</div></div>';
+
+      var view = el('detail-view');
+      view.querySelectorAll('.ed-qty').forEach(function (inp) {
+        inp.addEventListener('change', function () { state.currentItems[Number(this.getAttribute('data-idx'))].quantity = Number(this.value); });
+      });
+      view.querySelectorAll('.ed-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () { state.currentItems[Number(this.getAttribute('data-idx'))].removed = true; renderDetailEdit(); });
+      });
+      el('save-edit').addEventListener('click', saveEdit);
+      el('cancel-edit').addEventListener('click', function () { state.editing = false; openOrder(o.orderId); });
+      el('edit-back').addEventListener('click', function () { state.editing = false; openOrder(o.orderId); });
+    }
+
+    function saveEdit() {
+      var o = state.current;
+      el('detail-view').querySelectorAll('.ed-qty').forEach(function (inp) {
+        state.currentItems[Number(inp.getAttribute('data-idx'))].quantity = Number(inp.value);
+      });
+      var items = state.currentItems
+        .filter(function (it) { return !it.removed && Number(it.quantity) > 0; })
+        .map(function (it) { return { id: it.id, quantity: Number(it.quantity) }; });
+      if (!items.length) { showToast('חייב להישאר מוצר אחד לפחות (לביטול ההזמנה השתמשו בכפתור בטל)'); return; }
+      var payload = {
+        fullName: el('ed-name').value, phone: el('ed-phone').value, email: el('ed-email').value,
+        fulfillment: el('ed-fulfillment').value, address: el('ed-address').value,
+        floor: el('ed-floor').value, apartment: el('ed-apartment').value, notes: el('ed-notes').value,
+        items: items,
+      };
+      var btn = el('save-edit');
+      btn.disabled = true;
+      btn.textContent = 'שומר…';
+      api('POST', '', { action: 'order-update', orderId: o.orderId, payload: payload }).then(function () {
+        showToast('ההזמנה עודכנה');
+        state.editing = false;
+        openOrder(o.orderId);
+        loadOrders(true);
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בעדכון');
+        btn.disabled = false;
+        btn.textContent = 'שמירת שינויים';
+      });
+    }
+
+    function cancelOrderConfirm() {
+      var o = state.current;
+      if (!o) return;
+      askYesNo('לבטל את ההזמנה של ' + (o.fullName || '') + '? היא תוסר מהרשימה ומהדוחות (הרשומה נשמרת).').then(function (yes) {
+        if (!yes) return;
+        api('POST', '', { action: 'set-status', orderId: o.orderId, status: 'מבוטל', member: state.member }).then(function () {
+          showToast('ההזמנה בוטלה');
+          state.current = null;
+          el('detail-view').classList.add('hidden');
+          el('detail-view').innerHTML = '';
+          el('list-view').classList.remove('hidden');
+          loadOrders(true);
+        }).catch(function (err) { if (err.message !== 'unauthorized') showToast('שגיאה בביטול'); });
+      });
     }
 
     // Manual status override from the order screen.
@@ -1334,20 +1722,25 @@
     // ---------- Tabs ----------
     function showTab(tab) {
       state.tab = tab;
-      var isOrders = tab === 'orders';
-      el('orders-tab').classList.toggle('hidden', !isOrders);
-      el('products-tab').classList.toggle('hidden', isOrders);
+      el('orders-tab').classList.toggle('hidden', tab !== 'orders');
+      el('products-tab').classList.toggle('hidden', tab !== 'products');
+      el('reports-tab').classList.toggle('hidden', tab !== 'reports');
+      el('settings-tab').classList.toggle('hidden', tab !== 'settings');
       Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
         t.classList.toggle('active', t.getAttribute('data-tab') === tab);
       });
-      if (isOrders) {
+      if (tab === 'orders') {
         state.current = null;
         el('detail-view').classList.add('hidden');
         el('detail-view').innerHTML = '';
         el('list-view').classList.remove('hidden');
         renderList();
-      } else {
+      } else if (tab === 'products') {
         loadProducts();
+      } else if (tab === 'reports') {
+        loadReports();
+      } else if (tab === 'settings') {
+        loadSettings();
       }
     }
 
@@ -1358,12 +1751,128 @@
     // ---------- Products ----------
     function loadProducts() {
       el('prod-list').innerHTML = '<div class="loading">טוען מוצרים…</div>';
+      loadSaleStatus();
       return api('GET', '?action=products').then(function (data) {
         state.products = data.products || [];
         state.departments = data.departments || [];
         renderProducts();
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('prod-list').innerHTML = '<div class="empty">שגיאה בטעינת המוצרים.</div>';
+      });
+    }
+
+    // ---------- Sale control (publish / open / close) ----------
+    function renderSaleStatus(data) {
+      var open = !data || data.saleStatus !== 'closed';
+      el('sale-dot').className = 'sale-dot ' + (open ? 'open' : 'closed');
+      el('sale-status-text').textContent =
+        (open ? 'המכירה פתוחה' : 'המכירה סגורה') + (data && data.saleName ? ' · ' + data.saleName : '');
+      if (data && data.saleName && !el('sale-name-input').value) el('sale-name-input').value = data.saleName;
+      el('sale-open').disabled = open;
+      el('sale-close').disabled = !open;
+    }
+
+    function loadSaleStatus() {
+      return api('GET', '?action=sale-status').then(renderSaleStatus).catch(function () {});
+    }
+
+    function setSaleStatusUI(status) {
+      return api('POST', '', { action: 'set-sale-status', status: status }).then(function () {
+        showToast(status === 'open' ? 'המכירה נפתחה' : 'המכירה נסגרה');
+        return loadSaleStatus();
+      }).catch(function (err) { if (err.message !== 'unauthorized') showToast('שגיאה'); });
+    }
+
+    el('sale-open').addEventListener('click', function () { setSaleStatusUI('open'); });
+    el('sale-close').addEventListener('click', function () {
+      if (!window.confirm('לסגור את המכירה? האתר יציג הודעת סגירה. המחירים יישמרו.')) return;
+      setSaleStatusUI('closed');
+    });
+    el('sale-publish').addEventListener('click', function () {
+      var name = (el('sale-name-input').value || '').trim();
+      if (!name) { showToast('יש להזין שם מכירה'); return; }
+      var btn = el('sale-publish');
+      btn.disabled = true;
+      btn.textContent = 'בודק…';
+      // Dry-run first: show exactly what will change so a renamed product is not
+      // silently duplicated, then commit on confirm.
+      api('POST', '', { action: 'publish-sale', saleName: name, dryRun: true }).then(function (plan) {
+        var newList = (plan.newNames && plan.newNames.length)
+          ? ':\n   • ' + plan.newNames.slice(0, 20).join('\n   • ') + (plan.newNames.length > 20 ? '\n   • …' : '')
+          : '';
+        var msg = 'פרסום המכירה "' + plan.saleName + '":\n\n' +
+          '• ' + plan.updated + ' מוצרים יעודכנו\n' +
+          '• ' + plan.added + ' מוצרים חדשים' + newList + '\n' +
+          '• ' + plan.hidden + ' מוצרים יוסתרו (לא במכירה השבוע)\n\n' +
+          (plan.added > 0 ? 'שימו לב: ודאו שהמוצרים ה"חדשים" אינם מוצרים קיימים בשם שונה (כדי למנוע כפילות).\n\n' : '') +
+          'להמשיך ולפרסם?';
+        if (!window.confirm(msg)) return null;
+        btn.textContent = 'מפרסם…';
+        return api('POST', '', { action: 'publish-sale', saleName: name });
+      }).then(function (r) {
+        if (!r) return; // cancelled
+        showToast('פורסם: ' + r.updated + ' עודכנו · ' + r.added + ' נוספו · ' + r.hidden + ' הוסתרו');
+        loadProducts();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בפרסום');
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'פרסם מכירה';
+      });
+    });
+
+    // ---------- Settings ----------
+    var SETTINGS_FIELDS = [
+      { key: 'title', label: 'כותרת האתר', type: 'input' },
+      { key: 'description', label: 'תיאור', type: 'textarea' },
+      { key: 'closedMessage', label: 'הודעה כשההזמנות סגורות', type: 'textarea' },
+      { key: 'pickupText', label: 'פרטי איסוף', type: 'textarea' },
+      { key: 'saleName', label: 'שם המכירה', hint: 'חייב להיות זהה לשם הגיליון בקובץ חישוב מחירים', type: 'input' },
+      { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
+      { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
+      { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
+      { key: 'logoUrl', label: 'קישור ללוגו', type: 'input' },
+    ];
+
+    function loadSettings() {
+      el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
+      api('GET', '?action=settings').then(function (data) {
+        renderSettings(data.settings || {});
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
+      });
+    }
+
+    function renderSettings(s) {
+      var html = '';
+      SETTINGS_FIELDS.forEach(function (f) {
+        var val = esc(s[f.key] == null ? '' : s[f.key]);
+        var hint = f.hint ? ' <span class="hint">— ' + esc(f.hint) + '</span>' : '';
+        html += '<div class="set-field">' +
+          '<label for="set-' + f.key + '">' + esc(f.label) + hint + '</label>' +
+          (f.type === 'textarea'
+            ? '<textarea id="set-' + f.key + '">' + val + '</textarea>'
+            : '<input id="set-' + f.key + '" type="text" value="' + val + '">') +
+          '</div>';
+      });
+      html += '<div class="settings-actions"><button class="btn btn-primary" id="set-save">שמירת הגדרות</button></div>';
+      el('settings-body').innerHTML = html;
+      el('set-save').addEventListener('click', saveSettings);
+    }
+
+    function saveSettings() {
+      var payload = {};
+      SETTINGS_FIELDS.forEach(function (f) { payload[f.key] = el('set-' + f.key).value; });
+      var btn = el('set-save');
+      btn.disabled = true;
+      btn.textContent = 'שומר…';
+      api('POST', '', { action: 'settings-update', settings: payload }).then(function () {
+        showToast('ההגדרות נשמרו');
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשמירה');
+      }).finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'שמירת הגדרות';
       });
     }
 
@@ -1378,7 +1887,7 @@
       var price = p.price ? formatMoney(p.price) + (unit ? ' / ' + esc(unit) : '') : 'ללא מחיר';
       var thumb = '<div class="prod-thumb">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy">' : '🥬') + '</div>';
       return '' +
-        '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + '" data-row="' + p.rowNumber + '">' +
+        '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + '" data-row="' + p.id + '">' +
           thumb +
           '<div class="prod-main">' +
             '<div class="prod-name">' + esc(p.name) + productPill(p.state) + '</div>' +
@@ -1416,17 +1925,17 @@
       list.innerHTML = html;
 
       Array.prototype.forEach.call(list.querySelectorAll('.prod-row'), function (row) {
-        var rn = Number(row.getAttribute('data-row'));
+        var rn = row.getAttribute('data-row');
         row.querySelector('[data-act="edit"]').addEventListener('click', function () { openProductForm(rn); });
         row.querySelector('[data-act="stock"]').addEventListener('click', function () { toggleStock(rn); });
       });
     }
 
     function toggleStock(rowNumber) {
-      var p = state.products.find(function (x) { return x.rowNumber === rowNumber; });
+      var p = state.products.find(function (x) { return x.id === rowNumber; });
       if (!p) return;
       var newState = p.state === 'oos' ? 'active' : 'oos';
-      api('POST', '', { action: 'product-update', rowNumber: rowNumber, product: {
+      api('POST', '', { action: 'product-update', id: rowNumber, product: {
         name: p.name, department: p.department, unit: p.unit, priceUnit: p.priceUnit, price: p.price, state: newState,
         weightPerUnitKg: p.weightPerUnitKg, imageUrl: p.image,
       } }).then(function () {
@@ -1442,7 +1951,7 @@
 
     function openProductForm(rowNumber) {
       editingRow = rowNumber || null;
-      var p = rowNumber ? state.products.find(function (x) { return x.rowNumber === rowNumber; }) : null;
+      var p = rowNumber ? state.products.find(function (x) { return x.id === rowNumber; }) : null;
 
       var depts = (state.departments && state.departments.length) ? state.departments.slice() : ['ירקות', 'פירות', 'עלים', 'מיוחדים'];
       if (p && depts.indexOf(p.department) === -1) depts.push(p.department);
@@ -1562,7 +2071,7 @@
       btn.textContent = 'שומר…';
 
       var payload = editingRow
-        ? { action: 'product-update', rowNumber: editingRow, product: product }
+        ? { action: 'product-update', id: editingRow, product: product }
         : { action: 'product-add', product: product };
 
       api('POST', '', payload).then(function () {
@@ -1579,9 +2088,9 @@
 
     el('pf-delete').addEventListener('click', function () {
       if (!editingRow) return;
-      var p = state.products.find(function (x) { return x.rowNumber === editingRow; });
+      var p = state.products.find(function (x) { return x.id === editingRow; });
       if (!window.confirm('למחוק את "' + (p ? p.name : 'המוצר') + '" לצמיתות?')) return;
-      api('POST', '', { action: 'product-delete', rowNumber: editingRow }).then(function () {
+      api('POST', '', { action: 'product-delete', id: editingRow }).then(function () {
         closeProductForm();
         showToast('המוצר נמחק');
         loadProducts();
@@ -1594,7 +2103,7 @@
     if (state.member && state.key) {
       el('member').value = state.member;
       // Try the stored credentials; fall back to the gate on failure.
-      api('GET', '?action=list')
+      api('GET', ordersListUrl())
         .then(function (data) {
           state.orders = data.orders || [];
           showApp();

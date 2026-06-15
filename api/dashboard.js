@@ -1,10 +1,14 @@
 const crypto = require('crypto');
 const {
   listOrdersForDashboard,
+  getSalesList,
+  getWeightSummary,
+  getOrdersDetailed,
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
   setOrderStatus,
+  adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
   ORDER_STATUS_COLLECTED,
@@ -15,7 +19,11 @@ const {
   addProduct,
   updateProduct,
   deleteProduct,
-} = require('../lib/sheets');
+  getSettings,
+  updateSettings,
+} = require('../lib/store');
+const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
+const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -24,6 +32,7 @@ const ALLOWED_STATUSES = [
   ORDER_STATUS_PARTIAL,
   ORDER_STATUS_SENT,
   ORDER_STATUS_HANDED,
+  'מבוטל', // cancelled (soft delete via set-status)
 ];
 
 // Validate + normalize a product payload from the client.
@@ -113,6 +122,16 @@ function isAuthorized(req) {
   return crypto.timingSafeEqual(a, b);
 }
 
+// Parse the order-list scope from query params: ?all=1 | ?from=&to= | ?saleName=
+// Default (no params) → current sale (resolved in the store).
+function parseOrderScope(query) {
+  const q = query || {};
+  if (q.all === '1' || q.all === 'true') return { all: true };
+  if (q.from || q.to) return { from: q.from || '', to: q.to || '' };
+  if (q.saleName != null && q.saleName !== '') return { saleName: String(q.saleName) };
+  return {};
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -137,7 +156,27 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, products: data.products, departments: data.departments });
       }
 
-      const orders = await listOrdersForDashboard();
+      if (action === 'sale-status') {
+        const data = await getSaleStatus();
+        return res.json({ ok: true, ...data });
+      }
+
+      if (action === 'sales') {
+        const sales = await getSalesList();
+        return res.json({ ok: true, sales });
+      }
+
+      if (action === 'weight-summary') {
+        const summary = await getWeightSummary(parseOrderScope(req.query));
+        return res.json({ ok: true, ...summary });
+      }
+
+      if (action === 'settings') {
+        const settings = await getSettings();
+        return res.json({ ok: true, settings });
+      }
+
+      const orders = await listOrdersForDashboard(parseOrderScope(req.query));
       return res.json({ ok: true, orders });
     }
 
@@ -164,19 +203,56 @@ module.exports = async function handler(req, res) {
       }
 
       if (action === 'product-update') {
-        const rowNumber = Number(body.rowNumber);
-        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
+        const id = String(body.id || '').trim();
+        if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
         const cleaned = cleanProduct(body.product);
         if (cleaned.error) return res.status(400).json({ error: cleaned.error });
-        await updateProduct(rowNumber, cleaned.product);
+        await updateProduct(id, cleaned.product);
         return res.json({ ok: true });
       }
 
       if (action === 'product-delete') {
-        const rowNumber = Number(body.rowNumber);
-        if (!rowNumber || rowNumber < 2) return res.status(400).json({ error: 'שורה לא תקינה.' });
-        await deleteProduct(rowNumber);
+        const id = String(body.id || '').trim();
+        if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
+        await deleteProduct(id);
         return res.json({ ok: true });
+      }
+
+      // --- Sale management ---
+      if (action === 'publish-sale') {
+        const result = await publishSale({
+          saleName: String(body.saleName || '').trim(),
+          dryRun: body.dryRun === true,
+        });
+        return res.json(result);
+      }
+
+      if (action === 'set-sale-status') {
+        const result = await setSaleStatus(String(body.status || '').trim());
+        return res.json(result);
+      }
+
+      if (action === 'settings-update') {
+        const result = await updateSettings(body.settings || {});
+        return res.json(result);
+      }
+
+      // --- Order printing (returns a PDF; authenticated, contains PII) ---
+      if (action === 'orders-pdf') {
+        const mode = body.mode === 'headers' ? 'headers' : 'full';
+        const opts = Array.isArray(body.codes) && body.codes.length
+          ? { codes: body.codes.map(String) }
+          : { scope: body.scope || {} };
+        const orders = await getOrdersDetailed(opts);
+        if (!orders.length) return res.status(400).json({ error: 'אין הזמנות להדפסה.' });
+        const settings = await getSettings();
+        const pdf = mode === 'headers'
+          ? await createOrdersHeadersPdf(orders, settings)
+          : await createOrdersFullPdf(orders, settings);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="orders.pdf"');
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(Buffer.from(pdf));
       }
 
       // --- Order actions ---
@@ -208,12 +284,23 @@ module.exports = async function handler(req, res) {
         return res.json(result);
       }
 
+      if (action === 'order-update') {
+        try {
+          const result = await adminUpdateOrder(orderId, body.payload || {});
+          return res.json(result);
+        } catch (err) {
+          return res.status(400).json({ error: err.message || 'שגיאה בעדכון ההזמנה.' });
+        }
+      }
+
       return res.status(400).json({ error: 'פעולה לא תקינה.' });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Dashboard error:', error);
-    return res.status(500).json({ error: 'שגיאה בטעינת הנתונים. נסו שוב בעוד רגע.' });
+    // Internal tool — surface the actual (Hebrew) reason to help the team
+    // diagnose (e.g. missing PRICING_SPREADSHEET_ID), not just a generic message.
+    return res.status(500).json({ error: error.message || 'שגיאה בטעינת הנתונים. נסו שוב בעוד רגע.' });
   }
 };

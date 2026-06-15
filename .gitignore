@@ -3,5 +3,6 @@ assets/prinuk-sale.jpg
 node_modules
 .env
 .env.local
+.env.prod
 .vercel
 public

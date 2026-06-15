@@ -6,6 +6,12 @@
     "api/price-list.js": {
       "maxDuration": 60
     },
+    "api/flyer.js": {
+      "maxDuration": 60
+    },
+    "api/signs.js": {
+      "maxDuration": 60
+    },
     "api/dashboard.js": {
       "maxDuration": 60
     }
