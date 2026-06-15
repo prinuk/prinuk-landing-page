@@ -479,6 +479,11 @@
     .ed-qty { width: 64px; padding: 7px 8px; border: 1px solid #ddd; border-radius: 8px; font: inherit; text-align: center; }
     .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
     .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+    .item-weigh { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .item-weigh .wkg { width: 92px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit; text-align: center; }
+    .wkg-line { font-size: 13px; font-weight: 700; color: var(--fresh, #2e9e4f); }
+    .weigh-total { margin-top: 10px; padding: 9px 10px; text-align: center; font-size: 15px; background: #eef6ef; border-radius: 10px; }
+    .weigh-total:empty { display: none; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
     .set-field { margin-bottom: 16px; }
     .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
@@ -1441,6 +1446,9 @@
             '<div class="item-main">' +
               '<div class="item-name">' + esc(it.name) + '</div>' +
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
+              (it.isWeightPriced
+                ? '<div class="item-weigh" onclick="event.stopPropagation()">⚖️ <input class="wkg" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ק״ג בפועל" value="' + (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') + '" data-idx="' + idx + '"><span class="wkg-line" data-idx="' + idx + '"></span></div>'
+                : '') +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
             '</div>' +
           '</div>';
@@ -1451,7 +1459,7 @@
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
           '<button class="back-btn" id="edit-order-btn">✏️ ערוך</button>' +
           '<button class="back-btn danger" id="cancel-order-btn">🗑️ בטל</button>' +
-          '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
+          '<button class="back-btn" id="print-order-btn">🖨️ הדפסה</button>' +
           '<select id="status-select" class="status-select">' +
             [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED].map(function (s) {
               return '<option value="' + esc(s) + '"' + (s === o.status ? ' selected' : '') + '>' + esc(s) + '</option>';
@@ -1476,6 +1484,7 @@
             '<span class="summary" id="item-summary"></span>' +
           '</div>' +
           itemsHtml +
+          '<div class="weigh-total" id="weigh-total"></div>' +
         '</div>' +
 
         '<div class="submit-bar"><div class="inner">' +
@@ -1491,10 +1500,58 @@
           setItemPicked(idx, !state.currentItems[idx].picked);
         });
       });
+      view.querySelectorAll('.wkg').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var idx = Number(this.getAttribute('data-idx'));
+          state.currentItems[idx].actualWeightKg = this.value === '' ? null : Number(this.value);
+          recomputeWeigh();
+        });
+      });
       el('collect-btn').addEventListener('click', submitCollect);
       el('status-select').addEventListener('change', onManualStatusChange);
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
+      el('print-order-btn').addEventListener('click', function () { printSingleOrder(o.orderId); });
+      recomputeWeigh();
+    }
+
+    // Live final total from the collected weights (kg items) + fixed lines.
+    function recomputeWeigh() {
+      var total = 0;
+      var anyWeight = false;
+      state.currentItems.forEach(function (it, idx) {
+        var lineActual = (it.lineTotal !== '' && it.lineTotal != null) ? Number(it.lineTotal) : 0;
+        if (it.isWeightPriced) {
+          var w = (it.actualWeightKg != null && it.actualWeightKg !== '' && Number(it.actualWeightKg) > 0) ? Number(it.actualWeightKg) : null;
+          var span = el('detail-view') && el('detail-view').querySelector('.wkg-line[data-idx="' + idx + '"]');
+          if (w != null) { lineActual = w * (it.unitPrice || 0); anyWeight = true; if (span) span.textContent = '= ' + formatMoney(lineActual); }
+          else if (span) { span.textContent = ''; }
+        }
+        if (it.picked) total += lineActual;
+      });
+      var elT = el('weigh-total');
+      if (elT) elT.innerHTML = anyWeight ? 'סה״כ סופי (שקילה): <b>' + formatMoney(total) + '</b>' : '';
+    }
+
+    // Print one order as a PDF (includes collected weights + final total).
+    function printSingleOrder(orderId) {
+      var w = window.open('', '_blank');
+      fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'x-dashboard-key': state.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'orders-pdf', mode: 'full', codes: [orderId] }),
+      }).then(function (r) {
+        if (r.status === 401) { if (w) w.close(); logout(); throw new Error('unauthorized'); }
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d && d.error || 'שגיאה'); });
+        return r.blob();
+      }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        if (w) w.location = url; else window.open(url, '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }).catch(function (err) {
+        if (w) w.close();
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהדפסה');
+      });
     }
 
     // ---------- Edit / cancel order ----------
@@ -1629,6 +1686,7 @@
         if (chk) chk.textContent = picked ? '✓' : (it.missing ? '✗' : '');
       }
       updateSummaryLine();
+      recomputeWeigh();
     }
 
     function updateSummaryLine() {
@@ -1699,7 +1757,7 @@
       btn.textContent = 'מעדכן…';
 
       var items = state.currentItems.map(function (it) {
-        return { name: it.name, picked: it.picked };
+        return { name: it.name, picked: it.picked, actualWeightKg: it.actualWeightKg };
       });
 
       api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })
