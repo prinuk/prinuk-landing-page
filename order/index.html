@@ -3407,6 +3407,18 @@
             font-weight: 700;
         }
 
+        .price-deal {
+            display: inline-block;
+            margin-inline-start: 6px;
+            padding: 1px 8px;
+            border-radius: 999px;
+            background: #eaf6ec;
+            color: #1b7a3d;
+            font-size: 0.78em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
         /* === Hero: premium fresh-produce landing (two-column) === */
         .weekly-sale-intro::after {
             display: none; /* drop the old decorative circle */
@@ -6110,7 +6122,11 @@
         function priceHtml(product) {
             var amount = escapeHtml(product.priceDisplay + ' ש״ח');
             var unit = escapeHtml('ל' + (product.priceUnit || product.unit));
-            return '<span class="price"><span class="price-amount">' + amount + '</span> <span class="price-unit">' + unit + '</span></span>';
+            var deal = '';
+            if (product.dealQty && product.dealPrice != null && product.dealPrice !== '') {
+                deal = ' <span class="price-deal">' + escapeHtml(product.dealQty + ' ב־' + formatMoney(product.dealPrice) + ' ₪') + '</span>';
+            }
+            return '<span class="price"><span class="price-amount">' + amount + '</span> <span class="price-unit">' + unit + '</span>' + deal + '</span>';
         }
 
         function renderUnitControls(product) {
@@ -7286,6 +7302,20 @@
             return 'unit';
         }
 
+        // Mirror of lib/sheets.js applyUnitDeal: every full group of dealQty units
+        // costs dealPrice, the remainder at the regular unit price.
+        function applyUnitDeal(quantity, unitPrice, dealQty, dealPrice) {
+            var q = Number(quantity) || 0;
+            var dq = Number(dealQty) || 0;
+            var dp = Number(dealPrice);
+            var up = Number(unitPrice) || 0;
+            if (dq > 0 && isFinite(dp) && dp >= 0) {
+                var groups = Math.floor(q / dq);
+                return groups * dp + (q - groups * dq) * up;
+            }
+            return q * up;
+        }
+
         function calculateLineEstimate(mode, quantity, product) {
             var priceUnitType = getUnitType(product.priceUnit || product.unit);
             var price = Number(product.price || 0);
@@ -7302,7 +7332,7 @@
 
             if (mode === 'unit' && priceUnitType === 'unit') {
                 return {
-                    total: roundMoney(quantity * price),
+                    total: roundMoney(applyUnitDeal(quantity, price, product.dealQty, product.dealPrice)),
                     estimatedWeightKg: null,
                     estimatedWeightPerUnitKg: null,
                     isEstimatedPrice: false,

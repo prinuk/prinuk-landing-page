@@ -766,6 +766,16 @@
           <input id="pf-price" type="number" inputmode="decimal" min="0" step="0.01" required />
         </div>
         <div class="field">
+          <label>מבצע כמות — לא חובה</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="pf-deal-qty" type="number" inputmode="numeric" min="2" step="1" placeholder="כמות" style="flex:1;" />
+            <span>יח׳ ב־</span>
+            <input id="pf-deal-price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₪" style="flex:1;" />
+            <span>₪</span>
+          </div>
+          <div class="field-hint">לדוגמה: 3 יח׳ ב־10 ₪ (השאר ריק לביטול המבצע).</div>
+        </div>
+        <div class="field">
           <label for="pf-weight">משקל משוער ליחידה (ק"ג) — לא חובה</label>
           <input id="pf-weight" type="number" inputmode="decimal" min="0" step="0.01" placeholder="לדוגמה 0.25" />
           <div class="field-hint" id="pf-weight-hint"></div>
@@ -1521,6 +1531,20 @@
     }
 
     // Live final total from the collected weights (kg items) + fixed lines.
+    // Mirror of lib/sheets.js applyUnitDeal: every full group of dealQty units
+    // costs dealPrice, the remainder at the regular unit price.
+    function applyUnitDeal(qty, unitPrice, dealQty, dealPrice) {
+      var q = Number(qty) || 0;
+      var dq = Number(dealQty) || 0;
+      var dp = Number(dealPrice);
+      var up = Number(unitPrice) || 0;
+      if (dq > 0 && isFinite(dp) && dp >= 0) {
+        var groups = Math.floor(q / dq);
+        return groups * dp + (q - groups * dq) * up;
+      }
+      return q * up;
+    }
+
     function recomputeWeigh() {
       var total = 0;
       var anyActual = false;
@@ -1530,7 +1554,7 @@
         var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
         var n = (v != null && v !== '' && Number(v) >= 0) ? Number(v) : null;
         if (n != null && (it.isWeightPriced ? n > 0 : true)) {
-          lineActual = n * (it.unitPrice || 0);
+          lineActual = it.isWeightPriced ? n * (it.unitPrice || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice);
           anyActual = true;
           if (span) span.textContent = '= ' + formatMoney(lineActual);
         } else if (span) {
@@ -2037,6 +2061,8 @@
       el('pf-unit').value = p ? p.unit : 'יחידות';
       el('pf-priceunit').value = p ? p.priceUnit : '';
       el('pf-price').value = (p && p.price) ? p.price : '';
+      el('pf-deal-qty').value = (p && p.dealQty) ? p.dealQty : '';
+      el('pf-deal-price').value = (p && p.dealPrice !== '' && p.dealPrice != null) ? p.dealPrice : '';
       el('pf-weight').value = (p && p.weightPerUnitKg) ? p.weightPerUnitKg : '';
       el('pf-weight-hint').textContent = (p && p.autoWeightKg)
         ? 'אם משאירים ריק, ישוערך כ-' + p.autoWeightKg + ' ק"ג לפי שם המוצר'
@@ -2132,12 +2158,16 @@
         unit: el('pf-unit').value.trim(),
         priceUnit: el('pf-priceunit').value.trim(),
         price: parseFloat(el('pf-price').value),
+        dealQty: el('pf-deal-qty').value.trim() === '' ? '' : parseInt(el('pf-deal-qty').value, 10),
+        dealPrice: el('pf-deal-price').value.trim() === '' ? '' : parseFloat(el('pf-deal-price').value),
         state: el('pf-state').value,
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };
       if (!product.name) { el('pf-error').textContent = 'יש להזין שם מוצר.'; return; }
       if (isNaN(product.price) || product.price < 0) { el('pf-error').textContent = 'יש להזין מחיר תקין.'; return; }
+      if (product.dealQty !== '' && (isNaN(product.dealQty) || product.dealQty < 2)) { el('pf-error').textContent = 'כמות מבצע חייבת להיות 2 ומעלה.'; return; }
+      if ((product.dealQty !== '') !== (product.dealPrice !== '')) { el('pf-error').textContent = 'יש למלא גם כמות וגם מחיר מבצע (או להשאיר את שניהם ריקים).'; return; }
 
       var btn = el('pf-save');
       btn.disabled = true;

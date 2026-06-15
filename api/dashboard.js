@@ -51,6 +51,19 @@ function cleanProduct(raw) {
     if (!isFinite(weightPerUnitKg) || weightPerUnitKg < 0) return { error: 'משקל לא תקין.' };
   }
 
+  // Optional "X for Y" quantity deal: both parts required together (or both blank).
+  let dealQty = '';
+  let dealPrice = '';
+  const hasQty = p.dealQty !== '' && p.dealQty != null;
+  const hasPrice = p.dealPrice !== '' && p.dealPrice != null;
+  if (hasQty || hasPrice) {
+    if (!hasQty || !hasPrice) return { error: 'יש למלא גם כמות וגם מחיר מבצע.' };
+    dealQty = Math.floor(Number(p.dealQty));
+    dealPrice = Number(p.dealPrice);
+    if (!isFinite(dealQty) || dealQty < 2) return { error: 'כמות מבצע חייבת להיות 2 ומעלה.' };
+    if (!isFinite(dealPrice) || dealPrice < 0) return { error: 'מחיר מבצע לא תקין.' };
+  }
+
   return {
     product: {
       name,
@@ -58,6 +71,8 @@ function cleanProduct(raw) {
       unit: String(p.unit || '').trim() || 'יחידות',
       priceUnit: String(p.priceUnit || '').trim(),
       price: price,
+      dealQty: dealQty,
+      dealPrice: dealPrice,
       state: state,
       weightPerUnitKg: weightPerUnitKg,
       imageUrl: String(p.imageUrl || '').trim(),
