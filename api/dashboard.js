@@ -306,8 +306,11 @@ module.exports = async function handler(req, res) {
             } else if (!settings.telegramPickedChatId) {
               result.telegram = { sent: false, reason: 'no-picked-chat-id' };
             } else {
+              const titleParts = ['הזמנה שנאספה'];
+              if (settings.saleName) titleParts.push(settings.saleName);
+              titleParts.push(order.fullName || order.orderId);
               const pdf = await createOrdersFullPdf([order], settings, {
-                title: 'הזמנה שנאספה — ' + (order.fullName || order.orderId),
+                title: titleParts.join(' — '),
                 hideEstimate: true,
               });
               result.telegram = await sendPickedOrderTelegram(settings, order, Buffer.from(pdf));
