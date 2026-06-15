@@ -3,6 +3,7 @@ const {
   listOrdersForDashboard,
   getSalesList,
   getWeightSummary,
+  getOrdersDetailed,
   readOrderForDashboard,
   claimOrderForPicking,
   updateOrderCollection,
@@ -22,6 +23,7 @@ const {
   updateSettings,
 } = require('../lib/store');
 const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
+const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -233,6 +235,24 @@ module.exports = async function handler(req, res) {
       if (action === 'settings-update') {
         const result = await updateSettings(body.settings || {});
         return res.json(result);
+      }
+
+      // --- Order printing (returns a PDF; authenticated, contains PII) ---
+      if (action === 'orders-pdf') {
+        const mode = body.mode === 'headers' ? 'headers' : 'full';
+        const opts = Array.isArray(body.codes) && body.codes.length
+          ? { codes: body.codes.map(String) }
+          : { scope: body.scope || {} };
+        const orders = await getOrdersDetailed(opts);
+        if (!orders.length) return res.status(400).json({ error: 'אין הזמנות להדפסה.' });
+        const settings = await getSettings();
+        const pdf = mode === 'headers'
+          ? await createOrdersHeadersPdf(orders, settings)
+          : await createOrdersFullPdf(orders, settings);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="orders.pdf"');
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(Buffer.from(pdf));
       }
 
       // --- Order actions ---

@@ -456,6 +456,11 @@
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
+    .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
+    .print-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    .print-bar .select-count { color: var(--muted); }
+    .oc-select { width: 18px; height: 18px; margin-inline-end: 8px; flex: none; }
     .report-title { padding: 0 16px; margin: 12px 0 10px; font-size: 16px; }
     .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
     .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
@@ -659,6 +664,13 @@
         </span>
       </div>
 
+      <div class="print-bar">
+        <label class="print-all"><input type="checkbox" id="select-all-orders"> בחר הכל</label>
+        <span id="select-count" class="select-count"></span>
+        <button class="btn" id="print-full">🖨️ הדפס מלא</button>
+        <button class="btn" id="print-headers">🖨️ כותרות בלבד</button>
+      </div>
+
       <div class="list" id="list"></div>
     </div>
 
@@ -832,6 +844,7 @@
       filters: { search: '', status: 'active', type: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
+      selected: {},
       refreshTimer: null,
       tab: 'orders',
       products: [],
@@ -1147,6 +1160,7 @@
         return '' +
           '<div class="order-card ' + sc + '" data-id="' + esc(o.orderId) + '">' +
             '<div class="oc-top">' +
+              '<input type="checkbox" class="oc-select" data-id="' + esc(o.orderId) + '"' + (state.selected[o.orderId] ? ' checked' : '') + ' onclick="event.stopPropagation()">' +
               '<span class="oc-name">' + esc(o.fullName || 'ללא שם') + '</span>' +
               '<span class="badge ' + sc + '">' + esc(o.status || '—') + '</span>' +
             '</div>' +
@@ -1174,7 +1188,71 @@
       Array.prototype.forEach.call(list.querySelectorAll('.order-card'), function (card) {
         card.addEventListener('click', function () { openOrder(card.getAttribute('data-id')); });
       });
+      Array.prototype.forEach.call(list.querySelectorAll('.oc-select'), function (cb) {
+        cb.addEventListener('change', function () {
+          var id = this.getAttribute('data-id');
+          if (this.checked) state.selected[id] = true; else delete state.selected[id];
+          updateSelectionUI();
+        });
+      });
+      updateSelectionUI();
     }
+
+    // ---------- Print orders (full / headers) ----------
+    function visibleOrderIds() {
+      return state.orders.filter(matchesFilters).map(function (o) { return o.orderId; });
+    }
+    function selectedIds() {
+      return Object.keys(state.selected);
+    }
+    function updateSelectionUI() {
+      var n = selectedIds().length;
+      el('select-count').textContent = n ? (n + ' נבחרו') : '';
+      var vis = visibleOrderIds();
+      var allSel = vis.length > 0 && vis.every(function (id) { return state.selected[id]; });
+      var sa = el('select-all-orders');
+      if (sa) sa.checked = allSel;
+    }
+    el('select-all-orders').addEventListener('change', function () {
+      var vis = visibleOrderIds();
+      if (this.checked) vis.forEach(function (id) { state.selected[id] = true; });
+      else vis.forEach(function (id) { delete state.selected[id]; });
+      renderList();
+    });
+
+    function scopeToObj(s) {
+      s = s || {};
+      if (s.kind === 'all') return { all: true };
+      if (s.kind === 'range') return { from: s.from || '', to: s.to || '' };
+      if (s.kind === 'sale') return { saleName: s.saleName || '' };
+      return {}; // current
+    }
+
+    function printOrders(mode) {
+      var codes = selectedIds();
+      var body = codes.length ? { action: 'orders-pdf', mode: mode, codes: codes }
+                              : { action: 'orders-pdf', mode: mode, scope: scopeToObj(state.scope) };
+      if (!codes.length && !visibleOrderIds().length) { showToast('אין הזמנות להדפסה'); return; }
+      var w = window.open('', '_blank'); // open synchronously to avoid popup blocking
+      fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'x-dashboard-key': state.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(function (r) {
+        if (r.status === 401) { if (w) w.close(); logout(); throw new Error('unauthorized'); }
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d && d.error || 'שגיאה'); });
+        return r.blob();
+      }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        if (w) w.location = url; else window.open(url, '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }).catch(function (err) {
+        if (w) w.close();
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהדפסה');
+      });
+    }
+    el('print-full').addEventListener('click', function () { printOrders('full'); });
+    el('print-headers').addEventListener('click', function () { printOrders('headers'); });
 
     // Search + filter wiring
     el('search').addEventListener('input', function () {
