@@ -24,6 +24,7 @@ const {
 } = require('../lib/store');
 const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
+const { sendPickedOrderTelegram } = require('../lib/telegram');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -286,6 +287,24 @@ module.exports = async function handler(req, res) {
         const items = Array.isArray(body.items) ? body.items : [];
         const result = await updateOrderCollection(orderId, { member, items, closeMissing: body.closeMissing !== false });
         if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
+
+        // When the pick is finalized (not kept open for missing items), send a
+        // summary + the order PDF to the dedicated Telegram channel. Best-effort:
+        // a notification failure must never fail the collect itself.
+        if (result.status !== 'בליקוט') {
+          try {
+            const detailed = await getOrdersDetailed({ codes: [orderId] });
+            const order = detailed[0];
+            const settings = order ? await getSettings() : null;
+            if (order && settings && settings.telegramBotToken && settings.telegramPickedChatId) {
+              const pdf = await createOrdersFullPdf([order], settings);
+              result.telegram = await sendPickedOrderTelegram(settings, order, Buffer.from(pdf));
+            }
+          } catch (err) {
+            console.error('Picked-order Telegram failed:', err);
+            result.telegram = { sent: false, reason: err.message || 'failed' };
+          }
+        }
         return res.json(result);
       }
 
