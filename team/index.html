@@ -1458,7 +1458,7 @@
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
               '<div class="item-weigh" onclick="event.stopPropagation()">' +
                 (it.isWeightPriced ? '⚖️ ' : '🔢 ') +
-                '<input class="wkg" type="number" min="0" step="' + (it.isWeightPriced ? '0.01' : '1') + '" inputmode="decimal" placeholder="' + (it.isWeightPriced ? 'ק״ג בפועל' : 'כמות בפועל') + '" value="' + (it.isWeightPriced ? (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') : (it.actualQuantity != null ? esc(it.actualQuantity) : '')) + '" data-idx="' + idx + '">' +
+                '<input class="wkg" type="number" min="0" step="' + (it.isWeightPriced ? '0.01' : '1') + '" inputmode="' + (it.isWeightPriced ? 'decimal' : 'numeric') + '" placeholder="' + (it.isWeightPriced ? 'ק״ג בפועל' : 'כמות בפועל') + '" value="' + (it.isWeightPriced ? (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') : (it.actualQuantity != null ? esc(it.actualQuantity) : '')) + '" data-idx="' + idx + '">' +
                 '<span class="wkg-line" data-idx="' + idx + '"></span>' +
               '</div>' +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
@@ -1517,6 +1517,8 @@
           var idx = Number(this.getAttribute('data-idx'));
           var it = state.currentItems[idx];
           var v = this.value === '' ? null : Number(this.value);
+          // Unit amounts are whole numbers; weights may be fractional.
+          if (!it.isWeightPriced && v != null) v = Math.max(0, Math.round(v));
           if (it.isWeightPriced) it.actualWeightKg = v; else it.actualQuantity = v;
           if (v != null && v > 0 && !it.picked) {
             setItemPicked(idx, true); // auto-mark on entry
@@ -1524,6 +1526,11 @@
             setItemPicked(idx, false); // clearing the weight un-collects a kg item
           }
           recomputeWeigh();
+        });
+        // On blur, reflect the sanitized whole number back into a unit field.
+        inp.addEventListener('change', function () {
+          var it = state.currentItems[Number(this.getAttribute('data-idx'))];
+          if (!it.isWeightPriced && it.actualQuantity != null) this.value = it.actualQuantity;
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
