@@ -3428,6 +3428,25 @@
         }
         .cutoff-note.closed { color: var(--muted, #8a8f88); }
 
+        .age-badge {
+            display: inline-block;
+            margin-inline-start: 6px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: #f3e3ea;
+            color: #7b3b53;
+            font-size: 0.72em;
+            font-weight: 800;
+            vertical-align: middle;
+        }
+        .nav-pill-ico-emoji {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            line-height: 1;
+        }
+
         /* === Hero: premium fresh-produce landing (two-column) === */
         .weekly-sale-intro::after {
             display: none; /* drop the old decorative circle */
@@ -4329,6 +4348,17 @@
         </div>
     </div>
 
+    <div id="ageGateModal" class="notice-modal hidden" role="dialog" aria-modal="true"
+        aria-labelledby="ageGateTitle">
+        <div class="notice-dialog">
+            <h2 id="ageGateTitle">🔞 אישור גיל</h2>
+            <p>חלק מהפריטים שבחרתם (יינות ואלכוהול) מיועדים לבני 18 ומעלה בלבד, בהתאם לחוק.</p>
+            <p>כדי להמשיך עם פריטים אלה, יש לאשר שאתם מעל גיל 18.</p>
+            <button id="ageGateConfirm" class="submit" type="button">אני מעל גיל 18, להמשיך</button>
+            <button id="ageGateDecline" class="status-dismiss" type="button">איני מעל 18 — הסירו פריטים אלה</button>
+        </div>
+    </div>
+
     <div id="orderStatusModal" class="notice-modal status-modal hidden" role="dialog" aria-modal="true"
         aria-labelledby="orderStatusTitle" aria-live="polite">
         <div class="notice-dialog status-dialog">
@@ -4817,6 +4847,12 @@
                 soft: '#fbefe9',
                 border: '#e8c8bc',
                 strong: '#8f432f'
+            },
+            'יינות ואלכוהול': {
+                color: '#7b3b53',
+                soft: '#f6ecf0',
+                border: '#dcc2cd',
+                strong: '#5a2a3d'
             }
         };
 
@@ -4838,6 +4874,9 @@
             customerDetailsPanel: document.getElementById('customerDetailsPanel'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
+            ageGateModal: document.getElementById('ageGateModal'),
+            ageGateConfirm: document.getElementById('ageGateConfirm'),
+            ageGateDecline: document.getElementById('ageGateDecline'),
             submitButton: document.getElementById('submitButton'),
             finishButton: document.getElementById('finishOrderButton'),
             finishLabel: document.getElementById('finishOrderLabel'),
@@ -4956,6 +4995,8 @@
             setCartSummaryOpen(false);
         });
         els.marketNoticeAccept.addEventListener('click', acceptMarketNotice);
+        els.ageGateConfirm.addEventListener('click', confirmAge18);
+        els.ageGateDecline.addEventListener('click', declineAge18);
         els.brandLogo.addEventListener('error', function () {
             useDefaultBrandLogo();
         });
@@ -5661,6 +5702,65 @@
             document.body.classList.remove('notice-open');
         }
 
+        // --- Age gate for the יינות ואלכוהול category (18+) ---
+        var ALCOHOL_DEPARTMENT = 'יינות ואלכוהול';
+        var ageGateOpen = false;
+        var ageVerified18 = false;
+        try { ageVerified18 = localStorage.getItem('prinuk_age18ok') === '1'; } catch (e) {}
+
+        function isAlcoholProduct(product) {
+            return !!product && String(product.department || '').trim() === ALCOHOL_DEPARTMENT;
+        }
+
+        function cartAlcoholRows() {
+            var rows = [];
+            els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
+                var input = row.querySelector('.quantity-input');
+                if (!input) { return; }
+                var qty = Number(input.value || 0);
+                if (!isFinite(qty) || qty <= 0) { return; }
+                if (isAlcoholProduct(productById[row.getAttribute('data-product-id')])) { rows.push(row); }
+            });
+            return rows;
+        }
+
+        function maybeAgeGate() {
+            if (ageVerified18 || ageGateOpen) { return; }
+            if (cartAlcoholRows().length > 0) { showAgeGate(); }
+        }
+
+        function showAgeGate() {
+            ageGateOpen = true;
+            els.ageGateModal.classList.remove('hidden');
+            document.documentElement.classList.add('notice-open');
+            document.body.classList.add('notice-open');
+        }
+
+        function hideAgeGate() {
+            ageGateOpen = false;
+            els.ageGateModal.classList.add('hidden');
+            document.documentElement.classList.remove('notice-open');
+            document.body.classList.remove('notice-open');
+        }
+
+        function confirmAge18() {
+            ageVerified18 = true;
+            try { localStorage.setItem('prinuk_age18ok', '1'); } catch (e) {}
+            hideAgeGate();
+        }
+
+        function declineAge18() {
+            cartAlcoholRows().forEach(function (row) {
+                var input = row.querySelector('.quantity-input');
+                if (input) { input.value = ''; }
+                updateRowState(row);
+            });
+            hideAgeGate();
+            renderSummary();
+            saveOrderDraft();
+            showCartToast('הוסרו מההזמנה הפריטים המיועדים לגיל 18+', 2600);
+        }
+
         function resetOpenNoticePosition() {
             if (els.marketNoticeModal.classList.contains('hidden')) {
                 return;
@@ -6041,6 +6141,9 @@
                     + '</span>';
             }
             var key = String(name || '').replace(/[״"׳']/g, '').trim();
+            if (key === 'יינות ואלכוהול') {
+                return '<span class="nav-pill-ico nav-pill-ico-emoji" aria-hidden="true">🍷</span>';
+            }
             var map = {
                 'ירקות': 'tomato',
                 'פירות': 'apple-red',
@@ -6102,6 +6205,7 @@
                 renderProductImage(product),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
+                isAlcoholProduct(product) ? '<span class="age-badge">18+</span>' : '',
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
@@ -6559,6 +6663,7 @@
             updateMobileSummaryMetrics();
             updateSummaryAdFit();
             updateRegularBasketUi();
+            maybeAgeGate();
         }
 
         function updateFreeDeliveryProgress(estimatedTotal) {
@@ -6869,6 +6974,12 @@
 
             if (!collected.items.length) {
                 showMessage('לא נבחרו מוצרים להזמנה.', 'error');
+                return;
+            }
+
+            // 18+ items require an age confirmation before the order can be sent.
+            if (!ageVerified18 && cartAlcoholRows().length > 0) {
+                showAgeGate();
                 return;
             }
 
