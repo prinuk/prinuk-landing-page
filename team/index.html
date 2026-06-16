@@ -530,6 +530,7 @@
     .pill.active { background: var(--fresh-soft); color: var(--fresh); }
     .pill.oos { background: var(--amber-soft); color: var(--amber); }
     .pill.hidden { background: #eceff1; color: var(--muted); }
+    .pill.cutoff { background: #e7f0fb; color: #1f6fd0; }
 
     /* ---------- Modal ---------- */
     .modal-overlay {
@@ -722,6 +723,7 @@
         <span class="pbb-label">שנה סטטוס ל:</span>
         <button class="chip" data-bulk="active">זמין</button>
         <button class="chip" data-bulk="oos">אזל מהמלאי</button>
+        <button class="chip" data-bulk="cutoff">ניתן להזמין עד 3:00</button>
         <button class="chip" data-bulk="hidden">מוסתר</button>
         <button class="btn-link" id="pbb-clear">ניקוי בחירה</button>
       </div>
@@ -814,6 +816,7 @@
           <label for="pf-state">סטטוס</label>
           <select id="pf-state">
             <option value="active">פעיל (מוצג וניתן להזמנה)</option>
+            <option value="cutoff">ניתן להזמין עד 3:00 (נחסם בהמשך היום)</option>
             <option value="oos">אזל מהמלאי (מוצג, לא ניתן להזמנה)</option>
             <option value="hidden">מוסתר (לא מוצג ללקוחות)</option>
           </select>
@@ -1974,6 +1977,8 @@
       { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
       { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
       { key: 'telegramPickedChatId', label: 'טלגרם — ערוץ הזמנות שנאספו', hint: 'מזהה הצ׳אט (Chat ID) של הערוץ שאליו תישלח סיכום ההזמנה כשהליקוט מסתיים', type: 'input' },
+      { key: 'orderCutoffDisplayTime', label: 'שעת חיתוך — תצוגה ללקוח', hint: 'מוצג כ"ניתן להזמין עד …" על מוצרים מוגבלי-זמן (פורמט HH:MM)', type: 'input' },
+      { key: 'orderCutoffEnforceTime', label: 'שעת חיתוך — חסימה בפועל', hint: 'אחרי שעה זו אי אפשר להזמין את אותם מוצרים (פורמט HH:MM)', type: 'input' },
       { key: 'logoUrl', label: 'קישור ללוגו', type: 'input' },
     ];
 
@@ -2019,9 +2024,10 @@
       });
     }
 
-    function productPill(stateVal) {
-      if (stateVal === 'oos') return '<span class="pill oos">אזל</span>';
-      if (stateVal === 'hidden') return '<span class="pill hidden">מוסתר</span>';
+    function productPill(p) {
+      if (p.state === 'oos') return '<span class="pill oos">אזל</span>';
+      if (p.state === 'hidden') return '<span class="pill hidden">מוסתר</span>';
+      if (p.orderCutoff) return '<span class="pill cutoff">עד 3:00</span>';
       return '<span class="pill active">פעיל</span>';
     }
 
@@ -2034,7 +2040,7 @@
           '<input type="checkbox" class="prod-check" data-id="' + p.id + '"' + (state.selectedProducts[p.id] ? ' checked' : '') + ' title="בחירה">' +
           thumb +
           '<div class="prod-main">' +
-            '<div class="prod-name">' + esc(p.name) + productPill(p.state) + '</div>' +
+            '<div class="prod-name">' + esc(p.name) + productPill(p) + '</div>' +
             '<div class="prod-sub">' + price + (p.unit ? ' · ' + esc(p.unit) : '') + '</div>' +
           '</div>' +
           '<div class="prod-actions">' +
@@ -2093,12 +2099,12 @@
     function bulkSetProductStatus(status) {
       var ids = Object.keys(state.selectedProducts);
       if (!ids.length) return;
-      var labels = { active: 'זמין', oos: 'אזל מהמלאי', hidden: 'מוסתר' };
+      var labels = { active: 'זמין', oos: 'אזל מהמלאי', hidden: 'מוסתר', cutoff: 'ניתן להזמין עד 3:00' };
       if (!window.confirm('לשנות ' + ids.length + ' מוצרים לסטטוס "' + (labels[status] || status) + '"?')) return;
       api('POST', '', { action: 'products-bulk-status', ids: ids, status: status }).then(function (r) {
         ids.forEach(function (id) {
           var p = state.products.find(function (x) { return x.id === id; });
-          if (p) p.state = status;
+          if (p) { p.state = status === 'cutoff' ? 'active' : status; p.orderCutoff = status === 'cutoff'; }
         });
         state.selectedProducts = {};
         renderProducts();
@@ -2150,7 +2156,7 @@
       el('pf-image-url').value = (p && p.image) ? p.image : '';
       setImagePreview(p ? p.imageUrl : '');
       el('pf-image-btn').textContent = (p && p.imageUrl) ? '📷 שינוי תמונה' : '📷 העלאת תמונה';
-      el('pf-state').value = p ? p.state : 'active';
+      el('pf-state').value = (p && p.orderCutoff) ? 'cutoff' : (p ? p.state : 'active');
       el('pf-error').textContent = '';
       el('pf-delete-row').style.display = p ? 'flex' : 'none';
       el('modal-overlay').classList.remove('hidden');
@@ -2236,6 +2242,8 @@
 
     el('product-form').addEventListener('submit', function (e) {
       e.preventDefault();
+      // "cutoff" is a UI status = active + the time-limited flag.
+      var stateSel = el('pf-state').value;
       var product = {
         name: el('pf-name').value.trim(),
         department: el('pf-dept').value,
@@ -2244,7 +2252,8 @@
         price: parseFloat(el('pf-price').value),
         dealQty: el('pf-deal-qty').value.trim() === '' ? '' : parseInt(el('pf-deal-qty').value, 10),
         dealPrice: el('pf-deal-price').value.trim() === '' ? '' : parseFloat(el('pf-deal-price').value),
-        state: el('pf-state').value,
+        state: stateSel === 'cutoff' ? 'active' : stateSel,
+        orderCutoff: stateSel === 'cutoff',
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };
