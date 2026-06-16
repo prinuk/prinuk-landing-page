@@ -3428,16 +3428,19 @@
         }
         .cutoff-note.closed { color: var(--muted, #8a8f88); }
 
-        .age-badge {
-            display: inline-block;
-            margin-inline-start: 6px;
-            padding: 1px 7px;
+        .img-age-badge {
+            position: absolute;
+            top: 6px;
+            inset-inline-start: 6px;
+            z-index: 2;
+            padding: 2px 7px;
             border-radius: 999px;
-            background: #f3e3ea;
-            color: #7b3b53;
-            font-size: 0.72em;
-            font-weight: 800;
-            vertical-align: middle;
+            background: #7b3b53;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 900;
+            line-height: 1.25;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
         }
         .product-vol {
             display: inline-block;
@@ -6253,7 +6256,6 @@
                 renderProductImage(product),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
-                isAlcoholProduct(product) ? '<span class="age-badge">18+</span>' : '',
                 product.volumeMl ? '<span class="product-vol">' + escapeHtml(product.volumeMl) + ' מ״ל</span>' : '',
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
@@ -6301,12 +6303,14 @@
             var badge = outOfStock
                 ? '<span class="stock-badge">' + escapeHtml(badgeText || 'אזל מהמלאי') + '</span>'
                 : '<span class="selected-badge" data-selected-badge hidden>0</span>';
+            var ageBadge = isAlcoholProduct(product) ? '<span class="img-age-badge" title="מיועד לבני 18 ומעלה">18+</span>' : '';
 
             if (!imageUrl) {
                 return [
                     '<div class="product-image-wrap product-image-placeholder">',
                     '<span aria-hidden="true">טרי</span>',
                     badge,
+                    ageBadge,
                     '</div>'
                 ].join('');
             }
@@ -6315,6 +6319,7 @@
                 '<div class="product-image-wrap">',
                 '<img class="product-image" src="' + escapeAttr(imageUrl) + '" loading="lazy" decoding="async" alt="' + escapeAttr(product.name) + '">',
                 badge,
+                ageBadge,
                 '</div>'
             ].join('');
         }
