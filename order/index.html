@@ -3419,6 +3419,15 @@
             white-space: nowrap;
         }
 
+        .cutoff-note {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.8em;
+            font-weight: 700;
+            color: #1f6fd0;
+        }
+        .cutoff-note.closed { color: var(--muted, #8a8f88); }
+
         /* === Hero: premium fresh-produce landing (two-column) === */
         .weekly-sale-intro::after {
             display: none; /* drop the old decorative circle */
@@ -4739,6 +4748,34 @@
             products: []
         };
 
+        // Time-limited items ("ניתן להזמין עד …"): orderable until the daily
+        // enforce time (Israel clock); the message shows a friendlier display time.
+        function parseHHMM(value, fallbackMinutes) {
+            var m = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+            if (!m) return fallbackMinutes;
+            var h = +m[1], mn = +m[2];
+            if (h > 23 || mn > 59) return fallbackMinutes;
+            return h * 60 + mn;
+        }
+        function israelNowMinutes() {
+            try {
+                var parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+                var h = 0, mn = 0;
+                parts.forEach(function (p) { if (p.type === 'hour') h = +p.value; if (p.type === 'minute') mn = +p.value; });
+                return h * 60 + mn;
+            } catch (e) {
+                var d = new Date();
+                return d.getHours() * 60 + d.getMinutes();
+            }
+        }
+        function cutoffDisplayTime() {
+            return String((catalog.settings && catalog.settings.orderCutoffDisplayTime) || '03:00').trim() || '03:00';
+        }
+        function isCutoffClosedNow() {
+            var enforce = parseHHMM(catalog.settings && catalog.settings.orderCutoffEnforceTime, 6 * 60);
+            return israelNowMinutes() >= enforce;
+        }
+
         var productById = {};
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
@@ -6055,6 +6092,9 @@
             if (product.outOfStock) {
                 return renderOutOfStockProduct(product, categoryName);
             }
+            if (product.orderCutoff && isCutoffClosedNow()) {
+                return renderCutoffClosedProduct(product, categoryName);
+            }
 
             return [
                 '<article class="product-row" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-mode="unit">',
@@ -6066,6 +6106,7 @@
                 '</div>',
                 '</div>',
                 renderUnitControls(product),
+                product.orderCutoff ? '<div class="cutoff-note">⏰ ניתן להזמין עד ' + escapeHtml(cutoffDisplayTime()) + '</div>' : '',
                 renderProductNote(product),
                 '</article>'
             ].join('');
@@ -6085,10 +6126,27 @@
             ].join('');
         }
 
-        function renderProductImage(product, outOfStock) {
+        // A time-limited item past its cutoff renders like out-of-stock (disabled,
+        // no quantity controls — the collect guard skips data-out-of-stock rows).
+        function renderCutoffClosedProduct(product, categoryName) {
+            return [
+                '<article class="product-row out-of-stock" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-out-of-stock="1" aria-disabled="true">',
+                '<div class="product-info">',
+                renderProductImage(product, true, 'נסגר להיום'),
+                '<div class="product-name">',
+                '<strong>' + escapeHtml(product.name) + '</strong>',
+                priceHtml(product),
+                '<span class="cutoff-note closed">ההזמנה נסגרה (ניתן עד ' + escapeHtml(cutoffDisplayTime()) + ')</span>',
+                '</div>',
+                '</div>',
+                '</article>'
+            ].join('');
+        }
+
+        function renderProductImage(product, outOfStock, badgeText) {
             var imageUrl = String(product.imageUrl || '').trim();
             var badge = outOfStock
-                ? '<span class="stock-badge">אזל מהמלאי</span>'
+                ? '<span class="stock-badge">' + escapeHtml(badgeText || 'אזל מהמלאי') + '</span>'
                 : '<span class="selected-badge" data-selected-badge hidden>0</span>';
 
             if (!imageUrl) {

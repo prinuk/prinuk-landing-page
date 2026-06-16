@@ -18,6 +18,32 @@ const EDIT_REASON_MESSAGES = {
   closed: 'ההזמנות סגורות כרגע, לכן לא ניתן לעדכן את ההזמנה.',
 };
 
+// Time-limited items ("ניתן להזמין עד …") — server-side mirror of the client
+// guard in order/index.html, so a page loaded before the cutoff can't POST a
+// closed item after it.
+function parseHHMM(value, fallbackMinutes) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(value || '').trim());
+  if (!m) return fallbackMinutes;
+  const h = +m[1];
+  const mn = +m[2];
+  if (h > 23 || mn > 59) return fallbackMinutes;
+  return h * 60 + mn;
+}
+function israelNowMinutes() {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date());
+    let h = 0;
+    let mn = 0;
+    parts.forEach((p) => { if (p.type === 'hour') h = +p.value; if (p.type === 'minute') mn = +p.value; });
+    return h * 60 + mn;
+  } catch (e) {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
 // GET ?order=<id>&token=<token> — read an order back so the customer can edit it.
 async function handleGetEdit(req, res) {
   try {
@@ -67,6 +93,21 @@ module.exports = async function handler(req, res) {
 
     const order = validateAndBuildOrder(body, catalog.products);
     order.settings = settings;
+
+    // Reject time-limited items submitted after the daily cutoff.
+    if (israelNowMinutes() >= parseHHMM(settings.orderCutoffEnforceTime, 6 * 60)) {
+      const cutoffIds = new Set((catalog.products || []).filter((p) => p.orderCutoff).map((p) => p.id));
+      const closed = (order.items || [])
+        .filter((it) => it.product && cutoffIds.has(it.product.id))
+        .map((it) => it.product.name);
+      if (closed.length) {
+        const disp = String(settings.orderCutoffDisplayTime || '03:00');
+        return res.status(409).json({
+          error: 'הפריטים הבאים ניתנים להזמנה רק עד ' + disp + ', ולא ניתן להזמין אותם כעת: '
+            + closed.join(', ') + '. אפשר להסיר אותם ולשלוח שוב.',
+        });
+      }
+    }
 
     let writeResult;
 

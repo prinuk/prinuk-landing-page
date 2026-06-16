@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "order_cutoff" boolean DEFAULT false NOT NULL;

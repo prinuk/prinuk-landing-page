@@ -19,6 +19,8 @@
     "db:products": "node --env-file=.env scripts/db-products.mjs",
     "db:dupes": "node --env-file=.env scripts/db-dupes.mjs",
     "db:dedupe": "node --env-file=.env scripts/dedupe.mjs",
+    "weights:fill": "node --env-file=.env scripts/fill-weights.mjs",
+    "weights:fill:prod": "node --env-file=.env.prod scripts/fill-weights.mjs",
     "sale": "node --env-file=.env scripts/sale.mjs"
   },
   "engines": {
