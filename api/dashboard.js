@@ -24,6 +24,7 @@ const {
 } = require('../lib/store');
 const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
+const { sendPickedOrderTelegram } = require('../lib/telegram');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -51,6 +52,19 @@ function cleanProduct(raw) {
     if (!isFinite(weightPerUnitKg) || weightPerUnitKg < 0) return { error: 'משקל לא תקין.' };
   }
 
+  // Optional "X for Y" quantity deal: both parts required together (or both blank).
+  let dealQty = '';
+  let dealPrice = '';
+  const hasQty = p.dealQty !== '' && p.dealQty != null;
+  const hasPrice = p.dealPrice !== '' && p.dealPrice != null;
+  if (hasQty || hasPrice) {
+    if (!hasQty || !hasPrice) return { error: 'יש למלא גם כמות וגם מחיר מבצע.' };
+    dealQty = Math.floor(Number(p.dealQty));
+    dealPrice = Number(p.dealPrice);
+    if (!isFinite(dealQty) || dealQty < 2) return { error: 'כמות מבצע חייבת להיות 2 ומעלה.' };
+    if (!isFinite(dealPrice) || dealPrice < 0) return { error: 'מחיר מבצע לא תקין.' };
+  }
+
   return {
     product: {
       name,
@@ -58,6 +72,8 @@ function cleanProduct(raw) {
       unit: String(p.unit || '').trim() || 'יחידות',
       priceUnit: String(p.priceUnit || '').trim(),
       price: price,
+      dealQty: dealQty,
+      dealPrice: dealPrice,
       state: state,
       weightPerUnitKg: weightPerUnitKg,
       imageUrl: String(p.imageUrl || '').trim(),
@@ -271,6 +287,36 @@ module.exports = async function handler(req, res) {
         const items = Array.isArray(body.items) ? body.items : [];
         const result = await updateOrderCollection(orderId, { member, items, closeMissing: body.closeMissing !== false });
         if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
+
+        // When the pick is finalized (not kept open for missing items), send a
+        // summary + the order PDF to the dedicated Telegram channel. Best-effort:
+        // a notification failure must never fail the collect itself. The reason
+        // is always surfaced on result.telegram so the dashboard can show it.
+        if (result.status === 'בליקוט') {
+          result.telegram = { sent: false, reason: 'pick-kept-open' };
+        } else {
+          try {
+            const detailed = await getOrdersDetailed({ codes: [orderId] });
+            const order = detailed[0];
+            const settings = await getSettings();
+            if (!order) {
+              result.telegram = { sent: false, reason: 'order-not-found' };
+            } else if (!settings.telegramBotToken) {
+              result.telegram = { sent: false, reason: 'no-bot-token' };
+            } else if (!settings.telegramPickedChatId) {
+              result.telegram = { sent: false, reason: 'no-picked-chat-id' };
+            } else {
+              const pdf = await createOrdersFullPdf([order], settings, {
+                title: settings.saleName ? 'הזמנה שנאספה — ' + settings.saleName : 'הזמנה שנאספה',
+                hideEstimate: true,
+              });
+              result.telegram = await sendPickedOrderTelegram(settings, order, Buffer.from(pdf));
+            }
+          } catch (err) {
+            console.error('Picked-order Telegram failed:', err);
+            result.telegram = { sent: false, reason: err.message || 'failed' };
+          }
+        }
         return res.json(result);
       }
 

@@ -479,6 +479,11 @@
     .ed-qty { width: 64px; padding: 7px 8px; border: 1px solid #ddd; border-radius: 8px; font: inherit; text-align: center; }
     .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
     .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+    .item-weigh { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .item-weigh .wkg { width: 92px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit; text-align: center; }
+    .wkg-line { font-size: 13px; font-weight: 700; color: var(--fresh, #2e9e4f); }
+    .weigh-total { margin-top: 10px; padding: 9px 10px; text-align: center; font-size: 15px; background: #eef6ef; border-radius: 10px; }
+    .weigh-total:empty { display: none; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
     .set-field { margin-bottom: 16px; }
     .set-field label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--ink); }
@@ -759,6 +764,16 @@
         <div class="field">
           <label for="pf-price">מחיר (₪)</label>
           <input id="pf-price" type="number" inputmode="decimal" min="0" step="0.01" required />
+        </div>
+        <div class="field">
+          <label>מבצע כמות — לא חובה</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="pf-deal-qty" type="number" inputmode="numeric" min="2" step="1" placeholder="כמות" style="flex:1;" />
+            <span>יח׳ ב־</span>
+            <input id="pf-deal-price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₪" style="flex:1;" />
+            <span>₪</span>
+          </div>
+          <div class="field-hint">לדוגמה: 3 יח׳ ב־10 ₪ (השאר ריק לביטול המבצע).</div>
         </div>
         <div class="field">
           <label for="pf-weight">משקל משוער ליחידה (ק"ג) — לא חובה</label>
@@ -1441,6 +1456,11 @@
             '<div class="item-main">' +
               '<div class="item-name">' + esc(it.name) + '</div>' +
               '<div class="item-sub">' + esc(qty) + lineTotal + '</div>' +
+              '<div class="item-weigh" onclick="event.stopPropagation()">' +
+                (it.isWeightPriced ? '⚖️ ' : '🔢 ') +
+                '<input class="wkg" type="number" min="0" step="' + (it.isWeightPriced ? '0.01' : '1') + '" inputmode="' + (it.isWeightPriced ? 'decimal' : 'numeric') + '" placeholder="' + (it.isWeightPriced ? 'ק״ג בפועל' : 'כמות בפועל') + '" value="' + (it.isWeightPriced ? (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') : (it.actualQuantity != null ? esc(it.actualQuantity) : '')) + '" data-idx="' + idx + '">' +
+                '<span class="wkg-line" data-idx="' + idx + '"></span>' +
+              '</div>' +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
             '</div>' +
           '</div>';
@@ -1451,7 +1471,7 @@
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
           '<button class="back-btn" id="edit-order-btn">✏️ ערוך</button>' +
           '<button class="back-btn danger" id="cancel-order-btn">🗑️ בטל</button>' +
-          '<button class="back-btn" onclick="window.print()">🖨️ הדפסה</button>' +
+          '<button class="back-btn" id="print-order-btn">🖨️ הדפסה</button>' +
           '<select id="status-select" class="status-select">' +
             [STATUS.NEW, STATUS.PICKING, STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED].map(function (s) {
               return '<option value="' + esc(s) + '"' + (s === o.status ? ' selected' : '') + '>' + esc(s) + '</option>';
@@ -1476,6 +1496,7 @@
             '<span class="summary" id="item-summary"></span>' +
           '</div>' +
           itemsHtml +
+          '<div class="weigh-total" id="weigh-total"></div>' +
         '</div>' +
 
         '<div class="submit-bar"><div class="inner">' +
@@ -1491,10 +1512,90 @@
           setItemPicked(idx, !state.currentItems[idx].picked);
         });
       });
+      view.querySelectorAll('.wkg').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var idx = Number(this.getAttribute('data-idx'));
+          var it = state.currentItems[idx];
+          var v = this.value === '' ? null : Number(this.value);
+          // Unit amounts are whole numbers; weights may be fractional.
+          if (!it.isWeightPriced && v != null) v = Math.max(0, Math.round(v));
+          if (it.isWeightPriced) it.actualWeightKg = v; else it.actualQuantity = v;
+          if (v != null && v > 0 && !it.picked) {
+            setItemPicked(idx, true); // auto-mark on entry
+          } else if (it.isWeightPriced && (v == null || v <= 0) && it.picked) {
+            setItemPicked(idx, false); // clearing the weight un-collects a kg item
+          }
+          recomputeWeigh();
+        });
+        // On blur, reflect the sanitized whole number back into a unit field.
+        inp.addEventListener('change', function () {
+          var it = state.currentItems[Number(this.getAttribute('data-idx'))];
+          if (!it.isWeightPriced && it.actualQuantity != null) this.value = it.actualQuantity;
+        });
+      });
       el('collect-btn').addEventListener('click', submitCollect);
       el('status-select').addEventListener('change', onManualStatusChange);
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
+      el('print-order-btn').addEventListener('click', function () { printSingleOrder(o.orderId); });
+      recomputeWeigh();
+    }
+
+    // Live final total from the collected weights (kg items) + fixed lines.
+    // Mirror of lib/sheets.js applyUnitDeal: every full group of dealQty units
+    // costs dealPrice, the remainder at the regular unit price.
+    function applyUnitDeal(qty, unitPrice, dealQty, dealPrice) {
+      var q = Number(qty) || 0;
+      var dq = Number(dealQty) || 0;
+      var dp = Number(dealPrice);
+      var up = Number(unitPrice) || 0;
+      if (dq > 0 && isFinite(dp) && dp >= 0) {
+        var groups = Math.floor(q / dq);
+        return groups * dp + (q - groups * dq) * up;
+      }
+      return q * up;
+    }
+
+    function recomputeWeigh() {
+      var total = 0;
+      var anyActual = false;
+      state.currentItems.forEach(function (it, idx) {
+        var lineActual = (it.lineTotal !== '' && it.lineTotal != null) ? Number(it.lineTotal) : 0;
+        var span = el('detail-view') && el('detail-view').querySelector('.wkg-line[data-idx="' + idx + '"]');
+        var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+        var n = (v != null && v !== '' && Number(v) >= 0) ? Number(v) : null;
+        if (n != null && (it.isWeightPriced ? n > 0 : true)) {
+          lineActual = it.isWeightPriced ? n * (it.unitPrice || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice);
+          anyActual = true;
+          if (span) span.textContent = '= ' + formatMoney(lineActual);
+        } else if (span) {
+          span.textContent = '';
+        }
+        if (it.picked) total += lineActual;
+      });
+      var elT = el('weigh-total');
+      if (elT) elT.innerHTML = anyActual ? 'סה״כ סופי: <b>' + formatMoney(total) + '</b>' : '';
+    }
+
+    // Print one order as a PDF (includes collected weights + final total).
+    function printSingleOrder(orderId) {
+      var w = window.open('', '_blank');
+      fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'x-dashboard-key': state.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'orders-pdf', mode: 'full', codes: [orderId] }),
+      }).then(function (r) {
+        if (r.status === 401) { if (w) w.close(); logout(); throw new Error('unauthorized'); }
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d && d.error || 'שגיאה'); });
+        return r.blob();
+      }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        if (w) w.location = url; else window.open(url, '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }).catch(function (err) {
+        if (w) w.close();
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהדפסה');
+      });
     }
 
     // ---------- Edit / cancel order ----------
@@ -1618,10 +1719,24 @@
     function setItemPicked(idx, picked) {
       var it = state.currentItems[idx];
       if (!it) return;
+      // A kg-priced item can't be marked collected without a weighed amount
+      // (unit items auto-fill the ordered qty below, so they're exempt).
+      if (picked && it.isWeightPriced && !(it.actualWeightKg != null && it.actualWeightKg !== '' && Number(it.actualWeightKg) > 0)) {
+        showToast('יש להזין משקל בפועל לפני סימון כנאסף');
+        var winp = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"] .wkg');
+        if (winp) winp.focus();
+        return;
+      }
       if (state.current) state.current._touched = true;
       it.picked = picked;
       if (picked) it.missing = false;
       var row = el('detail-view').querySelector('.item-row[data-idx="' + idx + '"]');
+      // For unit items, picking defaults the collected amount to the ordered qty.
+      if (picked && !it.isWeightPriced && (it.actualQuantity == null || it.actualQuantity === '')) {
+        it.actualQuantity = it.quantity;
+        var qinp = row && row.querySelector('.wkg');
+        if (qinp) qinp.value = it.quantity;
+      }
       if (row) {
         row.classList.toggle('picked', picked);
         if (picked) row.classList.remove('missing');
@@ -1629,6 +1744,7 @@
         if (chk) chk.textContent = picked ? '✓' : (it.missing ? '✗' : '');
       }
       updateSummaryLine();
+      recomputeWeigh();
     }
 
     function updateSummaryLine() {
@@ -1699,7 +1815,7 @@
       btn.textContent = 'מעדכן…';
 
       var items = state.currentItems.map(function (it) {
-        return { name: it.name, picked: it.picked };
+        return { name: it.name, picked: it.picked, actualWeightKg: it.actualWeightKg, actualQuantity: it.actualQuantity };
       });
 
       api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })
@@ -1710,6 +1826,13 @@
           o._touched = true;
           if (r.status === STATUS.PICKING) showToast('התקדמות נשמרה, ההזמנה עדיין בליקוט');
           else showToast(r.status === STATUS.PARTIAL ? 'עודכן: נאסף חלקית' : 'ההזמנה סומנה כנאספה ✓');
+          // Surface the Telegram result so a misconfigured channel is visible.
+          if (r.telegram && r.status !== STATUS.PICKING) {
+            if (r.telegram.sent) showToast('📨 סיכום נשלח לטלגרם');
+            else if (r.telegram.reason === 'no-picked-chat-id') showToast('⚠️ לא הוגדר ערוץ טלגרם לליקוט (הגדרות)');
+            else if (r.telegram.reason === 'no-bot-token') showToast('⚠️ חסר טוקן בוט טלגרם');
+            else showToast('⚠️ שליחת טלגרם נכשלה: ' + (r.telegram.reason || 'לא ידוע'));
+          }
           closeDetail();
         })
         .catch(function (err) {
@@ -1831,6 +1954,7 @@
       { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
       { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
       { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
+      { key: 'telegramPickedChatId', label: 'טלגרם — ערוץ הזמנות שנאספו', hint: 'מזהה הצ׳אט (Chat ID) של הערוץ שאליו תישלח סיכום ההזמנה כשהליקוט מסתיים', type: 'input' },
       { key: 'logoUrl', label: 'קישור ללוגו', type: 'input' },
     ];
 
@@ -1964,6 +2088,8 @@
       el('pf-unit').value = p ? p.unit : 'יחידות';
       el('pf-priceunit').value = p ? p.priceUnit : '';
       el('pf-price').value = (p && p.price) ? p.price : '';
+      el('pf-deal-qty').value = (p && p.dealQty) ? p.dealQty : '';
+      el('pf-deal-price').value = (p && p.dealPrice !== '' && p.dealPrice != null) ? p.dealPrice : '';
       el('pf-weight').value = (p && p.weightPerUnitKg) ? p.weightPerUnitKg : '';
       el('pf-weight-hint').textContent = (p && p.autoWeightKg)
         ? 'אם משאירים ריק, ישוערך כ-' + p.autoWeightKg + ' ק"ג לפי שם המוצר'
@@ -2059,12 +2185,16 @@
         unit: el('pf-unit').value.trim(),
         priceUnit: el('pf-priceunit').value.trim(),
         price: parseFloat(el('pf-price').value),
+        dealQty: el('pf-deal-qty').value.trim() === '' ? '' : parseInt(el('pf-deal-qty').value, 10),
+        dealPrice: el('pf-deal-price').value.trim() === '' ? '' : parseFloat(el('pf-deal-price').value),
         state: el('pf-state').value,
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };
       if (!product.name) { el('pf-error').textContent = 'יש להזין שם מוצר.'; return; }
       if (isNaN(product.price) || product.price < 0) { el('pf-error').textContent = 'יש להזין מחיר תקין.'; return; }
+      if (product.dealQty !== '' && (isNaN(product.dealQty) || product.dealQty < 2)) { el('pf-error').textContent = 'כמות מבצע חייבת להיות 2 ומעלה.'; return; }
+      if ((product.dealQty !== '') !== (product.dealPrice !== '')) { el('pf-error').textContent = 'יש למלא גם כמות וגם מחיר מבצע (או להשאיר את שניהם ריקים).'; return; }
 
       var btn = el('pf-save');
       btn.disabled = true;

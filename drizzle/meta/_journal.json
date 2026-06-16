@@ -22,6 +22,20 @@
       "when": 1781509330196,
       "tag": "0002_striped_psylocke",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781561582116,
+      "tag": "0003_overrated_firebird",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781562265318,
+      "tag": "0004_puzzling_hellcat",
+      "breakpoints": true
     }
   ]
 }
