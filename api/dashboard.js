@@ -19,6 +19,7 @@ const {
   addProduct,
   updateProduct,
   deleteProduct,
+  bulkUpdateProductStatus,
   getSettings,
   updateSettings,
 } = require('../lib/store');
@@ -232,6 +233,15 @@ module.exports = async function handler(req, res) {
         if (!id) return res.status(400).json({ error: 'מזהה מוצר חסר.' });
         await deleteProduct(id);
         return res.json({ ok: true });
+      }
+
+      if (action === 'products-bulk-status') {
+        const ids = Array.isArray(body.ids) ? body.ids.map(String) : [];
+        const status = String(body.status || '');
+        if (!ids.length) return res.status(400).json({ error: 'לא נבחרו מוצרים.' });
+        const result = await bulkUpdateProductStatus(ids, status);
+        if (!result.ok) return res.status(400).json({ error: 'סטטוס לא תקין.' });
+        return res.json(result);
       }
 
       // --- Sale management ---
