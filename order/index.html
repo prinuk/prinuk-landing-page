@@ -6283,7 +6283,10 @@
         // Price with the amount emphasized and the "/unit" qualifier muted.
         function priceHtml(product) {
             var amount = escapeHtml(product.priceDisplay + ' ש״ח');
-            var unit = escapeHtml('ל' + (product.priceUnit || product.unit));
+            // "price per X" reads in the singular: ליחידה (not ליחידות).
+            var unitName = String(product.priceUnit || product.unit || '').trim();
+            if (unitName === 'יחידות') { unitName = 'יחידה'; }
+            var unit = escapeHtml('ל' + unitName);
             var deal = '';
             if (product.dealQty && product.dealPrice != null && product.dealPrice !== '') {
                 deal = ' <span class="price-deal">' + escapeHtml(product.dealQty + ' ב־' + formatMoney(product.dealPrice) + ' ₪') + '</span>';
