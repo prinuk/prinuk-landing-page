@@ -43,6 +43,13 @@
       "when": 1781571324210,
       "tag": "0005_long_mephistopheles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781619432956,
+      "tag": "0006_aspiring_lake",
+      "breakpoints": true
     }
   ]
 }

@@ -3439,6 +3439,20 @@
             font-weight: 800;
             vertical-align: middle;
         }
+        .product-vol {
+            display: inline-block;
+            margin-inline-start: 6px;
+            font-size: 0.78em;
+            font-weight: 700;
+            color: var(--muted, #8a8f88);
+            vertical-align: middle;
+        }
+        .subcat-title {
+            margin: 16px 16px 8px;
+            font-size: 1em;
+            font-weight: 800;
+            color: var(--category-strong-color, #5a2a3d);
+        }
         .nav-pill-ico-emoji {
             display: inline-flex;
             align-items: center;
@@ -6156,18 +6170,52 @@
             return '<span class="nav-pill-ico" aria-hidden="true"><img src="/assets/produce/' + file + '.jpg" alt="" loading="lazy" decoding="async"></span>';
         }
 
+        var SUBCATEGORY_ORDER = ['יינות', 'ליקרים'];
+
         function renderCategory(category) {
+            var products = category.products;
+            var hasSub = products.some(function (p) { return String(p.subcategory || '').trim(); });
+            var body;
+
+            if (hasSub) {
+                // Group by subcategory (preferred order first, then first-seen,
+                // ungrouped last) — shown as sub-headers under the one category tab.
+                var groups = {};
+                var seen = [];
+                var ungrouped = [];
+                products.forEach(function (p) {
+                    var sub = String(p.subcategory || '').trim();
+                    if (!sub) { ungrouped.push(p); return; }
+                    if (!groups[sub]) { groups[sub] = []; seen.push(sub); }
+                    groups[sub].push(p);
+                });
+                var orderedSubs = SUBCATEGORY_ORDER.filter(function (s) { return groups[s]; })
+                    .concat(seen.filter(function (s) { return SUBCATEGORY_ORDER.indexOf(s) === -1; }));
+                body = orderedSubs.map(function (sub) {
+                    return '<div class="subcat-title">' + escapeHtml(sub) + '</div>'
+                        + '<div class="product-list">'
+                        + groups[sub].map(function (p) { return renderProduct(p, category.name); }).join('')
+                        + '</div>';
+                }).join('');
+                if (ungrouped.length) {
+                    body += '<div class="subcat-title">נוסף</div>'
+                        + '<div class="product-list">'
+                        + ungrouped.map(function (p) { return renderProduct(p, category.name); }).join('')
+                        + '</div>';
+                }
+            } else {
+                body = '<div class="product-list">'
+                    + products.map(function (p) { return renderProduct(p, category.name); }).join('')
+                    + '</div>';
+            }
+
             return [
                 '<section class="category" id="category-' + slugify(category.name) + '" style="' + escapeAttr(getCategoryStyle(category.name)) + '" data-category-section>',
                 '<div class="category-title">',
                 '<span>' + escapeHtml(category.name) + '</span>',
-                '<small>' + category.products.length + ' מוצרים</small>',
+                '<small>' + products.length + ' מוצרים</small>',
                 '</div>',
-                '<div class="product-list">',
-                category.products.map(function (product) {
-                    return renderProduct(product, category.name);
-                }).join(''),
-                '</div>',
+                body,
                 '</section>'
             ].join('');
         }
@@ -6206,6 +6254,7 @@
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
                 isAlcoholProduct(product) ? '<span class="age-badge">18+</span>' : '',
+                product.volumeMl ? '<span class="product-vol">' + escapeHtml(product.volumeMl) + ' מ״ל</span>' : '',
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
@@ -6283,7 +6332,10 @@
         // Price with the amount emphasized and the "/unit" qualifier muted.
         function priceHtml(product) {
             var amount = escapeHtml(product.priceDisplay + ' ש״ח');
-            var unit = escapeHtml('ל' + (product.priceUnit || product.unit));
+            // "price per X" reads in the singular: ליחידה (not ליחידות).
+            var unitName = String(product.priceUnit || product.unit || '').trim();
+            if (unitName === 'יחידות') { unitName = 'יחידה'; }
+            var unit = escapeHtml('ל' + unitName);
             var deal = '';
             if (product.dealQty && product.dealPrice != null && product.dealPrice !== '') {
                 deal = ' <span class="price-deal">' + escapeHtml(product.dealQty + ' ב־' + formatMoney(product.dealPrice) + ' ₪') + '</span>';
