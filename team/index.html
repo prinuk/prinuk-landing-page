@@ -462,6 +462,8 @@
     .print-bar .select-count { color: var(--muted); }
     .oc-select { width: 18px; height: 18px; margin-inline-end: 8px; flex: none; }
     .report-title { padding: 0 16px; margin: 12px 0 10px; font-size: 16px; }
+    .report-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px; }
+    .report-head .report-title { padding: 0; margin: 12px 0 10px; }
     .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
     .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -750,7 +752,10 @@
           <button class="btn" id="rep-scope-apply">הצג</button>
         </span>
       </div>
-      <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
+      <div class="report-head">
+        <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
+        <button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button>
+      </div>
       <div id="weight-summary-body"><div class="loading">טוען…</div></div>
     </div>
 
@@ -1084,6 +1089,7 @@
       state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
       loadWeightSummary();
     });
+    el('weight-print-btn').addEventListener('click', printWeightSummary);
 
     // ---------- Reports ----------
     function loadReports() {
@@ -1096,6 +1102,26 @@
         renderWeightSummary(data);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('weight-summary-body').innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
+    }
+
+    function printWeightSummary() {
+      var w = window.open('', '_blank'); // open synchronously to avoid popup blocking
+      fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'x-dashboard-key': state.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'weight-summary-pdf', scope: scopeToObj(state.reportScope) }),
+      }).then(function (r) {
+        if (r.status === 401) { if (w) w.close(); logout(); throw new Error('unauthorized'); }
+        if (!r.ok) return r.json().then(function (d) { throw new Error(d && d.error || 'שגיאה'); });
+        return r.blob();
+      }).then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        if (w) w.location = url; else window.open(url, '_blank');
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      }).catch(function (err) {
+        if (w) w.close();
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהדפסה');
       });
     }
 

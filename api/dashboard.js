@@ -25,6 +25,7 @@ const {
 } = require('../lib/store');
 const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
+const { createWeightSummaryPdf } = require('../lib/weight-summary-pdf');
 const { sendPickedOrderTelegram } = require('../lib/telegram');
 
 const ALLOWED_STATUSES = [
@@ -278,6 +279,17 @@ module.exports = async function handler(req, res) {
           : await createOrdersFullPdf(orders, settings);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename="orders.pdf"');
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(Buffer.from(pdf));
+      }
+
+      if (action === 'weight-summary-pdf') {
+        const summary = await getWeightSummary(body.scope || {});
+        if (!summary.items.length) return res.status(400).json({ error: 'אין נתונים להדפסה.' });
+        const settings = await getSettings();
+        const pdf = await createWeightSummaryPdf(summary, settings);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="weight-summary.pdf"');
         res.setHeader('Cache-Control', 'no-store');
         return res.send(Buffer.from(pdf));
       }
