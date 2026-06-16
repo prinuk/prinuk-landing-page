@@ -77,6 +77,8 @@ function cleanProduct(raw) {
       dealQty: dealQty,
       dealPrice: dealPrice,
       orderCutoff: !!p.orderCutoff,
+      subcategory: String(p.subcategory || '').trim(),
+      volumeMl: p.volumeMl === '' || p.volumeMl == null ? '' : Number(p.volumeMl),
       state: state,
       weightPerUnitKg: weightPerUnitKg,
       imageUrl: String(p.imageUrl || '').trim(),

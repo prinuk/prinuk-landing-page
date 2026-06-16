@@ -779,6 +779,19 @@
           <select id="pf-dept"></select>
         </div>
         <div class="field">
+          <label for="pf-subcat">תת־קטגוריה — לא חובה</label>
+          <select id="pf-subcat">
+            <option value="">ללא</option>
+            <option value="יינות">יינות</option>
+            <option value="ליקרים">ליקרים</option>
+          </select>
+          <div class="field-hint">לקיבוץ בתוך מחלקת יינות ואלכוהול</div>
+        </div>
+        <div class="field">
+          <label for="pf-volume">נפח (מ״ל) — לא חובה</label>
+          <input id="pf-volume" type="number" inputmode="numeric" min="0" step="1" placeholder="לדוגמה 500" />
+        </div>
+        <div class="field">
           <label for="pf-unit">יחידה (מה הלקוח מזמין)</label>
           <input id="pf-unit" type="text" list="unit-options" placeholder="יחידות / ק&quot;ג / מארז" />
         </div>
@@ -2183,6 +2196,8 @@
       setImagePreview(p ? p.imageUrl : '');
       el('pf-image-btn').textContent = (p && p.imageUrl) ? '📷 שינוי תמונה' : '📷 העלאת תמונה';
       el('pf-state').value = (p && p.orderCutoff) ? 'cutoff' : (p ? p.state : 'active');
+      el('pf-subcat').value = (p && p.subcategory) ? p.subcategory : '';
+      el('pf-volume').value = (p && p.volumeMl !== '' && p.volumeMl != null) ? p.volumeMl : '';
       el('pf-error').textContent = '';
       el('pf-delete-row').style.display = p ? 'flex' : 'none';
       el('modal-overlay').classList.remove('hidden');
@@ -2280,6 +2295,8 @@
         dealPrice: el('pf-deal-price').value.trim() === '' ? '' : parseFloat(el('pf-deal-price').value),
         state: stateSel === 'cutoff' ? 'active' : stateSel,
         orderCutoff: stateSel === 'cutoff',
+        subcategory: el('pf-subcat').value,
+        volumeMl: el('pf-volume').value.trim() === '' ? '' : parseInt(el('pf-volume').value, 10),
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };
