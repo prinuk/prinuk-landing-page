@@ -7604,6 +7604,9 @@
         // --- Credit-card input UX (formatting, brand, Luhn, blocking, autotab) ---
         var CC_BRAND_LABELS = { visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express', diners: 'Diners', discover: 'Discover', isracard: 'Isracard' };
         var CC_BLOCKED = { amex: 1, diners: 1 };
+        // Valid total lengths per brand — Luhn is checked the moment the number
+        // hits one of these (the earliest it can be judged), not only on blur.
+        var CC_LENGTHS = { visa: [16, 19], mastercard: [16], amex: [15], diners: [14], discover: [16, 19], isracard: [16] };
 
         function detectCardBrand(digits) {
             if (/^4/.test(digits)) return 'visa';
@@ -7640,13 +7643,16 @@
             if (brandEl) { brandEl.textContent = brand ? (CC_BRAND_LABELS[brand] || '') : ''; }
 
             // A partial number can always still become valid by adding digits, so
-            // only run Luhn once it's "final": on blur (forceLuhn) or maxed out.
+            // run Luhn only once the number is "final": it reached a complete
+            // length for its brand (the earliest it can be judged) or on blur.
             // A blocked brand, however, is wrong no matter what comes next.
-            var checkLuhn = forceLuhn || digits.length >= 19;
+            var lengths = CC_LENGTHS[brand] || [16, 19];
+            var atCompleteLength = lengths.indexOf(digits.length) !== -1;
+            var checkLuhn = forceLuhn || atCompleteLength;
             var msg = '';
             if (brand && CC_BLOCKED[brand]) {
                 msg = 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.';
-            } else if (checkLuhn && digits.length >= 13 && !luhnValid(digits)) {
+            } else if (checkLuhn && digits.length > 0 && !luhnValid(digits)) {
                 msg = 'מספר הכרטיס אינו תקין — בדקו שוב.';
             }
             var errEl = document.getElementById('ccNumberError');
