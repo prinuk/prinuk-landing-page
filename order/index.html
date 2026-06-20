@@ -7627,7 +7627,7 @@
             return sum % 10 === 0;
         }
 
-        function refreshCardNumberField() {
+        function refreshCardNumberField(forceLuhn) {
             var num = document.getElementById('ccNumber');
             if (!num) return { ok: false };
             var digits = (num.value || '').replace(/\D/g, '').slice(0, 19);
@@ -7639,10 +7639,14 @@
             var brandEl = document.getElementById('ccBrand');
             if (brandEl) { brandEl.textContent = brand ? (CC_BRAND_LABELS[brand] || '') : ''; }
 
+            // A partial number can always still become valid by adding digits, so
+            // only run Luhn once it's "final": on blur (forceLuhn) or maxed out.
+            // A blocked brand, however, is wrong no matter what comes next.
+            var checkLuhn = forceLuhn || digits.length >= 19;
             var msg = '';
             if (brand && CC_BLOCKED[brand]) {
                 msg = 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.';
-            } else if (digits.length >= 13 && !luhnValid(digits)) {
+            } else if (checkLuhn && digits.length >= 13 && !luhnValid(digits)) {
                 msg = 'מספר הכרטיס אינו תקין — בדקו שוב.';
             }
             var errEl = document.getElementById('ccNumberError');
@@ -7661,10 +7665,15 @@
             var citizen = document.getElementById('ccCitizen');
 
             num.addEventListener('input', function () {
-                var state = refreshCardNumberField();
+                var state = refreshCardNumberField(false);
                 if (state.ok && state.brand && !CC_BLOCKED[state.brand] && state.digits.length >= 16) {
                     month.focus();
                 }
+            });
+
+            // Leaving the field with a wrong number → show the invalid message.
+            num.addEventListener('blur', function () {
+                refreshCardNumberField(true);
             });
 
             month.addEventListener('input', function () {
