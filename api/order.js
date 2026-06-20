@@ -7,6 +7,7 @@ const {
   validateAndBuildOrder,
   writeOrder,
 } = require('../lib/store');
+const { paymentsEnabled } = require('../lib/payments');
 const { sendBusinessOrderEmail, sendCustomerOrderEmail } = require('../lib/email');
 const { createOrderPdf, createOrderChangesPdf } = require('../lib/order-pdf');
 const { sendTelegramOrder } = require('../lib/telegram');
@@ -93,6 +94,9 @@ module.exports = async function handler(req, res) {
 
     const order = validateAndBuildOrder(body, catalog.products);
     order.settings = settings;
+    // Record the chosen payment method — credit only when the processor is live
+    // (otherwise fall back to cash / pay-on-delivery).
+    order.paymentMethod = (body.paymentMethod === 'credit' && paymentsEnabled()) ? 'credit' : 'cash';
 
     // Reject time-limited items submitted after the daily cutoff.
     if (israelNowMinutes() >= parseHHMM(settings.orderCutoffEnforceTime, 6 * 60)) {

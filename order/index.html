@@ -4663,6 +4663,20 @@
                         </label>
                     </div>
 
+                    <div id="paymentMethodGroup" class="fulfillment hidden" role="radiogroup" aria-label="אמצעי תשלום">
+                        <p class="fulfillment-prompt">אמצעי תשלום <span class="required-star">*</span></p>
+                        <div class="fulfillment-options">
+                            <label class="choice">
+                                <input type="radio" name="paymentMethod" value="cash" checked>
+                                <span>מזומן (בעת האיסוף / המשלוח)</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="paymentMethod" value="credit">
+                                <span>כרטיס אשראי</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <label class="field" style="margin-top: 12px;">
                         <span>הערות</span>
                         <textarea id="notes" name="notes"></textarea>
@@ -4889,6 +4903,7 @@
             searchInput: document.getElementById('searchInput'),
             deliveryFields: document.getElementById('deliveryFields'),
             customerDetailsPanel: document.getElementById('customerDetailsPanel'),
+            paymentMethodGroup: document.getElementById('paymentMethodGroup'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             ageGateModal: document.getElementById('ageGateModal'),
@@ -5200,6 +5215,7 @@
                     apartment: document.getElementById('apartment').value
                 },
                 notes: document.getElementById('notes').value,
+                paymentMethod: getPaymentMethod(),
                 products: products
             });
         }
@@ -5221,6 +5237,13 @@
 
                 if (fulfillmentInput) {
                     fulfillmentInput.checked = true;
+                }
+            }
+
+            if (draft.paymentMethod) {
+                var pmInput = els.form.querySelector('input[name="paymentMethod"][value="' + cssEscape(draft.paymentMethod) + '"]');
+                if (pmInput) {
+                    pmInput.checked = true;
                 }
             }
 
@@ -5991,6 +6014,7 @@
                         productById[product.id] = product;
                     });
                     renderCatalog();
+                    applyPaymentsConfig();
                 })
                 .catch(function (error) {
                     var msg = error && error.message === 'Failed to fetch'
@@ -7047,6 +7071,7 @@
                     email: document.getElementById('customerEmail').value.trim()
                 },
                 fulfillment: getFulfillment(),
+                paymentMethod: getPaymentMethod(),
                 delivery: {
                     neighborhood: document.getElementById('neighborhood').value.trim(),
                     address: document.getElementById('address').value.trim(),
@@ -7462,6 +7487,24 @@
         function getFulfillment() {
             var checked = document.querySelector('input[name="fulfillment"]:checked');
             return checked ? checked.value : '';
+        }
+
+        function getPaymentMethod() {
+            var checked = document.querySelector('input[name="paymentMethod"]:checked');
+            return checked ? checked.value : 'cash';
+        }
+
+        // Show the credit option only when a real processor is configured; otherwise
+        // keep the group hidden and force cash (the pay-on-delivery default).
+        function applyPaymentsConfig() {
+            var enabled = !!(catalog.payments && catalog.payments.enabled);
+            if (els.paymentMethodGroup) {
+                els.paymentMethodGroup.classList.toggle('hidden', !enabled);
+            }
+            if (!enabled) {
+                var cash = document.querySelector('input[name="paymentMethod"][value="cash"]');
+                if (cash) { cash.checked = true; }
+            }
         }
 
         function setSubmitting(isSubmitting) {
