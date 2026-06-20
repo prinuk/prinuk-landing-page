@@ -3465,6 +3465,34 @@
             flex: 1;
             min-width: 0;
         }
+        .cc-number-wrap {
+            position: relative;
+        }
+        .cc-number-wrap input {
+            width: 100%;
+            padding-inline-start: 64px; /* room for the brand label */
+            letter-spacing: 0.06em;
+        }
+        .cc-brand {
+            position: absolute;
+            inset-inline-start: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: 800;
+            color: #2e5a39;
+            pointer-events: none;
+        }
+        .field-error {
+            display: block;
+            margin-top: 4px;
+            color: #c0392b;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        input.is-invalid-field {
+            border-color: #c0392b !important;
+        }
         .nav-pill-ico-emoji {
             display: inline-flex;
             align-items: center;
@@ -4690,26 +4718,33 @@
                         <p class="delivery-area-note">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
                         <label class="field">
                             <span>מספר כרטיס <span class="required-star">*</span></span>
-                            <input type="text" inputmode="numeric" autocomplete="cc-number" data-og="cardnumber" maxlength="20">
+                            <div class="cc-number-wrap">
+                                <input id="ccNumber" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="0000 0000 0000 0000">
+                                <span id="ccBrand" class="cc-brand" aria-live="polite"></span>
+                            </div>
+                            <small id="ccNumberError" class="field-error" aria-live="polite"></small>
                         </label>
                         <div class="cc-row">
                             <label class="field">
                                 <span>חודש <span class="required-star">*</span></span>
-                                <input type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM">
+                                <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM">
                             </label>
                             <label class="field">
                                 <span>שנה <span class="required-star">*</span></span>
-                                <input type="text" inputmode="numeric" autocomplete="cc-exp-year" data-og="expirationyear" maxlength="4" placeholder="YYYY">
+                                <input id="ccYear" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="2" placeholder="YY">
                             </label>
                             <label class="field">
                                 <span>CVV <span class="required-star">*</span></span>
-                                <input type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4">
+                                <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4">
                             </label>
                         </div>
                         <label class="field">
                             <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
-                            <input type="text" inputmode="numeric" data-og="citizenid" maxlength="9">
+                            <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9">
                         </label>
+                        <!-- Hidden mirrors read by Sumit's tokenizer: digits-only card number + 4-digit year -->
+                        <input type="hidden" id="ogCardNumber" data-og="cardnumber">
+                        <input type="hidden" id="ogYear" data-og="expirationyear">
                     </div>
 
                     <label class="field" style="margin-top: 12px;">
@@ -5102,6 +5137,7 @@
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
         showMarketNoticeIfNeeded();
+        setupCreditCardInputs();
         restoreOrderDraft();
         loadCatalog();
         updateMobileSummaryMetrics();
@@ -7428,6 +7464,13 @@
                 };
             }
 
+            if (getPaymentMethod() === 'credit') {
+                var cardError = validateCreditCard();
+                if (cardError) {
+                    return cardError;
+                }
+            }
+
             return null;
         }
 
@@ -7555,6 +7598,115 @@
             if (els.creditCardFields) {
                 els.creditCardFields.classList.toggle('hidden', !isCredit);
             }
+        }
+
+        // --- Credit-card input UX (formatting, brand, Luhn, blocking, autotab) ---
+        var CC_BRAND_LABELS = { visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express', diners: 'Diners', discover: 'Discover', isracard: 'Isracard' };
+        var CC_BLOCKED = { amex: 1, diners: 1 };
+
+        function detectCardBrand(digits) {
+            if (/^4/.test(digits)) return 'visa';
+            if (/^(5[1-5]|2[2-7])/.test(digits)) return 'mastercard';
+            if (/^3[47]/.test(digits)) return 'amex';
+            if (/^3(0[0-5]|[68])/.test(digits)) return 'diners';
+            if (/^6(011|5)/.test(digits)) return 'discover';
+            return '';
+        }
+
+        function luhnValid(digits) {
+            if (!/^\d{12,19}$/.test(digits)) return false;
+            var sum = 0;
+            var alt = false;
+            for (var i = digits.length - 1; i >= 0; i--) {
+                var n = parseInt(digits.charAt(i), 10);
+                if (alt) { n *= 2; if (n > 9) { n -= 9; } }
+                sum += n;
+                alt = !alt;
+            }
+            return sum % 10 === 0;
+        }
+
+        function refreshCardNumberField() {
+            var num = document.getElementById('ccNumber');
+            if (!num) return { ok: false };
+            var digits = (num.value || '').replace(/\D/g, '').slice(0, 19);
+            var brand = detectCardBrand(digits);
+            var ogNum = document.getElementById('ogCardNumber');
+            if (ogNum) { ogNum.value = digits; }
+            // Re-group into blocks of 4 for readability.
+            num.value = digits.replace(/(.{4})/g, '$1 ').trim();
+            var brandEl = document.getElementById('ccBrand');
+            if (brandEl) { brandEl.textContent = brand ? (CC_BRAND_LABELS[brand] || '') : ''; }
+
+            var msg = '';
+            if (brand && CC_BLOCKED[brand]) {
+                msg = 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.';
+            } else if (digits.length >= 13 && !luhnValid(digits)) {
+                msg = 'מספר הכרטיס אינו תקין — בדקו שוב.';
+            }
+            var errEl = document.getElementById('ccNumberError');
+            if (errEl) { errEl.textContent = msg; }
+            num.classList.toggle('is-invalid-field', !!msg);
+            return { digits: digits, brand: brand, ok: !msg };
+        }
+
+        function setupCreditCardInputs() {
+            var num = document.getElementById('ccNumber');
+            if (!num) return;
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            var ogYear = document.getElementById('ogYear');
+            var cvv = document.getElementById('ccCvv');
+            var citizen = document.getElementById('ccCitizen');
+
+            num.addEventListener('input', function () {
+                var state = refreshCardNumberField();
+                if (state.ok && state.brand && !CC_BLOCKED[state.brand] && state.digits.length >= 16) {
+                    month.focus();
+                }
+            });
+
+            month.addEventListener('input', function () {
+                month.value = month.value.replace(/\D/g, '').slice(0, 2);
+                if (month.value.length >= 2) { year.focus(); }
+            });
+
+            year.addEventListener('input', function () {
+                year.value = year.value.replace(/\D/g, '').slice(0, 2);
+                ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
+                if (year.value.length >= 2) { cvv.focus(); }
+            });
+
+            cvv.addEventListener('input', function () {
+                cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
+                if (cvv.value.length >= 3) { citizen.focus(); }
+            });
+
+            citizen.addEventListener('input', function () {
+                citizen.value = citizen.value.replace(/\D/g, '').slice(0, 9);
+            });
+        }
+
+        // Validate the card on submit (only when credit is the chosen method).
+        function validateCreditCard() {
+            var num = document.getElementById('ccNumber');
+            var digits = (num && num.value || '').replace(/\D/g, '');
+            var brand = detectCardBrand(digits);
+            if (!digits) return { message: 'יש להזין מספר כרטיס אשראי.', field: num };
+            if (brand && CC_BLOCKED[brand]) {
+                return { message: 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.', field: num };
+            }
+            if (!luhnValid(digits)) return { message: 'מספר הכרטיס אינו תקין — בדקו שוב.', field: num };
+            var month = document.getElementById('ccMonth');
+            var mm = parseInt(month && month.value, 10);
+            if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף אינו תקין.', field: month };
+            var year = document.getElementById('ccYear');
+            if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה.', field: year };
+            var cvv = document.getElementById('ccCvv');
+            if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
+            var citizen = document.getElementById('ccCitizen');
+            if (!/^\d{5,9}$/.test(citizen && citizen.value)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen };
+            return null;
         }
 
         function setSubmitting(isSubmitting) {
