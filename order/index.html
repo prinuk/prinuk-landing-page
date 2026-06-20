@@ -3456,6 +3456,15 @@
             font-weight: 800;
             color: var(--category-strong-color, #5a2a3d);
         }
+
+        .cc-row {
+            display: flex;
+            gap: 10px;
+        }
+        .cc-row .field {
+            flex: 1;
+            min-width: 0;
+        }
         .nav-pill-ico-emoji {
             display: inline-flex;
             align-items: center;
@@ -4667,7 +4676,7 @@
                         <p class="fulfillment-prompt">אמצעי תשלום <span class="required-star">*</span></p>
                         <div class="fulfillment-options">
                             <label class="choice">
-                                <input type="radio" name="paymentMethod" value="cash" checked>
+                                <input type="radio" name="paymentMethod" value="cash">
                                 <span>מזומן (בעת האיסוף / המשלוח)</span>
                             </label>
                             <label class="choice">
@@ -4675,6 +4684,32 @@
                                 <span>כרטיס אשראי</span>
                             </label>
                         </div>
+                    </div>
+
+                    <div id="creditCardFields" class="delivery-fields hidden">
+                        <p class="delivery-area-note">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
+                        <label class="field">
+                            <span>מספר כרטיס <span class="required-star">*</span></span>
+                            <input type="text" inputmode="numeric" autocomplete="cc-number" data-og="cardnumber" maxlength="20">
+                        </label>
+                        <div class="cc-row">
+                            <label class="field">
+                                <span>חודש <span class="required-star">*</span></span>
+                                <input type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM">
+                            </label>
+                            <label class="field">
+                                <span>שנה <span class="required-star">*</span></span>
+                                <input type="text" inputmode="numeric" autocomplete="cc-exp-year" data-og="expirationyear" maxlength="4" placeholder="YYYY">
+                            </label>
+                            <label class="field">
+                                <span>CVV <span class="required-star">*</span></span>
+                                <input type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
+                            <input type="text" inputmode="numeric" data-og="citizenid" maxlength="9">
+                        </label>
                     </div>
 
                     <label class="field" style="margin-top: 12px;">
@@ -4904,6 +4939,7 @@
             deliveryFields: document.getElementById('deliveryFields'),
             customerDetailsPanel: document.getElementById('customerDetailsPanel'),
             paymentMethodGroup: document.getElementById('paymentMethodGroup'),
+            creditCardFields: document.getElementById('creditCardFields'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             ageGateModal: document.getElementById('ageGateModal'),
@@ -5082,6 +5118,16 @@
             });
         });
 
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var paymentGroup = document.getElementById('paymentMethodGroup');
+                if (paymentGroup) {
+                    paymentGroup.classList.remove('is-invalid-field');
+                }
+                togglePaymentFields();
+            });
+        });
+
         els.productsRoot.addEventListener('input', function (event) {
             if (event.target.matches('.quantity-input')) {
                 var row = event.target.closest('.product-row');
@@ -5207,7 +5253,6 @@
                     phone: document.getElementById('phone').value,
                     email: document.getElementById('customerEmail').value
                 },
-                fulfillment: getFulfillment(),
                 delivery: {
                     neighborhood: document.getElementById('neighborhood').value,
                     address: document.getElementById('address').value,
@@ -5215,7 +5260,6 @@
                     apartment: document.getElementById('apartment').value
                 },
                 notes: document.getElementById('notes').value,
-                paymentMethod: getPaymentMethod(),
                 products: products
             });
         }
@@ -5232,20 +5276,8 @@
             setInputValue('phone', draft.customer && draft.customer.phone);
             setInputValue('customerEmail', draft.customer && draft.customer.email);
 
-            if (draft.fulfillment) {
-                var fulfillmentInput = els.form.querySelector('input[name="fulfillment"][value="' + cssEscape(draft.fulfillment) + '"]');
-
-                if (fulfillmentInput) {
-                    fulfillmentInput.checked = true;
-                }
-            }
-
-            if (draft.paymentMethod) {
-                var pmInput = els.form.querySelector('input[name="paymentMethod"][value="' + cssEscape(draft.paymentMethod) + '"]');
-                if (pmInput) {
-                    pmInput.checked = true;
-                }
-            }
+            // Payment + delivery method are deliberate choices — never restored
+            // from the draft; the customer picks them fresh each time.
 
             setInputValue('neighborhood', draft.delivery && draft.delivery.neighborhood);
             setInputValue('address', draft.delivery && draft.delivery.address);
@@ -7385,6 +7417,17 @@
                 }
             }
 
+            if (catalog.payments && catalog.payments.enabled && !getPaymentMethod()) {
+                var paymentGroup = document.getElementById('paymentMethodGroup');
+                if (paymentGroup) {
+                    paymentGroup.classList.add('is-invalid-field');
+                }
+                return {
+                    message: 'יש לבחור אמצעי תשלום: מזומן או כרטיס אשראי.',
+                    field: paymentGroup
+                };
+            }
+
             return null;
         }
 
@@ -7490,20 +7533,27 @@
         }
 
         function getPaymentMethod() {
+            // When the credit option isn't offered, cash is implicit (pay on delivery).
+            if (!(catalog.payments && catalog.payments.enabled)) { return 'cash'; }
             var checked = document.querySelector('input[name="paymentMethod"]:checked');
-            return checked ? checked.value : 'cash';
+            return checked ? checked.value : '';
         }
 
         // Show the credit option only when a real processor is configured; otherwise
-        // keep the group hidden and force cash (the pay-on-delivery default).
+        // keep the group hidden (cash is implicit, pay on delivery).
         function applyPaymentsConfig() {
             var enabled = !!(catalog.payments && catalog.payments.enabled);
             if (els.paymentMethodGroup) {
                 els.paymentMethodGroup.classList.toggle('hidden', !enabled);
             }
-            if (!enabled) {
-                var cash = document.querySelector('input[name="paymentMethod"][value="cash"]');
-                if (cash) { cash.checked = true; }
+            togglePaymentFields();
+        }
+
+        // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
+        function togglePaymentFields() {
+            var isCredit = getPaymentMethod() === 'credit';
+            if (els.creditCardFields) {
+                els.creditCardFields.classList.toggle('hidden', !isCredit);
             }
         }
 
