@@ -547,6 +547,20 @@
     }
     .modal h2 { font-family: var(--display); margin: 0 0 14px; font-size: 21px; color: var(--accent-dark); }
     .modal .field { margin-bottom: 12px; }
+    .charge-modal { max-width: 560px; }
+    .crow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #eceee9); }
+    .crow .cr-name { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; }
+    .crow .cr-qty { width: 48px; text-align: center; }
+    .crow .cr-disc { width: 60px; text-align: center; }
+    .crow .cr-disc-type { width: 44px; }
+    .crow .cr-amt { width: 64px; text-align: left; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .crow .cr-remove { border: none; background: none; color: var(--danger, #c0392b); font-size: 18px; cursor: pointer; }
+    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+    .cr-addrow select { flex: 1; min-width: 0; }
+    .cr-order-disc { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .cr-order-disc label { font-weight: 700; flex: 1; }
+    .cr-total { margin-top: 12px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
+    .cr-head { display: flex; gap: 8px; font-size: 11px; color: var(--muted); padding-bottom: 4px; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -879,6 +893,18 @@
       <div class="finish-actions">
         <button type="button" class="btn btn-primary" id="confirm-yes">כן</button>
         <button type="button" class="btn btn-ghost" id="confirm-no">לא</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charge review: adjust items + discounts before charging the card -->
+  <div id="charge-overlay" class="modal-overlay hidden">
+    <div class="modal charge-modal">
+      <h2>סקירה וחיוב</h2>
+      <div id="charge-body"></div>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="charge-confirm">אישור וחיוב</button>
+        <button type="button" class="btn-link" id="charge-cancel">ביטול</button>
       </div>
     </div>
   </div>
@@ -1796,17 +1822,135 @@
         });
     }
 
+    // ----- Charge review (adjust items + discounts before charging) -----
     function doCharge() {
       var o = state.current;
       if (!o) return;
-      if (!window.confirm('לחייב את כרטיס האשראי של ' + (o.fullName || '') + ' בסכום הסופי?')) return;
-      var btn = el('charge-btn');
-      if (btn) { btn.disabled = true; btn.textContent = 'מחייב…'; }
-      api('POST', '', { action: 'charge', orderId: o.orderId }).then(function (r) {
-        showToast(r.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב' + (r.amount != null ? ' ' + formatMoney(r.amount) : '')));
-        openOrder(o.orderId); // refresh the detail (status + invoice link)
+      state.review = {
+        items: (o.items || []).map(function (it) {
+          return {
+            id: it.id, productId: null, name: it.name,
+            isWeight: it.isWeightPriced,
+            unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
+            quantity: Number(it.quantity || 0),
+            baseAmount: it.isWeightPriced ? Number((it.actualLineTotal != null ? it.actualLineTotal : it.lineTotal) || 0) : null,
+            discountValue: Number(it.discount || 0), discountType: 'ils',
+          };
+        }),
+        orderDiscountValue: Number(o.orderDiscount || 0), orderDiscountType: 'ils',
+        delivery: Number(o.deliveryFee || 0),
+      };
+      renderChargeReview();
+      el('charge-overlay').classList.remove('hidden');
+    }
+
+    function crLineBillable(it) {
+      return it.isWeight ? (it.baseAmount || 0) : applyUnitDeal(it.quantity, it.unitPrice, it.dealQty, it.dealPrice);
+    }
+    function crResolveDiscount(billable, value, type) {
+      value = Number(value) || 0;
+      var d = type === 'pct' ? billable * Math.min(100, Math.max(0, value)) / 100 : value;
+      return Math.min(billable, Math.max(0, d));
+    }
+    function crNet(it) {
+      var b = crLineBillable(it);
+      return Math.max(0, b - crResolveDiscount(b, it.discountValue, it.discountType));
+    }
+
+    function renderChargeReview() {
+      var r = state.review;
+      var addable = (state.products || []).filter(function (p) {
+        return p.state !== 'hidden' && p.price && !/ק/.test(String(p.priceUnit || p.unit || ''));
+      });
+      var rows = r.items.map(function (it, i) {
+        return '<div class="crow" data-i="' + i + '">' +
+          '<span class="cr-name">' + esc(it.name) + '</span>' +
+          (it.isWeight
+            ? '<span class="cr-qty" title="לפי משקל">⚖️</span>'
+            : '<input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty">') +
+          '<input class="cr-disc" type="number" min="0" inputmode="decimal" value="' + (it.discountValue || '') + '" data-act="disc" placeholder="הנחה">' +
+          '<select class="cr-disc-type" data-act="disctype"><option value="ils"' + (it.discountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (it.discountType === 'pct' ? ' selected' : '') + '>%</option></select>' +
+          '<span class="cr-amt" data-amt></span>' +
+          '<button class="cr-remove" data-act="remove" title="הסר">✕</button>' +
+        '</div>';
+      }).join('');
+      var addOpts = '<option value="">+ הוסף מוצר…</option>' + addable.map(function (p) {
+        return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
+      }).join('');
+      el('charge-body').innerHTML =
+        '<div class="cr-head"><span class="cr-name">מוצר</span><span class="cr-qty">כמות</span><span class="cr-disc">הנחה</span><span class="cr-disc-type"></span><span class="cr-amt">סכום</span><span style="width:18px"></span></div>' +
+        rows +
+        '<div class="cr-addrow"><select id="cr-add-select">' + addOpts + '</select>' +
+          '<input id="cr-add-qty" class="cr-qty" type="number" min="1" value="1"><button class="btn btn-ghost" id="cr-add-btn">הוסף</button></div>' +
+        '<div class="cr-order-disc"><label>הנחה לכל ההזמנה</label>' +
+          '<input class="cr-disc" id="cr-order-disc" type="number" min="0" value="' + (r.orderDiscountValue || '') + '">' +
+          '<select class="cr-disc-type" id="cr-order-disc-type"><option value="ils"' + (r.orderDiscountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (r.orderDiscountType === 'pct' ? ' selected' : '') + '>%</option></select>' +
+        '</div>' +
+        '<div class="cr-total" id="cr-total"></div>';
+
+      Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
+        var i = Number(row.getAttribute('data-i'));
+        var q = row.querySelector('[data-act="qty"]');
+        if (q) q.addEventListener('input', function () { r.items[i].quantity = Math.max(0, Math.round(Number(this.value) || 0)); crRecompute(); });
+        var d = row.querySelector('[data-act="disc"]');
+        if (d) d.addEventListener('input', function () { r.items[i].discountValue = Number(this.value) || 0; crRecompute(); });
+        var dt = row.querySelector('[data-act="disctype"]');
+        if (dt) dt.addEventListener('change', function () { r.items[i].discountType = this.value; crRecompute(); });
+        var rm = row.querySelector('[data-act="remove"]');
+        if (rm) rm.addEventListener('click', function () { r.items.splice(i, 1); renderChargeReview(); });
+      });
+      el('cr-add-btn').addEventListener('click', function () {
+        var pid = el('cr-add-select').value;
+        if (!pid) return;
+        var p = (state.products || []).find(function (x) { return x.id === pid; });
+        if (!p) return;
+        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: false, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), baseAmount: null, discountValue: 0, discountType: 'ils' });
+        renderChargeReview();
+      });
+      el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
+      el('cr-order-disc-type').addEventListener('change', function () { r.orderDiscountType = this.value; crRecompute(); });
+      crRecompute();
+    }
+
+    function crRecompute() {
+      var r = state.review;
+      var total = 0;
+      Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
+        var it = r.items[Number(row.getAttribute('data-i'))];
+        if (!it) return;
+        var net = crNet(it);
+        total += net;
+        var amt = row.querySelector('[data-amt]');
+        if (amt) amt.textContent = formatMoney(net);
+      });
+      var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
+      el('cr-total').textContent = 'סכום לחיוב: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
+      el('charge-confirm').textContent = 'אישור וחיוב ' + formatMoney(grand);
+    }
+
+    function submitChargeReview() {
+      var r = state.review;
+      var o = state.current;
+      if (!o || !r) return;
+      if (!r.items.length) { showToast('אין פריטים לחיוב'); return; }
+      var items = r.items.map(function (it) {
+        var discAgorot = Math.round(crResolveDiscount(crLineBillable(it), it.discountValue, it.discountType) * 100);
+        return it.id
+          ? { id: it.id, quantity: it.quantity, discountAgorot: discAgorot }
+          : { productId: it.productId, quantity: it.quantity, discountAgorot: discAgorot };
+      });
+      var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
+      var orderDiscAgorot = Math.round(crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType) * 100);
+      var btn = el('charge-confirm');
+      btn.disabled = true;
+      btn.textContent = 'מחייב…';
+      api('POST', '', { action: 'charge', orderId: o.orderId, review: { items: items, orderDiscountAgorot: orderDiscAgorot } }).then(function (resp) {
+        el('charge-overlay').classList.add('hidden');
+        showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
+        openOrder(o.orderId);
       }).catch(function (err) {
-        if (btn) { btn.disabled = false; btn.textContent = '💳 חיוב הכרטיס בסכום הסופי'; }
+        btn.disabled = false;
+        crRecompute();
         if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
       });
     }
@@ -2247,6 +2391,9 @@
       btn.addEventListener('click', function () { bulkSetProductStatus(this.getAttribute('data-bulk')); });
     });
     el('pbb-clear').addEventListener('click', function () { state.selectedProducts = {}; renderProducts(); });
+    el('charge-cancel').addEventListener('click', function () { el('charge-overlay').classList.add('hidden'); });
+    el('charge-confirm').addEventListener('click', submitChargeReview);
+    el('charge-overlay').addEventListener('click', function (e) { if (e.target === this) el('charge-overlay').classList.add('hidden'); });
     el('pf-cancel').addEventListener('click', closeProductForm);
     el('modal-overlay').addEventListener('click', function (e) { if (e.target === this) closeProductForm(); });
     el('prod-search').addEventListener('input', renderProducts);
