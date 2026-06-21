@@ -1451,6 +1451,10 @@
           state.currentItems = (data.order.items || []).map(function (it) {
             return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
           });
+          // Restore any unsaved in-progress collection (only while still picking).
+          if (data.order.status === STATUS.NEW || data.order.status === STATUS.PICKING) {
+            applyCollectDraft(orderId);
+          }
           // Claim a waiting order so others see it's being handled.
           if (data.order.status === STATUS.NEW) {
             api('POST', '', { action: 'claim', orderId: orderId, member: state.member })
@@ -1651,6 +1655,7 @@
             setItemPicked(idx, false); // clearing the weight un-collects a kg item
           }
           recomputeWeigh();
+          saveCollectDraft();
         });
         // On blur, reflect the sanitized whole number back into a unit field.
         inp.addEventListener('change', function () {
@@ -2024,6 +2029,37 @@
       });
     }
 
+    // Persist in-progress collection locally so leaving the page doesn't lose it.
+    function saveCollectDraft() {
+      var o = state.current;
+      if (!o || !o.orderId) return;
+      try {
+        var map = {};
+        state.currentItems.forEach(function (it) {
+          if (!it.id) return;
+          map[it.id] = { picked: !!it.picked, actualWeightKg: it.actualWeightKg, actualQuantity: it.actualQuantity };
+        });
+        localStorage.setItem('prinukCollect:' + o.orderId, JSON.stringify(map));
+      } catch (e) { /* ignore */ }
+    }
+    function applyCollectDraft(orderId) {
+      try {
+        var raw = localStorage.getItem('prinukCollect:' + orderId);
+        if (!raw) return;
+        var map = JSON.parse(raw) || {};
+        state.currentItems.forEach(function (it) {
+          var d = it.id && map[it.id];
+          if (!d) return;
+          it.picked = !!d.picked;
+          if (d.actualWeightKg !== undefined) it.actualWeightKg = d.actualWeightKg;
+          if (d.actualQuantity !== undefined) it.actualQuantity = d.actualQuantity;
+        });
+      } catch (e) { /* ignore */ }
+    }
+    function clearCollectDraft(orderId) {
+      try { localStorage.removeItem('prinukCollect:' + orderId); } catch (e) { /* ignore */ }
+    }
+
     function setItemPicked(idx, picked) {
       var it = state.currentItems[idx];
       if (!it) return;
@@ -2053,6 +2089,7 @@
       }
       updateSummaryLine();
       recomputeWeigh();
+      saveCollectDraft();
     }
 
     function updateSummaryLine() {
@@ -2128,6 +2165,8 @@
 
       api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })
         .then(function (r) {
+          // Saved to the server now — drop the local in-progress draft.
+          clearCollectDraft(o.orderId);
           // Update local list state so the badge reflects immediately.
           var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
           if (match) { match.status = r.status; match.collectedBy = r.collectedBy; match.pickedAt = r.pickedAt; }
