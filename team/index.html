@@ -811,6 +811,13 @@
           <input id="pf-volume" type="number" inputmode="numeric" min="0" step="1" placeholder="לדוגמה 500" />
         </div>
         <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input id="pf-vat-exempt" type="checkbox" style="width:18px;height:18px;accent-color:var(--fresh);" />
+            <span>פטור ממע״מ (פירות וירקות)</span>
+          </label>
+          <div class="field-hint">בטלו עבור יין/אלכוהול ומוצרים החייבים במע״מ</div>
+        </div>
+        <div class="field">
           <label for="pf-unit">יחידה (מה הלקוח מזמין)</label>
           <input id="pf-unit" type="text" list="unit-options" placeholder="יחידות / ק&quot;ג / מארז" />
         </div>
@@ -2412,6 +2419,7 @@
       el('pf-state').value = (p && p.orderCutoff) ? 'cutoff' : (p ? p.state : 'active');
       el('pf-subcat').value = (p && p.subcategory) ? p.subcategory : '';
       el('pf-volume').value = (p && p.volumeMl !== '' && p.volumeMl != null) ? p.volumeMl : '';
+      el('pf-vat-exempt').checked = p ? (p.vatExempt !== false) : true;
       el('pf-error').textContent = '';
       el('pf-delete-row').style.display = p ? 'flex' : 'none';
       el('modal-overlay').classList.remove('hidden');
@@ -2514,6 +2522,7 @@
         orderCutoff: stateSel === 'cutoff',
         subcategory: el('pf-subcat').value,
         volumeMl: el('pf-volume').value.trim() === '' ? '' : parseInt(el('pf-volume').value, 10),
+        vatExempt: el('pf-vat-exempt').checked,
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };

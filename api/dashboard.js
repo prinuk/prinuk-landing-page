@@ -81,6 +81,7 @@ function cleanProduct(raw) {
       orderCutoff: !!p.orderCutoff,
       subcategory: String(p.subcategory || '').trim(),
       volumeMl: p.volumeMl === '' || p.volumeMl == null ? '' : Number(p.volumeMl),
+      vatExempt: p.vatExempt !== false,
       state: state,
       weightPerUnitKg: weightPerUnitKg,
       imageUrl: String(p.imageUrl || '').trim(),
