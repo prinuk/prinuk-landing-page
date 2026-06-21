@@ -7619,7 +7619,10 @@
                 return Promise.resolve('mock_tok_' + Date.now());
             }
             if (provider === 'sumit') {
-                return sumitTokenize();
+                return Promise.race([
+                    sumitTokenize(),
+                    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 30000); }),
+                ]);
             }
             return Promise.reject(new Error('תשלום באשראי אינו זמין כרגע.'));
         }

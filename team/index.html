@@ -1989,13 +1989,17 @@
         if (!p.companyId || !p.apiPublicKey) return Promise.reject(new Error('סליקת אשראי אינה מוגדרת'));
         var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
         el('cr-cc-ogyear').value = yy.length === 2 ? '20' + yy : yy;
-        return tkLoadSumit().then(function () {
+        var run = tkLoadSumit().then(function () {
           return new Promise(function (resolve, reject) {
             /* global OfficeGuy */
             if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments) { reject(new Error('מערכת הסליקה אינה זמינה')); return; }
             OfficeGuy.Payments.BindFormSubmit({ CompanyID: p.companyId, APIPublicKey: p.apiPublicKey, ResponseLanguage: 'he', OnSuccess: function (t) { resolve(t); }, OnError: function (e) { reject(new Error((e && e.UserErrorMessage) || 'פרטי האשראי לא אומתו')); } }); // VERIFY
           });
         });
+        return Promise.race([
+          run,
+          new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 30000); }),
+        ]);
       }
       return Promise.reject(new Error('סליקת אשראי אינה זמינה'));
     }
