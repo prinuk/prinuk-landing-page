@@ -10,6 +10,7 @@ const {
   setOrderStatus,
   chargeOrder,
   reviewAndCharge,
+  createManualOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -301,6 +302,15 @@ module.exports = async function handler(req, res) {
         res.setHeader('Content-Disposition', 'inline; filename="weight-summary.pdf"');
         res.setHeader('Cache-Control', 'no-store');
         return res.send(Buffer.from(pdf));
+      }
+
+      // Team-created invoice (POS): new order from a product list, optional charge.
+      if (action === 'create-order') {
+        const result = await createManualOrder(Object.assign({}, body.order || {}, { member: String(body.member || '').trim() }));
+        if (!result.ok) {
+          return res.status(400).json({ error: result.reason === 'no-items' ? 'יש להוסיף מוצרים.' : (result.error || 'יצירת ההזמנה נכשלה.') });
+        }
+        return res.json(result);
       }
 
       // --- Order actions ---
