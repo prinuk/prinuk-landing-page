@@ -7,7 +7,7 @@ const {
   validateAndBuildOrder,
   writeOrder,
 } = require('../lib/store');
-const { paymentsEnabled } = require('../lib/payments');
+const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
 const { sendBusinessOrderEmail, sendCustomerOrderEmail } = require('../lib/email');
 const { createOrderPdf, createOrderChangesPdf } = require('../lib/order-pdf');
 const { sendTelegramOrder } = require('../lib/telegram');
@@ -97,6 +97,28 @@ module.exports = async function handler(req, res) {
     // Record the chosen payment method — credit only when the processor is live
     // (otherwise fall back to cash / pay-on-delivery).
     order.paymentMethod = (body.paymentMethod === 'credit' && paymentsEnabled()) ? 'credit' : 'cash';
+
+    // Credit: tokenize was done in the browser; save the card on the processor
+    // (card-on-file) so it can be charged for the final weighed amount at picking.
+    if (order.paymentMethod === 'credit') {
+      const token = String(body.paymentToken || '').trim();
+      if (!token) {
+        return res.status(400).json({ error: 'חסרים פרטי אשראי. נא להזין את פרטי הכרטיס ולנסות שוב.' });
+      }
+      const saved = await getPaymentAdapter().saveCard({
+        singleUseToken: token,
+        customer: { fullName: order.fullName, phone: order.phone, email: order.email },
+      });
+      if (!saved.ok) {
+        return res.status(402).json({ error: 'לא הצלחנו לאמת את כרטיס האשראי. בדקו את הפרטים ונסו שוב.' });
+      }
+      order.payment = {
+        method: 'credit',
+        providerCustomerRef: saved.customerRef || '',
+        cardLast4: saved.cardLast4 || '',
+        brand: saved.brand || '',
+      };
+    }
 
     // Reject time-limited items submitted after the daily cutoff.
     if (israelNowMinutes() >= parseHHMM(settings.orderCutoffEnforceTime, 6 * 60)) {

@@ -7232,11 +7232,18 @@
             setSubmitting(true);
             openStatusModal();
 
-            fetch('/api/order', {
+            // Credit orders: tokenize the card first, then POST with the token.
+            var prep = payload.paymentMethod === 'credit'
+                ? tokenizeCard().then(function (token) { payload.paymentToken = token; })
+                : Promise.resolve();
+
+            prep.then(function () {
+                return fetch('/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                })
+                });
+            })
                 .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
                     if (!result.ok) { throw new Error(result.data.error || 'שגיאה בשליחת ההזמנה.'); }
@@ -7596,6 +7603,55 @@
                 els.paymentMethodGroup.classList.toggle('hidden', !enabled);
             }
             togglePaymentFields();
+        }
+
+        // Tokenize the entered card into an opaque single-use token (card data
+        // never reaches our server). Mock provider returns a fake token so the
+        // whole flow is testable; Sumit uses its hosted-field tokenizer.
+        function tokenizeCard() {
+            var provider = (catalog.payments && catalog.payments.provider) || '';
+            if (provider === 'mock') {
+                return Promise.resolve('mock_tok_' + Date.now());
+            }
+            if (provider === 'sumit') {
+                return sumitTokenize();
+            }
+            return Promise.reject(new Error('תשלום באשראי אינו זמין כרגע.'));
+        }
+
+        var sumitScriptPromise = null;
+        function loadSumitPayments() {
+            if (sumitScriptPromise) return sumitScriptPromise;
+            sumitScriptPromise = new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://app.sumit.co.il/scripts/payments.js';
+                s.onload = resolve;
+                s.onerror = function () { reject(new Error('טעינת מערכת הסליקה נכשלה.')); };
+                document.head.appendChild(s);
+            });
+            return sumitScriptPromise;
+        }
+
+        // NOTE: finalize against the Sumit API reference once credentials exist —
+        // the exact OfficeGuy.Payments tokenize call is confirmed with a sandbox.
+        function sumitTokenize() {
+            return loadSumitPayments().then(function () {
+                return new Promise(function (resolve, reject) {
+                    /* global OfficeGuy */
+                    if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments) {
+                        reject(new Error('מערכת הסליקה אינה זמינה כרגע.'));
+                        return;
+                    }
+                    var cfg = catalog.payments || {};
+                    OfficeGuy.Payments.BindFormSubmit({
+                        CompanyID: cfg.companyId,
+                        APIPublicKey: cfg.apiPublicKey,
+                        ResponseLanguage: 'he',
+                        OnSuccess: function (token) { resolve(token); }, // VERIFY callback + token shape
+                        OnError: function (err) { reject(new Error((err && err.UserErrorMessage) || 'פרטי האשראי לא אומתו.')); }
+                    });
+                });
+            });
         }
 
         // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
