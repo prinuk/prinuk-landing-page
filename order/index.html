@@ -7257,6 +7257,8 @@
                         clearEditUrlParams();
                     }
                     saveCustomerDetailsFromPayload(payload);
+                    if (payload) { delete payload.paymentToken; } // don't retain the token in memory
+                    clearCreditCardFields(); // never keep card details after sending
                     showStatusSuccess(result.data, collected);
                     showMessage('', '');
                     resetProducts();
@@ -7659,6 +7661,21 @@
                     });
                 });
             });
+        }
+
+        // Wipe all card inputs (number/expiry/cvv/id + hidden mirrors). Card data is
+        // never persisted; this also clears it from the DOM after the order is sent.
+        function clearCreditCardFields() {
+            ['ccNumber', 'ccMonth', 'ccYear', 'ccCvv', 'ccCitizen', 'ogCardNumber', 'ogYear'].forEach(function (id) {
+                var node = document.getElementById(id);
+                if (node) { node.value = ''; }
+            });
+            ['ccBrand', 'ccNumberError', 'ccExpError', 'ccCitizenError'].forEach(function (id) {
+                var node = document.getElementById(id);
+                if (node) { node.textContent = ''; }
+            });
+            var num = document.getElementById('ccNumber');
+            if (num) { num.classList.remove('is-invalid-field'); }
         }
 
         // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
