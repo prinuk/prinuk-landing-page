@@ -1967,14 +1967,18 @@
       return '';
     }
     var tkSumitScript = null;
-    function tkLoadSumit() {
-      if (tkSumitScript) return tkSumitScript;
-      tkSumitScript = new Promise(function (res, rej) {
+    function tkOneScript(src) {
+      return new Promise(function (res, rej) {
         var s = document.createElement('script');
-        s.src = 'https://app.sumit.co.il/scripts/payments.js';
-        s.onload = res; s.onerror = function () { rej(new Error('טעינת מערכת הסליקה נכשלה')); };
+        s.src = src; s.onload = res; s.onerror = function () { rej(new Error('טעינת מערכת הסליקה נכשלה')); };
         document.head.appendChild(s);
       });
+    }
+    function tkLoadSumit() {
+      if (tkSumitScript) return tkSumitScript;
+      // payments.js depends on jQuery — load it first if missing.
+      tkSumitScript = (window.jQuery ? Promise.resolve() : tkOneScript('https://code.jquery.com/jquery-3.7.1.min.js'))
+        .then(function () { return tkOneScript('https://app.sumit.co.il/scripts/payments.js'); });
       return tkSumitScript;
     }
     // Returns a single-use token. Mock → fake; Sumit → hosted-field tokenizer (// VERIFY).

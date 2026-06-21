@@ -7625,15 +7625,20 @@
         }
 
         var sumitScriptPromise = null;
-        function loadSumitPayments() {
-            if (sumitScriptPromise) return sumitScriptPromise;
-            sumitScriptPromise = new Promise(function (resolve, reject) {
+        function loadOneScript(src) {
+            return new Promise(function (resolve, reject) {
                 var s = document.createElement('script');
-                s.src = 'https://app.sumit.co.il/scripts/payments.js';
+                s.src = src;
                 s.onload = resolve;
                 s.onerror = function () { reject(new Error('טעינת מערכת הסליקה נכשלה.')); };
                 document.head.appendChild(s);
             });
+        }
+        function loadSumitPayments() {
+            if (sumitScriptPromise) return sumitScriptPromise;
+            // Sumit's payments.js depends on jQuery — load it first if absent.
+            sumitScriptPromise = (window.jQuery ? Promise.resolve() : loadOneScript('https://code.jquery.com/jquery-3.7.1.min.js'))
+                .then(function () { return loadOneScript('https://app.sumit.co.il/scripts/payments.js'); });
             return sumitScriptPromise;
         }
 
