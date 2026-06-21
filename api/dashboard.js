@@ -8,6 +8,7 @@ const {
   claimOrderForPicking,
   updateOrderCollection,
   setOrderStatus,
+  chargeOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -341,6 +342,21 @@ module.exports = async function handler(req, res) {
             console.error('Picked-order Telegram failed:', err);
             result.telegram = { sent: false, reason: err.message || 'failed' };
           }
+        }
+        return res.json(result);
+      }
+
+      if (action === 'charge') {
+        const result = await chargeOrder(orderId);
+        if (!result.ok) {
+          const msgs = {
+            notfound: 'ההזמנה לא נמצאה.',
+            'not-credit': 'זו אינה הזמנת אשראי.',
+            'no-card': 'לא נשמר כרטיס אשראי להזמנה זו.',
+            'no-amount': 'אין סכום לחיוב.',
+            'charge-failed': result.error || 'החיוב נכשל.',
+          };
+          return res.status(400).json({ error: msgs[result.reason] || 'החיוב נכשל.' });
         }
         return res.json(result);
       }

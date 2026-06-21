@@ -1527,6 +1527,22 @@
           '</div>';
       }).join('');
 
+      var paymentBlock = '';
+      if (o.payment && o.payment.method === 'credit') {
+        var st = o.payment.status;
+        var statusText = st === 'captured' ? '✅ חויב'
+          : st === 'failed' ? '⚠️ החיוב נכשל'
+          : st === 'authorized' ? '💳 כרטיס שמור — ממתין לחיוב'
+          : 'אשראי';
+        paymentBlock =
+          '<div class="panel">' +
+            '<h2>תשלום — אשראי</h2>' +
+            '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
+            (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
+            (st !== 'captured' ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">💳 חיוב הכרטיס בסכום הסופי</button>' : '') +
+          '</div>';
+      }
+
       el('detail-view').innerHTML = '' +
         '<div class="back-row">' +
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
@@ -1559,6 +1575,8 @@
           itemsHtml +
           '<div class="weigh-total" id="weigh-total"></div>' +
         '</div>' +
+
+        paymentBlock +
 
         '<div class="submit-bar"><div class="inner">' +
           '<button class="btn btn-success" id="collect-btn">✓ עדכן הזמנה כנאספה</button>' +
@@ -1595,6 +1613,7 @@
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
+      if (el('charge-btn')) { el('charge-btn').addEventListener('click', doCharge); }
       el('status-select').addEventListener('change', onManualStatusChange);
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
@@ -1775,6 +1794,21 @@
           sel.value = prev;
           if (err.message !== 'unauthorized') showToast('שגיאה בעדכון הסטטוס.');
         });
+    }
+
+    function doCharge() {
+      var o = state.current;
+      if (!o) return;
+      if (!window.confirm('לחייב את כרטיס האשראי של ' + (o.fullName || '') + ' בסכום הסופי?')) return;
+      var btn = el('charge-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'מחייב…'; }
+      api('POST', '', { action: 'charge', orderId: o.orderId }).then(function (r) {
+        showToast(r.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב' + (r.amount != null ? ' ' + formatMoney(r.amount) : '')));
+        openOrder(o.orderId); // refresh the detail (status + invoice link)
+      }).catch(function (err) {
+        if (btn) { btn.disabled = false; btn.textContent = '💳 חיוב הכרטיס בסכום הסופי'; }
+        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
+      });
     }
 
     function setItemPicked(idx, picked) {
