@@ -266,6 +266,8 @@
     .order-card.st-done { border-right-color: var(--fresh); }
     .order-card.st-partial { border-right-color: var(--fruit); }
     .order-card.st-sent { border-right-color: var(--muted); }
+    .oc-paid { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eceff1; color: var(--muted); }
+    .oc-paid.paid { background: var(--fresh-soft); color: var(--fresh); }
 
     .oc-top { display: flex; align-items: center; gap: 8px; }
     .oc-name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1297,6 +1299,9 @@
                 (isDeliver ? '🚚 משלוח' : '🛍️ איסוף עצמי') + '</span>' +
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
               (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
+              (o.paymentStatus === 'captured'
+                ? '<span class="oc-paid paid">💳 שולם</span>'
+                : '<span class="oc-paid">לא שולם</span>') +
             '</div>' +
             addrLine +
             pickedBy +
