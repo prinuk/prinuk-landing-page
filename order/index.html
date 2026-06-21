@@ -4743,6 +4743,7 @@
                         <label class="field">
                             <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
                             <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
+                            <small id="ccCitizenError" class="field-error" aria-live="polite"></small>
                         </label>
                         <!-- Hidden mirrors read by Sumit's tokenizer: digits-only card number + 4-digit year -->
                         <input type="hidden" id="ogCardNumber" data-og="cardnumber">
@@ -7631,6 +7632,21 @@
             return sum % 10 === 0;
         }
 
+        // Israeli ID (ת״ז) checksum: pad to 9 digits, alternate ×1/×2 (sum digits
+        // of products > 9), valid when the total is divisible by 10.
+        function isValidIsraeliId(value) {
+            var id = String(value || '').replace(/\D/g, '');
+            if (id.length === 0 || id.length > 9) return false;
+            while (id.length < 9) { id = '0' + id; }
+            var sum = 0;
+            for (var i = 0; i < 9; i++) {
+                var n = parseInt(id.charAt(i), 10) * ((i % 2) + 1);
+                if (n > 9) { n -= 9; }
+                sum += n;
+            }
+            return sum % 10 === 0;
+        }
+
         function refreshCardNumberField(forceLuhn) {
             var num = document.getElementById('ccNumber');
             if (!num) return { ok: false };
@@ -7666,9 +7682,13 @@
         function expiryError() {
             var month = document.getElementById('ccMonth');
             var year = document.getElementById('ccYear');
-            if (!month || !year || !month.value || !year.value) return '';
+            if (!month || !year) return '';
+            // Month range, the moment it's fully entered (even before the year).
+            if (month.value.length === 2 && !(parseInt(month.value, 10) >= 1 && parseInt(month.value, 10) <= 12)) {
+                return 'חודש התוקף חייב להיות בין 01 ל-12.';
+            }
+            if (!month.value || !year.value) return '';
             var mm = parseInt(month.value, 10);
-            if (!(mm >= 1 && mm <= 12)) return 'חודש התוקף אינו תקין.';
             if (!/^\d{2}$/.test(year.value)) return 'שנת התוקף אינה תקינה.';
             var fullYear = 2000 + parseInt(year.value, 10);
             var now = new Date();
@@ -7710,9 +7730,12 @@
             });
 
             month.addEventListener('input', function () {
-                month.value = month.value.replace(/\D/g, '').slice(0, 2);
+                var v = month.value.replace(/\D/g, '').slice(0, 2);
+                if (v.length === 1 && Number(v) >= 2) { v = '0' + v; } // 5 → 05
+                month.value = v;
                 refreshExpiry();
-                if (month.value.length >= 2) { year.focus(); }
+                var mm = parseInt(v, 10);
+                if (v.length === 2 && mm >= 1 && mm <= 12) { year.focus(); }
             });
             month.addEventListener('blur', refreshExpiry);
 
@@ -7731,6 +7754,14 @@
 
             citizen.addEventListener('input', function () {
                 citizen.value = citizen.value.replace(/\D/g, '').slice(0, 9);
+                document.getElementById('ccCitizenError').textContent = '';
+                citizen.classList.remove('is-invalid-field');
+            });
+            citizen.addEventListener('blur', function () {
+                var v = citizen.value.replace(/\D/g, '');
+                var msg = v && !isValidIsraeliId(v) ? 'תעודת הזהות אינה תקינה.' : '';
+                document.getElementById('ccCitizenError').textContent = msg;
+                citizen.classList.toggle('is-invalid-field', !!msg);
             });
         }
 
@@ -7754,7 +7785,7 @@
             var cvv = document.getElementById('ccCvv');
             if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
             var citizen = document.getElementById('ccCitizen');
-            if (!/^\d{5,9}$/.test(citizen && citizen.value)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen };
+            if (!isValidIsraeliId(citizen && citizen.value)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen };
             return null;
         }
 
