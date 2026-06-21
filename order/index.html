@@ -7635,6 +7635,10 @@
         // NOTE: finalize against the Sumit API reference once credentials exist —
         // the exact OfficeGuy.Payments tokenize call is confirmed with a sandbox.
         function sumitTokenize() {
+            var cfg0 = catalog.payments || {};
+            if (!cfg0.companyId || !cfg0.apiPublicKey) {
+                return Promise.reject(new Error('סליקת אשראי עדיין אינה מוגדרת. נא לבחור תשלום במזומן.'));
+            }
             return loadSumitPayments().then(function () {
                 return new Promise(function (resolve, reject) {
                     /* global OfficeGuy */
