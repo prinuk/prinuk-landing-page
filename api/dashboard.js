@@ -9,6 +9,7 @@ const {
   updateOrderCollection,
   setOrderStatus,
   chargeOrder,
+  reviewAndCharge,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -347,16 +348,21 @@ module.exports = async function handler(req, res) {
       }
 
       if (action === 'charge') {
-        const result = await chargeOrder(orderId);
+        // With a review payload (adjusted items + discounts) → apply then charge;
+        // otherwise charge the order as-is.
+        const result = body.review
+          ? await reviewAndCharge(orderId, body.review)
+          : await chargeOrder(orderId);
         if (!result.ok) {
           const msgs = {
             notfound: 'ההזמנה לא נמצאה.',
             'not-credit': 'זו אינה הזמנת אשראי.',
             'no-card': 'לא נשמר כרטיס אשראי להזמנה זו.',
             'no-amount': 'אין סכום לחיוב.',
+            'no-items': 'אין פריטים לחיוב.',
             'charge-failed': result.error || 'החיוב נכשל.',
           };
-          return res.status(400).json({ error: msgs[result.reason] || 'החיוב נכשל.' });
+          return res.status(400).json({ error: msgs[result.reason] || result.error || 'החיוב נכשל.' });
         }
         return res.json(result);
       }
