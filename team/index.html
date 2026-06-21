@@ -548,19 +548,24 @@
     .modal h2 { font-family: var(--display); margin: 0 0 14px; font-size: 21px; color: var(--accent-dark); }
     .modal .field { margin-bottom: 12px; }
     .charge-modal { max-width: 560px; }
-    .crow { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #eceee9); }
-    .crow .cr-name { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; }
-    .crow .cr-qty { width: 48px; text-align: center; }
-    .crow .cr-disc { width: 60px; text-align: center; }
-    .crow .cr-disc-type { width: 44px; }
-    .crow .cr-amt { width: 64px; text-align: left; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .crow .cr-remove { border: none; background: none; color: var(--danger, #c0392b); font-size: 18px; cursor: pointer; }
-    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+    .crow { padding: 10px 0; border-bottom: 1px solid var(--line, #eceee9); }
+    .cr-top { display: flex; align-items: center; gap: 8px; }
+    .cr-top .cr-name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; }
+    .cr-top .cr-amt { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .cr-remove { border: none; background: none; color: var(--danger, #c0392b); font-size: 18px; cursor: pointer; padding: 0 4px; }
+    .cr-ctrls { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+    .cr-ctrls label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+    .cr-ctrls input { width: 60px; text-align: center; }
+    .cr-disc-type { width: 52px; }
+    .cr-tag { font-size: 13px; color: var(--muted); }
+    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 16px 0; }
     .cr-addrow select { flex: 1; min-width: 0; }
+    .cr-addrow input { width: 56px; text-align: center; }
+    .cr-addrow .btn { flex: 0 0 auto; width: auto; }
     .cr-order-disc { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
     .cr-order-disc label { font-weight: 700; flex: 1; }
-    .cr-total { margin-top: 12px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
-    .cr-head { display: flex; gap: 8px; font-size: 11px; color: var(--muted); padding-bottom: 4px; }
+    .cr-order-disc input { width: 60px; text-align: center; }
+    .cr-total { margin-top: 14px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -1862,23 +1867,29 @@
       var addable = (state.products || []).filter(function (p) {
         return p.state !== 'hidden' && p.price && !/ק/.test(String(p.priceUnit || p.unit || ''));
       });
+      var discCtrl = function (it) {
+        return '<label>הנחה <input class="cr-disc" type="number" min="0" inputmode="decimal" value="' + (it.discountValue || '') + '" data-act="disc">' +
+          '<select class="cr-disc-type" data-act="disctype"><option value="ils"' + (it.discountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (it.discountType === 'pct' ? ' selected' : '') + '>%</option></select></label>';
+      };
       var rows = r.items.map(function (it, i) {
         return '<div class="crow" data-i="' + i + '">' +
-          '<span class="cr-name">' + esc(it.name) + '</span>' +
-          (it.isWeight
-            ? '<span class="cr-qty" title="לפי משקל">⚖️</span>'
-            : '<input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty">') +
-          '<input class="cr-disc" type="number" min="0" inputmode="decimal" value="' + (it.discountValue || '') + '" data-act="disc" placeholder="הנחה">' +
-          '<select class="cr-disc-type" data-act="disctype"><option value="ils"' + (it.discountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (it.discountType === 'pct' ? ' selected' : '') + '>%</option></select>' +
-          '<span class="cr-amt" data-amt></span>' +
-          '<button class="cr-remove" data-act="remove" title="הסר">✕</button>' +
+          '<div class="cr-top">' +
+            '<span class="cr-name">' + esc(it.name) + '</span>' +
+            '<span class="cr-amt" data-amt></span>' +
+            '<button class="cr-remove" data-act="remove" title="הסר">✕</button>' +
+          '</div>' +
+          '<div class="cr-ctrls">' +
+            (it.isWeight
+              ? '<span class="cr-tag">⚖️ לפי משקל</span>'
+              : '<label>כמות <input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty"></label>') +
+            discCtrl(it) +
+          '</div>' +
         '</div>';
       }).join('');
       var addOpts = '<option value="">+ הוסף מוצר…</option>' + addable.map(function (p) {
         return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
       }).join('');
       el('charge-body').innerHTML =
-        '<div class="cr-head"><span class="cr-name">מוצר</span><span class="cr-qty">כמות</span><span class="cr-disc">הנחה</span><span class="cr-disc-type"></span><span class="cr-amt">סכום</span><span style="width:18px"></span></div>' +
         rows +
         '<div class="cr-addrow"><select id="cr-add-select">' + addOpts + '</select>' +
           '<input id="cr-add-qty" class="cr-qty" type="number" min="1" value="1"><button class="btn btn-ghost" id="cr-add-btn">הוסף</button></div>' +
