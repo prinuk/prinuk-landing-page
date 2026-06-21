@@ -7648,25 +7648,36 @@
         // NOTE: finalize against the Sumit API reference once credentials exist —
         // the exact OfficeGuy.Payments tokenize call is confirmed with a sandbox.
         function sumitTokenize() {
-            var cfg0 = catalog.payments || {};
-            if (!cfg0.companyId || !cfg0.apiPublicKey) {
+            var cfg = catalog.payments || {};
+            if (!cfg.companyId || !cfg.apiPublicKey) {
                 return Promise.reject(new Error('סליקת אשראי עדיין אינה מוגדרת. נא לבחור תשלום במזומן.'));
             }
+            var num = (document.getElementById('ogCardNumber').value || '').replace(/\D/g, '');
+            var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
+            var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
+            var year = yy.length === 2 ? '20' + yy : yy;
+            var cvv = (document.getElementById('ccCvv').value || '').replace(/\D/g, '');
+            var citizenId = (document.getElementById('ccCitizen').value || '').replace(/\D/g, '');
             return loadSumitPayments().then(function () {
                 return new Promise(function (resolve, reject) {
                     /* global OfficeGuy */
-                    if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments) {
+                    if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments || !OfficeGuy.Payments.Tokenize) {
                         reject(new Error('מערכת הסליקה אינה זמינה כרגע.'));
                         return;
                     }
-                    var cfg = catalog.payments || {};
-                    OfficeGuy.Payments.BindFormSubmit({
-                        CompanyID: cfg.companyId,
-                        APIPublicKey: cfg.apiPublicKey,
-                        ResponseLanguage: 'he',
-                        OnSuccess: function (token) { resolve(token); }, // VERIFY callback + token shape
-                        OnError: function (err) { reject(new Error((err && err.UserErrorMessage) || 'פרטי האשראי לא אומתו.')); }
-                    });
+                    // OfficeGuy.Payments.Tokenize(config, number, month, year, cvv, citizenId, callback)
+                    // → callback({ Status, Data: { SingleUseToken }, UserErrorMessage })
+                    OfficeGuy.Payments.Tokenize(
+                        { CompanyID: cfg.companyId, APIPublicKey: cfg.apiPublicKey, ResponseLanguage: 'he' },
+                        num, month, year, cvv, citizenId,
+                        function (resp) {
+                            if (resp && resp.Status === 0 && resp.Data && resp.Data.SingleUseToken) {
+                                resolve(resp.Data.SingleUseToken);
+                            } else {
+                                reject(new Error((resp && resp.UserErrorMessage) || 'פרטי האשראי לא אומתו.'));
+                            }
+                        }
+                    );
                 });
             });
         }
