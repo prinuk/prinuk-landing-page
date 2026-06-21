@@ -1432,7 +1432,7 @@
     window.markDone = markDone;
 
     // ---------- Detail ----------
-    function openOrder(orderId) {
+    function openOrder(orderId, onReady) {
       state.editing = false;
       el('list-view').classList.add('hidden');
       el('detail-view').classList.remove('hidden');
@@ -1463,6 +1463,7 @@
               }).catch(function () {});
           }
           renderDetail();
+          if (typeof onReady === 'function') onReady();
         }
 
         // Warn if someone else is already handling this order.
@@ -2140,7 +2141,20 @@
             else if (r.telegram.reason === 'no-bot-token') showToast('⚠️ חסר טוקן בוט טלגרם');
             else showToast('⚠️ שליחת טלגרם נכשלה: ' + (r.telegram.reason || 'לא ידוע'));
           }
-          closeDetail();
+          // Finalized credit order → keep it open and offer to charge now.
+          var finalized = r.status !== STATUS.PICKING;
+          var isCredit = o.payment && o.payment.method === 'credit';
+          if (finalized && isCredit) {
+            askYesNo('ההזמנה סומנה כנאספה. לעבור לתשלום עכשיו?').then(function (yes) {
+              if (yes) {
+                openOrder(o.orderId, doCharge); // reload (fresh weighed amounts) then open the charge review
+              } else {
+                closeDetail();
+              }
+            });
+          } else {
+            closeDetail();
+          }
         })
         .catch(function (err) {
           btn.disabled = false;
