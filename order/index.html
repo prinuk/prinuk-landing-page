@@ -3457,6 +3457,12 @@
             color: var(--category-strong-color, #5a2a3d);
         }
 
+        .card-fields {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
         .cc-row {
             display: flex;
             gap: 10px;
@@ -4715,7 +4721,7 @@
                         </div>
                     </div>
 
-                    <div id="creditCardFields" class="delivery-fields hidden">
+                    <div id="creditCardFields" class="card-fields hidden">
                         <p class="delivery-area-note">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
                         <label class="field">
                             <span>מספר כרטיס <span class="required-star">*</span></span>
@@ -7679,7 +7685,7 @@
         }
 
         // Expiry error text, or '' — empty while still incomplete; flags a past date.
-        function expiryError() {
+        function expiryError(force) {
             var month = document.getElementById('ccMonth');
             var year = document.getElementById('ccYear');
             if (!month || !year) return '';
@@ -7689,7 +7695,8 @@
             }
             if (!month.value || !year.value) return '';
             var mm = parseInt(month.value, 10);
-            if (!/^\d{2}$/.test(year.value)) return 'שנת התוקף אינה תקינה.';
+            // The year isn't complete until 2 digits — don't nag mid-typing.
+            if (!/^\d{2}$/.test(year.value)) return force ? 'שנת התוקף אינה תקינה.' : '';
             var fullYear = 2000 + parseInt(year.value, 10);
             var now = new Date();
             if (fullYear < now.getFullYear() || (fullYear === now.getFullYear() && mm < now.getMonth() + 1)) {
@@ -7698,8 +7705,8 @@
             return '';
         }
 
-        function refreshExpiry() {
-            var msg = expiryError();
+        function refreshExpiry(force) {
+            var msg = expiryError(force);
             var errEl = document.getElementById('ccExpError');
             if (errEl) { errEl.textContent = msg; }
             var month = document.getElementById('ccMonth');
@@ -7737,7 +7744,7 @@
                 var mm = parseInt(v, 10);
                 if (v.length === 2 && mm >= 1 && mm <= 12) { year.focus(); }
             });
-            month.addEventListener('blur', refreshExpiry);
+            month.addEventListener('blur', function () { refreshExpiry(true); });
 
             year.addEventListener('input', function () {
                 year.value = year.value.replace(/\D/g, '').slice(0, 2);
@@ -7745,7 +7752,7 @@
                 refreshExpiry();
                 if (year.value.length >= 2) { cvv.focus(); }
             });
-            year.addEventListener('blur', refreshExpiry);
+            year.addEventListener('blur', function () { refreshExpiry(true); });
 
             cvv.addEventListener('input', function () {
                 cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
@@ -7780,7 +7787,7 @@
             if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף אינו תקין.', field: month };
             var year = document.getElementById('ccYear');
             if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה.', field: year };
-            var expMsg = expiryError();
+            var expMsg = expiryError(true);
             if (expMsg) return { message: expMsg, field: month };
             var cvv = document.getElementById('ccCvv');
             if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
