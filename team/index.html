@@ -1852,6 +1852,11 @@
           }),
           orderDiscountValue: Number(o.orderDiscount || 0), orderDiscountType: 'ils',
           delivery: Number(o.deliveryFee || 0),
+          // Free-delivery is re-evaluated from both the estimate and the final
+          // amount (auto), until the team overrides the משלוח field.
+          deliveryAuto: true,
+          isDelivery: o.fulfillment === 'משלוח',
+          estimateItems: Math.max(0, (Number(o.grandTotal) || 0) - (Number(o.deliveryFee) || 0)),
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -1870,6 +1875,10 @@
         });
       }
     }
+
+    // Mirror of lib/sheets.js: ₪200 free-delivery threshold, ₪25 fee.
+    var CR_FREE_DELIVERY = 200;
+    var CR_DELIVERY_FEE = 25;
 
     function crLineBillable(it) {
       // kg item bills weight × price/kg (weight editable, prefilled from weighing)
@@ -1949,7 +1958,7 @@
       });
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
       el('cr-order-disc-type').addEventListener('change', function () { r.orderDiscountType = this.value; crRecompute(); });
-      el('cr-delivery').addEventListener('input', function () { r.delivery = Math.max(0, Number(this.value) || 0); crRecompute(); });
+      el('cr-delivery').addEventListener('input', function () { r.deliveryAuto = false; r.delivery = Math.max(0, Number(this.value) || 0); crRecompute(); });
       crRecompute();
     }
 
@@ -1964,6 +1973,13 @@
         var amt = row.querySelector('[data-amt]');
         if (amt) amt.textContent = formatMoney(net);
       });
+      // Auto delivery: charge ₪25 only when BOTH the estimate and the final amount
+      // are under ₪200 (delivery orders); free otherwise. Off once the team edits it.
+      if (r.deliveryAuto) {
+        r.delivery = (r.isDelivery && r.estimateItems < CR_FREE_DELIVERY && total < CR_FREE_DELIVERY) ? CR_DELIVERY_FEE : 0;
+        var dEl = el('cr-delivery');
+        if (dEl && document.activeElement !== dEl) { dEl.value = r.delivery || ''; }
+      }
       var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
       el('cr-total').textContent = 'סכום לחיוב: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
       el('charge-confirm').textContent = 'אישור וחיוב ' + formatMoney(grand);
