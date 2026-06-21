@@ -4739,6 +4739,7 @@
                                 <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4" dir="ltr">
                             </label>
                         </div>
+                        <small id="ccExpError" class="field-error" aria-live="polite"></small>
                         <label class="field">
                             <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
                             <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
@@ -7661,6 +7662,32 @@
             return { digits: digits, brand: brand, ok: !msg };
         }
 
+        // Expiry error text, or '' — empty while still incomplete; flags a past date.
+        function expiryError() {
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            if (!month || !year || !month.value || !year.value) return '';
+            var mm = parseInt(month.value, 10);
+            if (!(mm >= 1 && mm <= 12)) return 'חודש התוקף אינו תקין.';
+            if (!/^\d{2}$/.test(year.value)) return 'שנת התוקף אינה תקינה.';
+            var fullYear = 2000 + parseInt(year.value, 10);
+            var now = new Date();
+            if (fullYear < now.getFullYear() || (fullYear === now.getFullYear() && mm < now.getMonth() + 1)) {
+                return 'תוקף הכרטיס פג. בדקו את תאריך התוקף.';
+            }
+            return '';
+        }
+
+        function refreshExpiry() {
+            var msg = expiryError();
+            var errEl = document.getElementById('ccExpError');
+            if (errEl) { errEl.textContent = msg; }
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            if (month) { month.classList.toggle('is-invalid-field', !!msg); }
+            if (year) { year.classList.toggle('is-invalid-field', !!msg); }
+        }
+
         function setupCreditCardInputs() {
             var num = document.getElementById('ccNumber');
             if (!num) return;
@@ -7684,14 +7711,18 @@
 
             month.addEventListener('input', function () {
                 month.value = month.value.replace(/\D/g, '').slice(0, 2);
+                refreshExpiry();
                 if (month.value.length >= 2) { year.focus(); }
             });
+            month.addEventListener('blur', refreshExpiry);
 
             year.addEventListener('input', function () {
                 year.value = year.value.replace(/\D/g, '').slice(0, 2);
                 ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
+                refreshExpiry();
                 if (year.value.length >= 2) { cvv.focus(); }
             });
+            year.addEventListener('blur', refreshExpiry);
 
             cvv.addEventListener('input', function () {
                 cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
@@ -7718,6 +7749,8 @@
             if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף אינו תקין.', field: month };
             var year = document.getElementById('ccYear');
             if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה.', field: year };
+            var expMsg = expiryError();
+            if (expMsg) return { message: expMsg, field: month };
             var cvv = document.getElementById('ccCvv');
             if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
             var citizen = document.getElementById('ccCitizen');
