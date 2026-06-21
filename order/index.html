@@ -3460,17 +3460,16 @@
         .card-fields {
             margin-top: 10px;
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
+            align-items: flex-start;
             gap: 12px;
         }
-        .cc-row {
-            display: flex;
-            gap: 10px;
-        }
-        .cc-row .field {
-            flex: 1;
-            min-width: 0;
-        }
+        .card-fields .field { margin: 0; }
+        .cc-fullrow { flex: 0 0 100%; margin: 0; }
+        .cc-f-number { flex: 3 1 220px; }
+        .cc-f-sm { flex: 1 1 64px; }
+        .cc-f-id { flex: 2 1 120px; }
+        .field-error:empty { display: none; }
         .cc-number-wrap {
             position: relative;
         }
@@ -4722,35 +4721,33 @@
                     </div>
 
                     <div id="creditCardFields" class="card-fields hidden">
-                        <p class="delivery-area-note">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
-                        <label class="field">
+                        <p class="delivery-area-note cc-fullrow">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
+                        <label class="field cc-f-number">
                             <span>מספר כרטיס <span class="required-star">*</span></span>
                             <div class="cc-number-wrap">
                                 <input id="ccNumber" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" dir="ltr">
                                 <span id="ccBrand" class="cc-brand" aria-live="polite"></span>
                             </div>
-                            <small id="ccNumberError" class="field-error" aria-live="polite"></small>
                         </label>
-                        <div class="cc-row">
-                            <label class="field">
-                                <span>חודש <span class="required-star">*</span></span>
-                                <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM" dir="ltr">
-                            </label>
-                            <label class="field">
-                                <span>שנה <span class="required-star">*</span></span>
-                                <input id="ccYear" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="2" placeholder="YY" dir="ltr">
-                            </label>
-                            <label class="field">
-                                <span>CVV <span class="required-star">*</span></span>
-                                <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4" dir="ltr">
-                            </label>
-                        </div>
-                        <small id="ccExpError" class="field-error" aria-live="polite"></small>
-                        <label class="field">
+                        <label class="field cc-f-sm">
+                            <span>חודש <span class="required-star">*</span></span>
+                            <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM" dir="ltr">
+                        </label>
+                        <label class="field cc-f-sm">
+                            <span>שנה <span class="required-star">*</span></span>
+                            <input id="ccYear" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="2" placeholder="YY" dir="ltr">
+                        </label>
+                        <label class="field cc-f-sm">
+                            <span>CVV <span class="required-star">*</span></span>
+                            <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4" dir="ltr">
+                        </label>
+                        <label class="field cc-f-id">
                             <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
                             <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
-                            <small id="ccCitizenError" class="field-error" aria-live="polite"></small>
                         </label>
+                        <small id="ccNumberError" class="field-error cc-fullrow" aria-live="polite"></small>
+                        <small id="ccExpError" class="field-error cc-fullrow" aria-live="polite"></small>
+                        <small id="ccCitizenError" class="field-error cc-fullrow" aria-live="polite"></small>
                         <!-- Hidden mirrors read by Sumit's tokenizer: digits-only card number + 4-digit year -->
                         <input type="hidden" id="ogCardNumber" data-og="cardnumber">
                         <input type="hidden" id="ogYear" data-og="expirationyear">
