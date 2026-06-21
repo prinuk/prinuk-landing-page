@@ -943,6 +943,7 @@
       products: [],
       departments: [],
       selectedProducts: {},
+      settings: null,
     };
 
     var el = function (id) { return document.getElementById(id); };
@@ -1861,19 +1862,17 @@
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
       };
-      // The add-item picker needs the catalog; load it if the products tab wasn't opened.
-      if (state.products && state.products.length) {
+      // The picker needs the catalog; the delivery rule needs settings. Load any missing.
+      var needProducts = !(state.products && state.products.length);
+      var needSettings = !state.settings;
+      if (!needProducts && !needSettings) { open(); return; }
+      var calls = [];
+      if (needProducts) calls.push(api('GET', '?action=products').then(function (data) { state.products = data.products || []; state.departments = data.departments || []; }));
+      if (needSettings) calls.push(api('GET', '?action=settings').then(function (data) { state.settings = data.settings || {}; }));
+      Promise.all(calls).then(open).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast('שגיאה בטעינת נתונים');
         open();
-      } else {
-        api('GET', '?action=products').then(function (data) {
-          state.products = data.products || [];
-          state.departments = data.departments || [];
-          open();
-        }).catch(function (err) {
-          if (err.message !== 'unauthorized') showToast('שגיאה בטעינת רשימת המוצרים');
-          open(); // still allow review/charge without the add picker
-        });
-      }
+      });
     }
 
     // Mirror of lib/sheets.js: ₪200 free-delivery threshold, ₪25 fee.
@@ -1976,7 +1975,10 @@
       // Auto delivery: charge ₪25 only when BOTH the estimate and the final amount
       // are under ₪200 (delivery orders); free otherwise. Off once the team edits it.
       if (r.deliveryAuto) {
-        r.delivery = (r.isDelivery && r.estimateItems < CR_FREE_DELIVERY && total < CR_FREE_DELIVERY) ? CR_DELIVERY_FEE : 0;
+        var threshold = Number(state.settings && state.settings.freeDeliveryThreshold) || CR_FREE_DELIVERY;
+        var fee = Number(state.settings && state.settings.deliveryFee);
+        if (!(fee >= 0)) { fee = CR_DELIVERY_FEE; }
+        r.delivery = (r.isDelivery && r.estimateItems < threshold && total < threshold) ? fee : 0;
         var dEl = el('cr-delivery');
         if (dEl && document.activeElement !== dEl) { dEl.value = r.delivery || ''; }
       }
@@ -2252,6 +2254,8 @@
       { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
       { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
       { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
+      { key: 'freeDeliveryThreshold', label: 'סכום למשלוח חינם (₪)', hint: 'מעל סכום זה המשלוח חינם', type: 'input' },
+      { key: 'deliveryFee', label: 'דמי משלוח (₪)', type: 'input' },
       { key: 'telegramPickedChatId', label: 'טלגרם — ערוץ הזמנות שנאספו', hint: 'מזהה הצ׳אט (Chat ID) של הערוץ שאליו תישלח סיכום ההזמנה כשהליקוט מסתיים', type: 'input' },
       { key: 'orderCutoffDisplayTime', label: 'שעת חיתוך — תצוגה ללקוח', hint: 'מוצג כ"ניתן להזמין עד …" על מוצרים מוגבלי-זמן (פורמט HH:MM)', type: 'input' },
       { key: 'orderCutoffEnforceTime', label: 'שעת חיתוך — חסימה בפועל', hint: 'אחרי שעה זו אי אפשר להזמין את אותם מוצרים (פורמט HH:MM)', type: 'input' },
@@ -2261,7 +2265,8 @@
     function loadSettings() {
       el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
       api('GET', '?action=settings').then(function (data) {
-        renderSettings(data.settings || {});
+        state.settings = data.settings || {};
+        renderSettings(state.settings);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
       });
@@ -2291,6 +2296,7 @@
       btn.disabled = true;
       btn.textContent = 'שומר…';
       api('POST', '', { action: 'settings-update', settings: payload }).then(function () {
+        state.settings = Object.assign(state.settings || {}, payload);
         showToast('ההגדרות נשמרו');
       }).catch(function (err) {
         if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשמירה');

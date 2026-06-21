@@ -6087,6 +6087,9 @@
                     (catalog.products || []).forEach(function (product) {
                         productById[product.id] = product;
                     });
+                    var cs = catalog.settings || {};
+                    if (Number(cs.freeDeliveryThreshold) > 0) { FREE_DELIVERY_THRESHOLD = Number(cs.freeDeliveryThreshold); }
+                    if (Number(cs.deliveryFee) >= 0 && cs.deliveryFee !== '' && cs.deliveryFee != null) { DELIVERY_FEE = Number(cs.deliveryFee); }
                     renderCatalog();
                     applyPaymentsConfig();
                 })

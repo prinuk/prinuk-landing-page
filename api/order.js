@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const order = validateAndBuildOrder(body, catalog.products);
+    const order = validateAndBuildOrder(body, catalog.products, settings);
     order.settings = settings;
     // Record the chosen payment method — credit only when the processor is live
     // (otherwise fall back to cash / pay-on-delivery).
