@@ -1831,22 +1831,37 @@
     function doCharge() {
       var o = state.current;
       if (!o) return;
-      state.review = {
-        items: (o.items || []).map(function (it) {
-          return {
-            id: it.id, productId: null, name: it.name,
-            isWeight: it.isWeightPriced,
-            unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
-            quantity: Number(it.quantity || 0),
-            baseAmount: it.isWeightPriced ? Number((it.actualLineTotal != null ? it.actualLineTotal : it.lineTotal) || 0) : null,
-            discountValue: Number(it.discount || 0), discountType: 'ils',
-          };
-        }),
-        orderDiscountValue: Number(o.orderDiscount || 0), orderDiscountType: 'ils',
-        delivery: Number(o.deliveryFee || 0),
+      var open = function () {
+        state.review = {
+          items: (o.items || []).map(function (it) {
+            return {
+              id: it.id, productId: null, name: it.name,
+              isWeight: it.isWeightPriced,
+              unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
+              quantity: Number(it.quantity || 0),
+              baseAmount: it.isWeightPriced ? Number((it.actualLineTotal != null ? it.actualLineTotal : it.lineTotal) || 0) : null,
+              discountValue: Number(it.discount || 0), discountType: 'ils',
+            };
+          }),
+          orderDiscountValue: Number(o.orderDiscount || 0), orderDiscountType: 'ils',
+          delivery: Number(o.deliveryFee || 0),
+        };
+        renderChargeReview();
+        el('charge-overlay').classList.remove('hidden');
       };
-      renderChargeReview();
-      el('charge-overlay').classList.remove('hidden');
+      // The add-item picker needs the catalog; load it if the products tab wasn't opened.
+      if (state.products && state.products.length) {
+        open();
+      } else {
+        api('GET', '?action=products').then(function (data) {
+          state.products = data.products || [];
+          state.departments = data.departments || [];
+          open();
+        }).catch(function (err) {
+          if (err.message !== 'unauthorized') showToast('שגיאה בטעינת רשימת המוצרים');
+          open(); // still allow review/charge without the add picker
+        });
+      }
     }
 
     function crLineBillable(it) {
