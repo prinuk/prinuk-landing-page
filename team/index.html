@@ -1865,7 +1865,11 @@
     }
 
     function crLineBillable(it) {
-      return it.isWeight ? (it.baseAmount || 0) : applyUnitDeal(it.quantity, it.unitPrice, it.dealQty, it.dealPrice);
+      if (it.isWeight) {
+        // existing kg item: amount from weighing; newly-added: entered weight × price/kg
+        return it.id ? (it.baseAmount || 0) : (Number(it.weightKg) || 0) * (it.unitPrice || 0);
+      }
+      return applyUnitDeal(it.quantity, it.unitPrice, it.dealQty, it.dealPrice);
     }
     function crResolveDiscount(billable, value, type) {
       value = Number(value) || 0;
@@ -1880,7 +1884,7 @@
     function renderChargeReview() {
       var r = state.review;
       var addable = (state.products || []).filter(function (p) {
-        return p.state !== 'hidden' && p.price && !/ק/.test(String(p.priceUnit || p.unit || ''));
+        return p.state !== 'hidden' && p.price;
       });
       var discCtrl = function (it) {
         return '<label>הנחה <input class="cr-disc" type="number" min="0" inputmode="decimal" value="' + (it.discountValue || '') + '" data-act="disc">' +
@@ -1895,7 +1899,9 @@
           '</div>' +
           '<div class="cr-ctrls">' +
             (it.isWeight
-              ? '<span class="cr-tag">⚖️ לפי משקל</span>'
+              ? (it.id
+                ? '<span class="cr-tag">⚖️ לפי משקל</span>'
+                : '<label>משקל (ק״ג) <input class="cr-qty" type="number" min="0" step="0.01" inputmode="decimal" value="' + (it.weightKg || '') + '" data-act="weight"></label>')
               : '<label>כמות <input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty"></label>') +
             discCtrl(it) +
           '</div>' +
@@ -1918,6 +1924,8 @@
         var i = Number(row.getAttribute('data-i'));
         var q = row.querySelector('[data-act="qty"]');
         if (q) q.addEventListener('input', function () { r.items[i].quantity = Math.max(0, Math.round(Number(this.value) || 0)); crRecompute(); });
+        var wt = row.querySelector('[data-act="weight"]');
+        if (wt) wt.addEventListener('input', function () { r.items[i].weightKg = Math.max(0, Number(this.value) || 0); crRecompute(); });
         var d = row.querySelector('[data-act="disc"]');
         if (d) d.addEventListener('input', function () { r.items[i].discountValue = Number(this.value) || 0; crRecompute(); });
         var dt = row.querySelector('[data-act="disctype"]');
@@ -1930,7 +1938,8 @@
         if (!pid) return;
         var p = (state.products || []).find(function (x) { return x.id === pid; });
         if (!p) return;
-        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: false, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), baseAmount: null, discountValue: 0, discountType: 'ils' });
+        var isKg = /ק/.test(String(p.priceUnit || p.unit || ''));
+        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: isKg, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: isKg ? 1 : Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), weightKg: '', baseAmount: null, discountValue: 0, discountType: 'ils' });
         renderChargeReview();
       });
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
@@ -1963,7 +1972,7 @@
         var discAgorot = Math.round(crResolveDiscount(crLineBillable(it), it.discountValue, it.discountType) * 100);
         return it.id
           ? { id: it.id, quantity: it.quantity, discountAgorot: discAgorot }
-          : { productId: it.productId, quantity: it.quantity, discountAgorot: discAgorot };
+          : { productId: it.productId, quantity: it.quantity, weightKg: it.weightKg, discountAgorot: discAgorot };
       });
       var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
       var orderDiscAgorot = Math.round(crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType) * 100);
