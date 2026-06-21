@@ -1839,7 +1839,7 @@
               isWeight: it.isWeightPriced,
               unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
               quantity: Number(it.quantity || 0),
-              baseAmount: it.isWeightPriced ? Number((it.actualLineTotal != null ? it.actualLineTotal : it.lineTotal) || 0) : null,
+              weightKg: (it.isWeightPriced && it.actualWeightKg != null) ? it.actualWeightKg : '',
               discountValue: Number(it.discount || 0), discountType: 'ils',
             };
           }),
@@ -1865,10 +1865,8 @@
     }
 
     function crLineBillable(it) {
-      if (it.isWeight) {
-        // existing kg item: amount from weighing; newly-added: entered weight × price/kg
-        return it.id ? (it.baseAmount || 0) : (Number(it.weightKg) || 0) * (it.unitPrice || 0);
-      }
+      // kg item bills weight × price/kg (weight editable, prefilled from weighing)
+      if (it.isWeight) return (Number(it.weightKg) || 0) * (it.unitPrice || 0);
       return applyUnitDeal(it.quantity, it.unitPrice, it.dealQty, it.dealPrice);
     }
     function crResolveDiscount(billable, value, type) {
@@ -1899,9 +1897,7 @@
           '</div>' +
           '<div class="cr-ctrls">' +
             (it.isWeight
-              ? (it.id
-                ? '<span class="cr-tag">⚖️ לפי משקל</span>'
-                : '<label>משקל (ק״ג) <input class="cr-qty" type="number" min="0" step="0.01" inputmode="decimal" value="' + (it.weightKg || '') + '" data-act="weight"></label>')
+              ? '<label>משקל (ק״ג) <input class="cr-qty" type="number" min="0" step="0.01" inputmode="decimal" value="' + (it.weightKg || '') + '" data-act="weight"></label>'
               : '<label>כמות <input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty"></label>') +
             discCtrl(it) +
           '</div>' +
@@ -1918,6 +1914,8 @@
           '<input class="cr-disc" id="cr-order-disc" type="number" min="0" value="' + (r.orderDiscountValue || '') + '">' +
           '<select class="cr-disc-type" id="cr-order-disc-type"><option value="ils"' + (r.orderDiscountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (r.orderDiscountType === 'pct' ? ' selected' : '') + '>%</option></select>' +
         '</div>' +
+        '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
+          '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
         '<div class="cr-total" id="cr-total"></div>';
 
       Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
@@ -1944,6 +1942,7 @@
       });
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
       el('cr-order-disc-type').addEventListener('change', function () { r.orderDiscountType = this.value; crRecompute(); });
+      el('cr-delivery').addEventListener('input', function () { r.delivery = Math.max(0, Number(this.value) || 0); crRecompute(); });
       crRecompute();
     }
 
@@ -1970,16 +1969,18 @@
       if (!r.items.length) { showToast('אין פריטים לחיוב'); return; }
       var items = r.items.map(function (it) {
         var discAgorot = Math.round(crResolveDiscount(crLineBillable(it), it.discountValue, it.discountType) * 100);
-        return it.id
-          ? { id: it.id, quantity: it.quantity, discountAgorot: discAgorot }
-          : { productId: it.productId, quantity: it.quantity, weightKg: it.weightKg, discountAgorot: discAgorot };
+        var base = { discountAgorot: discAgorot };
+        if (it.isWeight) base.weightKg = it.weightKg; else base.quantity = it.quantity;
+        if (it.id) base.id = it.id; else base.productId = it.productId;
+        return base;
       });
       var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
       var orderDiscAgorot = Math.round(crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType) * 100);
+      var deliveryAgorot = Math.round((Number(r.delivery) || 0) * 100);
       var btn = el('charge-confirm');
       btn.disabled = true;
       btn.textContent = 'מחייב…';
-      api('POST', '', { action: 'charge', orderId: o.orderId, review: { items: items, orderDiscountAgorot: orderDiscAgorot } }).then(function (resp) {
+      api('POST', '', { action: 'charge', orderId: o.orderId, review: { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot } }).then(function (resp) {
         el('charge-overlay').classList.add('hidden');
         showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
         openOrder(o.orderId);
