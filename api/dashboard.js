@@ -29,6 +29,7 @@ const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
 const { createWeightSummaryPdf } = require('../lib/weight-summary-pdf');
 const { sendPickedOrderTelegram } = require('../lib/telegram');
+const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -197,7 +198,10 @@ module.exports = async function handler(req, res) {
 
       if (action === 'settings') {
         const settings = await getSettings();
-        return res.json({ ok: true, settings });
+        const payments = paymentsEnabled()
+          ? Object.assign({ enabled: true }, getPaymentAdapter().publicConfig())
+          : { enabled: false };
+        return res.json({ ok: true, settings, payments });
       }
 
       const orders = await listOrdersForDashboard(parseOrderScope(req.query));

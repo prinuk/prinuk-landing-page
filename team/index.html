@@ -566,6 +566,11 @@
     .cr-order-disc label { font-weight: 700; flex: 1; }
     .cr-order-disc input { width: 60px; text-align: center; }
     .cr-total { margin-top: 14px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
+    .cr-card { margin-top: 14px; padding: 12px; border: 1px solid var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
+    .cr-card-title { font-weight: 800; margin-bottom: 8px; }
+    .cr-card input { width: 100%; margin-bottom: 8px; }
+    .cr-card .cc-row { display: flex; gap: 8px; }
+    .cr-card .cc-row input { flex: 1; min-width: 0; text-align: center; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -944,6 +949,7 @@
       departments: [],
       selectedProducts: {},
       settings: null,
+      payments: null,
     };
 
     var el = function (id) { return document.getElementById(id); };
@@ -1572,22 +1578,26 @@
       }).join('');
 
       var paymentBlock = '';
-      if (o.payment && o.payment.method === 'credit') {
+      if (o.payment && (o.payment.enabled || o.payment.status === 'captured' || o.payment.hasCard)) {
         var st = o.payment.status;
-        var statusText = st === 'captured' ? '✅ חויב'
+        var captured = st === 'captured';
+        var hasCard = !!o.payment.hasCard;
+        var statusText = captured ? '✅ שולם (אשראי)'
           : st === 'failed' ? '⚠️ החיוב נכשל'
-          : st === 'authorized' ? '💳 כרטיס שמור — ממתין לחיוב'
-          : 'אשראי';
+          : (o.payment.method === 'credit' && hasCard) ? '💳 כרטיס שמור — ממתין לחיוב'
+          : (o.payment.method === 'credit') ? 'אשראי'
+          : 'מזומן (בעת האיסוף/המשלוח)';
         var collectedStatuses = [STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED];
         var isCollected = collectedStatuses.indexOf(o.status) !== -1;
+        var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב בכרטיס אשראי';
         paymentBlock =
           '<div class="panel">' +
-            '<h2>תשלום — אשראי</h2>' +
+            '<h2>תשלום</h2>' +
             '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
             (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
-            (st !== 'captured'
+            (!captured
               ? (isCollected
-                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">💳 חיוב הכרטיס בסכום הסופי</button>'
+                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>'
                 : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
               : '') +
           '</div>';
@@ -1871,6 +1881,8 @@
           deliveryAuto: true,
           isDelivery: o.fulfillment === 'משלוח',
           estimateItems: Math.max(0, (Number(o.grandTotal) || 0) - (Number(o.deliveryFee) || 0)),
+          // No card on file (e.g. cash order) → the team enters one manually.
+          hasCard: !!(o.payment && o.payment.hasCard),
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -1881,7 +1893,7 @@
       if (!needProducts && !needSettings) { open(); return; }
       var calls = [];
       if (needProducts) calls.push(api('GET', '?action=products').then(function (data) { state.products = data.products || []; state.departments = data.departments || []; }));
-      if (needSettings) calls.push(api('GET', '?action=settings').then(function (data) { state.settings = data.settings || {}; }));
+      if (needSettings) calls.push(api('GET', '?action=settings').then(function (data) { state.settings = data.settings || {}; state.payments = data.payments || { enabled: false }; }));
       Promise.all(calls).then(open).catch(function (err) {
         if (err.message !== 'unauthorized') showToast('שגיאה בטעינת נתונים');
         open();
@@ -1891,6 +1903,63 @@
     // Mirror of lib/sheets.js: ₪200 free-delivery threshold, ₪25 fee.
     var CR_FREE_DELIVERY = 200;
     var CR_DELIVERY_FEE = 25;
+
+    // --- Manual credit-card entry (team) ---
+    function tkLuhn(d) {
+      if (!/^\d{12,19}$/.test(d)) return false;
+      var s = 0, a = false;
+      for (var i = d.length - 1; i >= 0; i--) { var n = +d[i]; if (a) { n *= 2; if (n > 9) n -= 9; } s += n; a = !a; }
+      return s % 10 === 0;
+    }
+    function tkValidId(v) {
+      var id = String(v || '').replace(/\D/g, '');
+      if (!id.length || id.length > 9) return false;
+      while (id.length < 9) id = '0' + id;
+      var s = 0;
+      for (var i = 0; i < 9; i++) { var n = +id[i] * ((i % 2) + 1); if (n > 9) n -= 9; s += n; }
+      return s % 10 === 0;
+    }
+    function tkValidateCard() {
+      var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
+      if (!tkLuhn(num)) return 'מספר כרטיס לא תקין';
+      var mm = parseInt(el('cr-cc-month').value, 10);
+      if (!(mm >= 1 && mm <= 12)) return 'חודש תוקף לא תקין';
+      var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+      if (!/^\d{2}$/.test(yy)) return 'שנת תוקף לא תקינה';
+      var now = new Date(); var fy = 2000 + parseInt(yy, 10);
+      if (fy < now.getFullYear() || (fy === now.getFullYear() && mm < now.getMonth() + 1)) return 'תוקף הכרטיס פג';
+      if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+      return '';
+    }
+    var tkSumitScript = null;
+    function tkLoadSumit() {
+      if (tkSumitScript) return tkSumitScript;
+      tkSumitScript = new Promise(function (res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://app.sumit.co.il/scripts/payments.js';
+        s.onload = res; s.onerror = function () { rej(new Error('טעינת מערכת הסליקה נכשלה')); };
+        document.head.appendChild(s);
+      });
+      return tkSumitScript;
+    }
+    // Returns a single-use token. Mock → fake; Sumit → hosted-field tokenizer (// VERIFY).
+    function tokenizeCardTeam() {
+      var p = state.payments || {};
+      if (p.provider === 'mock') return Promise.resolve('mock_tok_' + Date.now());
+      if (p.provider === 'sumit') {
+        if (!p.companyId || !p.apiPublicKey) return Promise.reject(new Error('סליקת אשראי אינה מוגדרת'));
+        var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+        el('cr-cc-ogyear').value = yy.length === 2 ? '20' + yy : yy;
+        return tkLoadSumit().then(function () {
+          return new Promise(function (resolve, reject) {
+            /* global OfficeGuy */
+            if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments) { reject(new Error('מערכת הסליקה אינה זמינה')); return; }
+            OfficeGuy.Payments.BindFormSubmit({ CompanyID: p.companyId, APIPublicKey: p.apiPublicKey, ResponseLanguage: 'he', OnSuccess: function (t) { resolve(t); }, OnError: function (e) { reject(new Error((e && e.UserErrorMessage) || 'פרטי האשראי לא אומתו')); } }); // VERIFY
+          });
+        });
+      }
+      return Promise.reject(new Error('סליקת אשראי אינה זמינה'));
+    }
 
     function crLineBillable(it) {
       // kg item bills weight × price/kg (weight editable, prefilled from weighing)
@@ -1944,6 +2013,19 @@
         '</div>' +
         '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
           '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
+        (r.hasCard ? '' :
+          '<div class="cr-card" data-og="form">' +
+            '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
+            '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
+            '<div class="cc-row">' +
+              '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+              '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+              '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
+            '</div>' +
+            '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+            '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
+            '<div class="field-error" id="cr-cc-error"></div>' +
+          '</div>') +
         '<div class="cr-total" id="cr-total"></div>';
 
       Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
@@ -2015,18 +2097,38 @@
       var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
       var orderDiscAgorot = Math.round(crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType) * 100);
       var deliveryAgorot = Math.round((Number(r.delivery) || 0) * 100);
+      var review = { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot };
       var btn = el('charge-confirm');
-      btn.disabled = true;
-      btn.textContent = 'מחייב…';
-      api('POST', '', { action: 'charge', orderId: o.orderId, review: { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot } }).then(function (resp) {
-        el('charge-overlay').classList.add('hidden');
-        showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
-        openOrder(o.orderId);
-      }).catch(function (err) {
-        btn.disabled = false;
-        crRecompute();
-        if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
-      });
+
+      var post = function () {
+        btn.disabled = true;
+        btn.textContent = 'מחייב…';
+        api('POST', '', { action: 'charge', orderId: o.orderId, review: review }).then(function (resp) {
+          el('charge-overlay').classList.add('hidden');
+          showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
+          openOrder(o.orderId);
+        }).catch(function (err) {
+          btn.disabled = false;
+          crRecompute();
+          if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
+        });
+      };
+
+      // No card on file → validate + tokenize the manually-entered card first.
+      if (!r.hasCard) {
+        var cardErr = tkValidateCard();
+        if (cardErr) { el('cr-cc-error').textContent = cardErr; return; }
+        el('cr-cc-error').textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'מאמת כרטיס…';
+        tokenizeCardTeam().then(function (token) { review.paymentToken = token; post(); }).catch(function (e) {
+          btn.disabled = false;
+          crRecompute();
+          el('cr-cc-error').textContent = e.message || 'שגיאה באימות הכרטיס';
+        });
+        return;
+      }
+      post();
     }
 
     // Persist in-progress collection locally so leaving the page doesn't lose it.
@@ -2180,10 +2282,10 @@
             else if (r.telegram.reason === 'no-bot-token') showToast('⚠️ חסר טוקן בוט טלגרם');
             else showToast('⚠️ שליחת טלגרם נכשלה: ' + (r.telegram.reason || 'לא ידוע'));
           }
-          // Finalized credit order → keep it open and offer to charge now.
+          // Finalized order → keep it open and offer to take payment now (card,
+          // incl. manual entry for cash orders).
           var finalized = r.status !== STATUS.PICKING;
-          var isCredit = o.payment && o.payment.method === 'credit';
-          if (finalized && isCredit) {
+          if (finalized && o.payment && o.payment.enabled) {
             askYesNo('ההזמנה סומנה כנאספה. לעבור לתשלום עכשיו?').then(function (yes) {
               if (yes) {
                 openOrder(o.orderId, doCharge); // reload (fresh weighed amounts) then open the charge review
@@ -2326,6 +2428,7 @@
       el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
       api('GET', '?action=settings').then(function (data) {
         state.settings = data.settings || {};
+        state.payments = data.payments || { enabled: false };
         renderSettings(state.settings);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
