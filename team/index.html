@@ -1573,12 +1573,18 @@
           : st === 'failed' ? '⚠️ החיוב נכשל'
           : st === 'authorized' ? '💳 כרטיס שמור — ממתין לחיוב'
           : 'אשראי';
+        var collectedStatuses = [STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED];
+        var isCollected = collectedStatuses.indexOf(o.status) !== -1;
         paymentBlock =
           '<div class="panel">' +
             '<h2>תשלום — אשראי</h2>' +
             '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
             (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
-            (st !== 'captured' ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">💳 חיוב הכרטיס בסכום הסופי</button>' : '') +
+            (st !== 'captured'
+              ? (isCollected
+                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">💳 חיוב הכרטיס בסכום הסופי</button>'
+                : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
+              : '') +
           '</div>';
       }
 
@@ -1841,7 +1847,8 @@
       if (!o) return;
       var open = function () {
         state.review = {
-          items: (o.items || []).map(function (it) {
+          // Only collected items are billed — missing (חסר) stay on the order untouched.
+          items: (o.items || []).filter(function (it) { return it.pickStatus !== 'חסר'; }).map(function (it) {
             return {
               id: it.id, productId: null, name: it.name,
               isWeight: it.isWeightPriced,
