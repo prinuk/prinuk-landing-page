@@ -8,6 +8,9 @@ const {
   claimOrderForPicking,
   updateOrderCollection,
   setOrderStatus,
+  chargeOrder,
+  reviewAndCharge,
+  createManualOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -27,6 +30,7 @@ const { publishSale, setSaleStatus, getSaleStatus } = require('../lib/sale');
 const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-pdf');
 const { createWeightSummaryPdf } = require('../lib/weight-summary-pdf');
 const { sendPickedOrderTelegram } = require('../lib/telegram');
+const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -79,6 +83,7 @@ function cleanProduct(raw) {
       orderCutoff: !!p.orderCutoff,
       subcategory: String(p.subcategory || '').trim(),
       volumeMl: p.volumeMl === '' || p.volumeMl == null ? '' : Number(p.volumeMl),
+      vatExempt: p.vatExempt !== false,
       state: state,
       weightPerUnitKg: weightPerUnitKg,
       imageUrl: String(p.imageUrl || '').trim(),
@@ -194,7 +199,10 @@ module.exports = async function handler(req, res) {
 
       if (action === 'settings') {
         const settings = await getSettings();
-        return res.json({ ok: true, settings });
+        const payments = paymentsEnabled()
+          ? Object.assign({ enabled: true }, getPaymentAdapter().publicConfig())
+          : { enabled: false };
+        return res.json({ ok: true, settings, payments });
       }
 
       const orders = await listOrdersForDashboard(parseOrderScope(req.query));
@@ -296,6 +304,15 @@ module.exports = async function handler(req, res) {
         return res.send(Buffer.from(pdf));
       }
 
+      // Team-created invoice (POS): new order from a product list, optional charge.
+      if (action === 'create-order') {
+        const result = await createManualOrder(Object.assign({}, body.order || {}, { member: String(body.member || '').trim() }));
+        if (!result.ok) {
+          return res.status(400).json({ error: result.reason === 'no-items' ? 'יש להוסיף מוצרים.' : (result.error || 'יצירת ההזמנה נכשלה.') });
+        }
+        return res.json(result);
+      }
+
       // --- Order actions ---
       const orderId = String(body.orderId || '').trim();
       const member = String(body.member || '').trim();
@@ -341,6 +358,26 @@ module.exports = async function handler(req, res) {
             console.error('Picked-order Telegram failed:', err);
             result.telegram = { sent: false, reason: err.message || 'failed' };
           }
+        }
+        return res.json(result);
+      }
+
+      if (action === 'charge') {
+        // With a review payload (adjusted items + discounts) → apply then charge;
+        // otherwise charge the order as-is.
+        const result = body.review
+          ? await reviewAndCharge(orderId, body.review)
+          : await chargeOrder(orderId);
+        if (!result.ok) {
+          const msgs = {
+            notfound: 'ההזמנה לא נמצאה.',
+            'not-credit': 'זו אינה הזמנת אשראי.',
+            'no-card': 'לא נשמר כרטיס אשראי להזמנה זו.',
+            'no-amount': 'אין סכום לחיוב.',
+            'no-items': 'אין פריטים לחיוב.',
+            'charge-failed': result.error || 'החיוב נכשל.',
+          };
+          return res.status(400).json({ error: msgs[result.reason] || result.error || 'החיוב נכשל.' });
         }
         return res.json(result);
       }

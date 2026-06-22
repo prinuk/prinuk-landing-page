@@ -3456,6 +3456,49 @@
             font-weight: 800;
             color: var(--category-strong-color, #5a2a3d);
         }
+
+        .card-fields {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .card-fields .field { margin: 0; }
+        .cc-fullrow { flex: 0 0 100%; margin: 0; }
+        .cc-f-number { flex: 3 1 220px; }
+        .cc-f-sm { flex: 1 1 64px; }
+        .cc-f-id { flex: 2 1 120px; }
+        .field-error:empty { display: none; }
+        .cc-number-wrap {
+            position: relative;
+        }
+        .cc-number-wrap input {
+            width: 100%;
+            text-align: left;
+            padding-right: 72px; /* room for the brand label on the right */
+            letter-spacing: 0.06em;
+        }
+        .cc-brand {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: 800;
+            color: #2e5a39;
+            pointer-events: none;
+        }
+        .field-error {
+            display: block;
+            margin-top: 4px;
+            color: #c0392b;
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        input.is-invalid-field {
+            border-color: #c0392b !important;
+        }
         .nav-pill-ico-emoji {
             display: inline-flex;
             align-items: center;
@@ -4663,6 +4706,53 @@
                         </label>
                     </div>
 
+                    <div id="paymentMethodGroup" class="fulfillment hidden" role="radiogroup" aria-label="אמצעי תשלום">
+                        <p class="fulfillment-prompt">אמצעי תשלום <span class="required-star">*</span></p>
+                        <div class="fulfillment-options">
+                            <label class="choice">
+                                <input type="radio" name="paymentMethod" value="cash">
+                                <span>מזומן (בעת האיסוף / המשלוח)</span>
+                            </label>
+                            <label class="choice">
+                                <input type="radio" name="paymentMethod" value="credit">
+                                <span>כרטיס אשראי</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="creditCardFields" class="card-fields hidden">
+                        <p class="delivery-area-note cc-fullrow">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
+                        <label class="field cc-f-number">
+                            <span>מספר כרטיס <span class="required-star">*</span></span>
+                            <div class="cc-number-wrap">
+                                <input id="ccNumber" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" dir="ltr">
+                                <span id="ccBrand" class="cc-brand" aria-live="polite"></span>
+                            </div>
+                        </label>
+                        <label class="field cc-f-sm">
+                            <span>חודש <span class="required-star">*</span></span>
+                            <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM" dir="ltr">
+                        </label>
+                        <label class="field cc-f-sm">
+                            <span>שנה <span class="required-star">*</span></span>
+                            <input id="ccYear" type="text" inputmode="numeric" autocomplete="cc-exp-year" maxlength="2" placeholder="YY" dir="ltr">
+                        </label>
+                        <label class="field cc-f-sm">
+                            <span>CVV <span class="required-star">*</span></span>
+                            <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4" dir="ltr">
+                        </label>
+                        <label class="field cc-f-id">
+                            <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
+                            <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
+                        </label>
+                        <small id="ccNumberError" class="field-error cc-fullrow" aria-live="polite"></small>
+                        <small id="ccExpError" class="field-error cc-fullrow" aria-live="polite"></small>
+                        <small id="ccCitizenError" class="field-error cc-fullrow" aria-live="polite"></small>
+                        <!-- Hidden mirrors read by Sumit's tokenizer: digits-only card number + 4-digit year -->
+                        <input type="hidden" id="ogCardNumber" data-og="cardnumber">
+                        <input type="hidden" id="ogYear" data-og="expirationyear">
+                    </div>
+
                     <label class="field" style="margin-top: 12px;">
                         <span>הערות</span>
                         <textarea id="notes" name="notes"></textarea>
@@ -4889,6 +4979,8 @@
             searchInput: document.getElementById('searchInput'),
             deliveryFields: document.getElementById('deliveryFields'),
             customerDetailsPanel: document.getElementById('customerDetailsPanel'),
+            paymentMethodGroup: document.getElementById('paymentMethodGroup'),
+            creditCardFields: document.getElementById('creditCardFields'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             ageGateModal: document.getElementById('ageGateModal'),
@@ -5051,6 +5143,7 @@
 
         setBrandLogo(DEFAULT_LOGO_DATA_URL);
         showMarketNoticeIfNeeded();
+        setupCreditCardInputs();
         restoreOrderDraft();
         loadCatalog();
         updateMobileSummaryMetrics();
@@ -5064,6 +5157,16 @@
                 }
                 toggleDeliveryFields();
                 renderSummary();
+            });
+        });
+
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var paymentGroup = document.getElementById('paymentMethodGroup');
+                if (paymentGroup) {
+                    paymentGroup.classList.remove('is-invalid-field');
+                }
+                togglePaymentFields();
             });
         });
 
@@ -5192,7 +5295,6 @@
                     phone: document.getElementById('phone').value,
                     email: document.getElementById('customerEmail').value
                 },
-                fulfillment: getFulfillment(),
                 delivery: {
                     neighborhood: document.getElementById('neighborhood').value,
                     address: document.getElementById('address').value,
@@ -5216,13 +5318,8 @@
             setInputValue('phone', draft.customer && draft.customer.phone);
             setInputValue('customerEmail', draft.customer && draft.customer.email);
 
-            if (draft.fulfillment) {
-                var fulfillmentInput = els.form.querySelector('input[name="fulfillment"][value="' + cssEscape(draft.fulfillment) + '"]');
-
-                if (fulfillmentInput) {
-                    fulfillmentInput.checked = true;
-                }
-            }
+            // Payment + delivery method are deliberate choices — never restored
+            // from the draft; the customer picks them fresh each time.
 
             setInputValue('neighborhood', draft.delivery && draft.delivery.neighborhood);
             setInputValue('address', draft.delivery && draft.delivery.address);
@@ -5990,7 +6087,11 @@
                     (catalog.products || []).forEach(function (product) {
                         productById[product.id] = product;
                     });
+                    var cs = catalog.settings || {};
+                    if (Number(cs.freeDeliveryThreshold) > 0) { FREE_DELIVERY_THRESHOLD = Number(cs.freeDeliveryThreshold); }
+                    if (Number(cs.deliveryFee) >= 0 && cs.deliveryFee !== '' && cs.deliveryFee != null) { DELIVERY_FEE = Number(cs.deliveryFee); }
                     renderCatalog();
+                    applyPaymentsConfig();
                 })
                 .catch(function (error) {
                     var msg = error && error.message === 'Failed to fetch'
@@ -7047,6 +7148,7 @@
                     email: document.getElementById('customerEmail').value.trim()
                 },
                 fulfillment: getFulfillment(),
+                paymentMethod: getPaymentMethod(),
                 delivery: {
                     neighborhood: document.getElementById('neighborhood').value.trim(),
                     address: document.getElementById('address').value.trim(),
@@ -7133,11 +7235,18 @@
             setSubmitting(true);
             openStatusModal();
 
-            fetch('/api/order', {
+            // Credit orders: tokenize the card first, then POST with the token.
+            var prep = payload.paymentMethod === 'credit'
+                ? tokenizeCard().then(function (token) { payload.paymentToken = token; })
+                : Promise.resolve();
+
+            prep.then(function () {
+                return fetch('/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                })
+                });
+            })
                 .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
                 .then(function (result) {
                     if (!result.ok) { throw new Error(result.data.error || 'שגיאה בשליחת ההזמנה.'); }
@@ -7148,6 +7257,8 @@
                         clearEditUrlParams();
                     }
                     saveCustomerDetailsFromPayload(payload);
+                    if (payload) { delete payload.paymentToken; } // don't retain the token in memory
+                    clearCreditCardFields(); // never keep card details after sending
                     showStatusSuccess(result.data, collected);
                     showMessage('', '');
                     resetProducts();
@@ -7360,6 +7471,24 @@
                 }
             }
 
+            if (catalog.payments && catalog.payments.enabled && !getPaymentMethod()) {
+                var paymentGroup = document.getElementById('paymentMethodGroup');
+                if (paymentGroup) {
+                    paymentGroup.classList.add('is-invalid-field');
+                }
+                return {
+                    message: 'יש לבחור אמצעי תשלום: מזומן או כרטיס אשראי.',
+                    field: paymentGroup
+                };
+            }
+
+            if (getPaymentMethod() === 'credit') {
+                var cardError = validateCreditCard();
+                if (cardError) {
+                    return cardError;
+                }
+            }
+
             return null;
         }
 
@@ -7462,6 +7591,305 @@
         function getFulfillment() {
             var checked = document.querySelector('input[name="fulfillment"]:checked');
             return checked ? checked.value : '';
+        }
+
+        function getPaymentMethod() {
+            // When the credit option isn't offered, cash is implicit (pay on delivery).
+            if (!(catalog.payments && catalog.payments.enabled)) { return 'cash'; }
+            var checked = document.querySelector('input[name="paymentMethod"]:checked');
+            return checked ? checked.value : '';
+        }
+
+        // Show the credit option only when a real processor is configured; otherwise
+        // keep the group hidden (cash is implicit, pay on delivery).
+        function applyPaymentsConfig() {
+            var enabled = !!(catalog.payments && catalog.payments.enabled);
+            if (els.paymentMethodGroup) {
+                els.paymentMethodGroup.classList.toggle('hidden', !enabled);
+            }
+            togglePaymentFields();
+        }
+
+        // Tokenize the entered card into an opaque single-use token (card data
+        // never reaches our server). Mock provider returns a fake token so the
+        // whole flow is testable; Sumit uses its hosted-field tokenizer.
+        function tokenizeCard() {
+            var provider = (catalog.payments && catalog.payments.provider) || '';
+            if (provider === 'mock') {
+                return Promise.resolve('mock_tok_' + Date.now());
+            }
+            if (provider === 'sumit') {
+                return Promise.race([
+                    sumitTokenize(),
+                    new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 30000); }),
+                ]);
+            }
+            return Promise.reject(new Error('תשלום באשראי אינו זמין כרגע.'));
+        }
+
+        var sumitScriptPromise = null;
+        function loadOneScript(src) {
+            return new Promise(function (resolve, reject) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = function () { reject(new Error('טעינת מערכת הסליקה נכשלה.')); };
+                document.head.appendChild(s);
+            });
+        }
+        function loadSumitPayments() {
+            if (sumitScriptPromise) return sumitScriptPromise;
+            // Sumit's payments.js depends on jQuery — load it first if absent.
+            sumitScriptPromise = (window.jQuery ? Promise.resolve() : loadOneScript('https://code.jquery.com/jquery-3.7.1.min.js'))
+                .then(function () { return loadOneScript('https://app.sumit.co.il/scripts/payments.js'); });
+            return sumitScriptPromise;
+        }
+
+        // NOTE: finalize against the Sumit API reference once credentials exist —
+        // the exact OfficeGuy.Payments tokenize call is confirmed with a sandbox.
+        function sumitTokenize() {
+            var cfg = catalog.payments || {};
+            if (!cfg.companyId || !cfg.apiPublicKey) {
+                return Promise.reject(new Error('סליקת אשראי עדיין אינה מוגדרת. נא לבחור תשלום במזומן.'));
+            }
+            var num = (document.getElementById('ogCardNumber').value || '').replace(/\D/g, '');
+            var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
+            var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
+            var year = yy.length === 2 ? '20' + yy : yy;
+            var cvv = (document.getElementById('ccCvv').value || '').replace(/\D/g, '');
+            var citizenId = (document.getElementById('ccCitizen').value || '').replace(/\D/g, '');
+            return loadSumitPayments().then(function () {
+                return new Promise(function (resolve, reject) {
+                    /* global OfficeGuy */
+                    if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments || !OfficeGuy.Payments.Tokenize) {
+                        reject(new Error('מערכת הסליקה אינה זמינה כרגע.'));
+                        return;
+                    }
+                    // OfficeGuy.Payments.Tokenize(config, number, month, year, cvv, citizenId, callback)
+                    // → callback({ Status, Data: { SingleUseToken }, UserErrorMessage })
+                    OfficeGuy.Payments.Tokenize(
+                        { CompanyID: cfg.companyId, APIPublicKey: cfg.apiPublicKey, ResponseLanguage: 'he' },
+                        num, month, year, cvv, citizenId,
+                        function (resp) {
+                            if (resp && resp.Status === 0 && resp.Data && resp.Data.SingleUseToken) {
+                                resolve(resp.Data.SingleUseToken);
+                            } else {
+                                reject(new Error((resp && resp.UserErrorMessage) || 'פרטי האשראי לא אומתו.'));
+                            }
+                        }
+                    );
+                });
+            });
+        }
+
+        // Wipe all card inputs (number/expiry/cvv/id + hidden mirrors). Card data is
+        // never persisted; this also clears it from the DOM after the order is sent.
+        function clearCreditCardFields() {
+            ['ccNumber', 'ccMonth', 'ccYear', 'ccCvv', 'ccCitizen', 'ogCardNumber', 'ogYear'].forEach(function (id) {
+                var node = document.getElementById(id);
+                if (node) { node.value = ''; }
+            });
+            ['ccBrand', 'ccNumberError', 'ccExpError', 'ccCitizenError'].forEach(function (id) {
+                var node = document.getElementById(id);
+                if (node) { node.textContent = ''; }
+            });
+            var num = document.getElementById('ccNumber');
+            if (num) { num.classList.remove('is-invalid-field'); }
+        }
+
+        // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
+        function togglePaymentFields() {
+            var isCredit = getPaymentMethod() === 'credit';
+            if (els.creditCardFields) {
+                els.creditCardFields.classList.toggle('hidden', !isCredit);
+            }
+        }
+
+        // --- Credit-card input UX (formatting, brand, Luhn, blocking, autotab) ---
+        var CC_BRAND_LABELS = { visa: 'Visa', mastercard: 'Mastercard', amex: 'American Express', diners: 'Diners', discover: 'Discover', isracard: 'Isracard' };
+        var CC_BLOCKED = { amex: 1, diners: 1 };
+        // Valid total lengths per brand — Luhn is checked the moment the number
+        // hits one of these (the earliest it can be judged), not only on blur.
+        var CC_LENGTHS = { visa: [16, 19], mastercard: [16], amex: [15], diners: [14], discover: [16, 19], isracard: [16] };
+
+        function detectCardBrand(digits) {
+            if (/^4/.test(digits)) return 'visa';
+            if (/^(5[1-5]|2[2-7])/.test(digits)) return 'mastercard';
+            if (/^3[47]/.test(digits)) return 'amex';
+            if (/^3(0[0-5]|[68])/.test(digits)) return 'diners';
+            if (/^6(011|5)/.test(digits)) return 'discover';
+            return '';
+        }
+
+        function luhnValid(digits) {
+            if (!/^\d{12,19}$/.test(digits)) return false;
+            var sum = 0;
+            var alt = false;
+            for (var i = digits.length - 1; i >= 0; i--) {
+                var n = parseInt(digits.charAt(i), 10);
+                if (alt) { n *= 2; if (n > 9) { n -= 9; } }
+                sum += n;
+                alt = !alt;
+            }
+            return sum % 10 === 0;
+        }
+
+        // Israeli ID (ת״ז) checksum: pad to 9 digits, alternate ×1/×2 (sum digits
+        // of products > 9), valid when the total is divisible by 10.
+        function isValidIsraeliId(value) {
+            var id = String(value || '').replace(/\D/g, '');
+            if (id.length === 0 || id.length > 9) return false;
+            while (id.length < 9) { id = '0' + id; }
+            var sum = 0;
+            for (var i = 0; i < 9; i++) {
+                var n = parseInt(id.charAt(i), 10) * ((i % 2) + 1);
+                if (n > 9) { n -= 9; }
+                sum += n;
+            }
+            return sum % 10 === 0;
+        }
+
+        function refreshCardNumberField(forceLuhn) {
+            var num = document.getElementById('ccNumber');
+            if (!num) return { ok: false };
+            var digits = (num.value || '').replace(/\D/g, '').slice(0, 19);
+            var brand = detectCardBrand(digits);
+            var ogNum = document.getElementById('ogCardNumber');
+            if (ogNum) { ogNum.value = digits; }
+            // Re-group into blocks of 4 for readability.
+            num.value = digits.replace(/(.{4})/g, '$1 ').trim();
+            var brandEl = document.getElementById('ccBrand');
+            if (brandEl) { brandEl.textContent = brand ? (CC_BRAND_LABELS[brand] || '') : ''; }
+
+            // A partial number can always still become valid by adding digits, so
+            // run Luhn only once the number is "final": it reached a complete
+            // length for its brand (the earliest it can be judged) or on blur.
+            // A blocked brand, however, is wrong no matter what comes next.
+            var lengths = CC_LENGTHS[brand] || [16, 19];
+            var atCompleteLength = lengths.indexOf(digits.length) !== -1;
+            var checkLuhn = forceLuhn || atCompleteLength;
+            var msg = '';
+            if (brand && CC_BLOCKED[brand]) {
+                msg = 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.';
+            } else if (checkLuhn && digits.length > 0 && !luhnValid(digits)) {
+                msg = 'מספר הכרטיס אינו תקין — בדקו שוב.';
+            }
+            var errEl = document.getElementById('ccNumberError');
+            if (errEl) { errEl.textContent = msg; }
+            num.classList.toggle('is-invalid-field', !!msg);
+            return { digits: digits, brand: brand, ok: !msg };
+        }
+
+        // Expiry error text, or '' — empty while still incomplete; flags a past date.
+        function expiryError(force) {
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            if (!month || !year) return '';
+            // Month range, the moment it's fully entered (even before the year).
+            if (month.value.length === 2 && !(parseInt(month.value, 10) >= 1 && parseInt(month.value, 10) <= 12)) {
+                return 'חודש התוקף חייב להיות בין 01 ל-12.';
+            }
+            if (!month.value || !year.value) return '';
+            var mm = parseInt(month.value, 10);
+            // The year isn't complete until 2 digits — don't nag mid-typing.
+            if (!/^\d{2}$/.test(year.value)) return force ? 'שנת התוקף אינה תקינה.' : '';
+            var fullYear = 2000 + parseInt(year.value, 10);
+            var now = new Date();
+            if (fullYear < now.getFullYear() || (fullYear === now.getFullYear() && mm < now.getMonth() + 1)) {
+                return 'תוקף הכרטיס פג. בדקו את תאריך התוקף.';
+            }
+            return '';
+        }
+
+        function refreshExpiry(force) {
+            var msg = expiryError(force);
+            var errEl = document.getElementById('ccExpError');
+            if (errEl) { errEl.textContent = msg; }
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            if (month) { month.classList.toggle('is-invalid-field', !!msg); }
+            if (year) { year.classList.toggle('is-invalid-field', !!msg); }
+        }
+
+        function setupCreditCardInputs() {
+            var num = document.getElementById('ccNumber');
+            if (!num) return;
+            var month = document.getElementById('ccMonth');
+            var year = document.getElementById('ccYear');
+            var ogYear = document.getElementById('ogYear');
+            var cvv = document.getElementById('ccCvv');
+            var citizen = document.getElementById('ccCitizen');
+
+            num.addEventListener('input', function () {
+                var state = refreshCardNumberField(false);
+                if (state.ok && state.brand && !CC_BLOCKED[state.brand] && state.digits.length >= 16) {
+                    month.focus();
+                }
+            });
+
+            // Leaving the field with a wrong number → show the invalid message.
+            num.addEventListener('blur', function () {
+                refreshCardNumberField(true);
+            });
+
+            month.addEventListener('input', function () {
+                var v = month.value.replace(/\D/g, '').slice(0, 2);
+                if (v.length === 1 && Number(v) >= 2) { v = '0' + v; } // 5 → 05
+                month.value = v;
+                refreshExpiry();
+                var mm = parseInt(v, 10);
+                if (v.length === 2 && mm >= 1 && mm <= 12) { year.focus(); }
+            });
+            month.addEventListener('blur', function () { refreshExpiry(true); });
+
+            year.addEventListener('input', function () {
+                year.value = year.value.replace(/\D/g, '').slice(0, 2);
+                ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
+                refreshExpiry();
+                if (year.value.length >= 2) { cvv.focus(); }
+            });
+            year.addEventListener('blur', function () { refreshExpiry(true); });
+
+            cvv.addEventListener('input', function () {
+                cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
+                if (cvv.value.length >= 3) { citizen.focus(); }
+            });
+
+            citizen.addEventListener('input', function () {
+                citizen.value = citizen.value.replace(/\D/g, '').slice(0, 9);
+                document.getElementById('ccCitizenError').textContent = '';
+                citizen.classList.remove('is-invalid-field');
+            });
+            citizen.addEventListener('blur', function () {
+                var v = citizen.value.replace(/\D/g, '');
+                var msg = v && !isValidIsraeliId(v) ? 'תעודת הזהות אינה תקינה.' : '';
+                document.getElementById('ccCitizenError').textContent = msg;
+                citizen.classList.toggle('is-invalid-field', !!msg);
+            });
+        }
+
+        // Validate the card on submit (only when credit is the chosen method).
+        function validateCreditCard() {
+            var num = document.getElementById('ccNumber');
+            var digits = (num && num.value || '').replace(/\D/g, '');
+            var brand = detectCardBrand(digits);
+            if (!digits) return { message: 'יש להזין מספר כרטיס אשראי.', field: num };
+            if (brand && CC_BLOCKED[brand]) {
+                return { message: 'כרטיסי ' + CC_BRAND_LABELS[brand] + ' אינם נתמכים. נא להשתמש בכרטיס אחר.', field: num };
+            }
+            if (!luhnValid(digits)) return { message: 'מספר הכרטיס אינו תקין — בדקו שוב.', field: num };
+            var month = document.getElementById('ccMonth');
+            var mm = parseInt(month && month.value, 10);
+            if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף אינו תקין.', field: month };
+            var year = document.getElementById('ccYear');
+            if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה.', field: year };
+            var expMsg = expiryError(true);
+            if (expMsg) return { message: expMsg, field: month };
+            var cvv = document.getElementById('ccCvv');
+            if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
+            var citizen = document.getElementById('ccCitizen');
+            if (!isValidIsraeliId(citizen && citizen.value)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen };
+            return null;
         }
 
         function setSubmitting(isSubmitting) {

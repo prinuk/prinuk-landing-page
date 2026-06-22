@@ -266,6 +266,8 @@
     .order-card.st-done { border-right-color: var(--fresh); }
     .order-card.st-partial { border-right-color: var(--fruit); }
     .order-card.st-sent { border-right-color: var(--muted); }
+    .oc-paid { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eceff1; color: var(--muted); }
+    .oc-paid.paid { background: var(--fresh-soft); color: var(--fresh); }
 
     .oc-top { display: flex; align-items: center; gap: 8px; }
     .oc-name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -547,6 +549,34 @@
     }
     .modal h2 { font-family: var(--display); margin: 0 0 14px; font-size: 21px; color: var(--accent-dark); }
     .modal .field { margin-bottom: 12px; }
+    .charge-modal { max-width: 560px; }
+    .crow { padding: 10px 0; border-bottom: 1px solid var(--line, #eceee9); }
+    .cr-top { display: flex; align-items: center; gap: 8px; }
+    .cr-top .cr-name { flex: 1; min-width: 0; font-weight: 700; font-size: 14.5px; }
+    .cr-top .cr-amt { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .cr-remove { border: none; background: none; color: var(--danger, #c0392b); font-size: 18px; cursor: pointer; padding: 0 4px; }
+    .cr-ctrls { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+    .cr-ctrls label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+    .cr-ctrls input { width: 60px; text-align: center; }
+    .cr-disc-type { width: 52px; }
+    .cr-tag { font-size: 13px; color: var(--muted); }
+    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 16px 0; }
+    .cr-addrow select { flex: 1; min-width: 0; }
+    .cr-addrow input { width: 56px; text-align: center; }
+    .cr-addrow .btn { flex: 0 0 auto; width: auto; }
+    .cr-order-disc { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .cr-order-disc label { font-weight: 700; flex: 1; }
+    .cr-order-disc input { width: 60px; text-align: center; }
+    .cr-total { margin-top: 14px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
+    .cr-newhead { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .cr-newhead input { width: 100%; }
+    .cr-pay-method { display: flex; gap: 16px; }
+    .cr-pay-method label { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+    .cr-card { margin-top: 14px; padding: 12px; border: 1px solid var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
+    .cr-card-title { font-weight: 800; margin-bottom: 8px; }
+    .cr-card input { width: 100%; margin-bottom: 8px; }
+    .cr-card .cc-row { display: flex; gap: 8px; }
+    .cr-card .cc-row input { flex: 1; min-width: 0; text-align: center; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -645,6 +675,7 @@
    <div id="orders-tab">
     <!-- LIST VIEW -->
     <div id="list-view">
+      <div style="padding:10px 16px 0;"><button class="btn btn-primary" id="new-invoice-btn" style="width:100%">➕ חשבונית חדשה</button></div>
       <div class="counters">
         <div class="counter waiting"><b id="c-waiting">0</b><span>ממתינות</span></div>
         <div class="counter picking"><b id="c-picking">0</b><span>בליקוט</span></div>
@@ -792,6 +823,13 @@
           <input id="pf-volume" type="number" inputmode="numeric" min="0" step="1" placeholder="לדוגמה 500" />
         </div>
         <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input id="pf-vat-exempt" type="checkbox" style="width:18px;height:18px;accent-color:var(--fresh);" />
+            <span>פטור ממע״מ (פירות וירקות)</span>
+          </label>
+          <div class="field-hint">בטלו עבור יין/אלכוהול ומוצרים החייבים במע״מ</div>
+        </div>
+        <div class="field">
           <label for="pf-unit">יחידה (מה הלקוח מזמין)</label>
           <input id="pf-unit" type="text" list="unit-options" placeholder="יחידות / ק&quot;ג / מארז" />
         </div>
@@ -883,6 +921,18 @@
     </div>
   </div>
 
+  <!-- Charge review: adjust items + discounts before charging the card -->
+  <div id="charge-overlay" class="modal-overlay hidden">
+    <div class="modal charge-modal">
+      <h2 id="charge-title">סקירה וחיוב</h2>
+      <div id="charge-body"></div>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="charge-confirm">אישור וחיוב</button>
+        <button type="button" class="btn-link" id="charge-cancel">ביטול</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -905,6 +955,8 @@
       products: [],
       departments: [],
       selectedProducts: {},
+      settings: null,
+      payments: null,
     };
 
     var el = function (id) { return document.getElementById(id); };
@@ -1247,6 +1299,9 @@
                 (isDeliver ? '🚚 משלוח' : '🛍️ איסוף עצמי') + '</span>' +
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
               (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
+              (o.paymentStatus === 'captured'
+                ? '<span class="oc-paid paid">💳 שולם</span>'
+                : '<span class="oc-paid">לא שולם</span>') +
             '</div>' +
             addrLine +
             pickedBy +
@@ -1393,7 +1448,7 @@
     window.markDone = markDone;
 
     // ---------- Detail ----------
-    function openOrder(orderId) {
+    function openOrder(orderId, onReady) {
       state.editing = false;
       el('list-view').classList.add('hidden');
       el('detail-view').classList.remove('hidden');
@@ -1412,6 +1467,10 @@
           state.currentItems = (data.order.items || []).map(function (it) {
             return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
           });
+          // Restore any unsaved in-progress collection (only while still picking).
+          if (data.order.status === STATUS.NEW || data.order.status === STATUS.PICKING) {
+            applyCollectDraft(orderId);
+          }
           // Claim a waiting order so others see it's being handled.
           if (data.order.status === STATUS.NEW) {
             api('POST', '', { action: 'claim', orderId: orderId, member: state.member })
@@ -1424,6 +1483,7 @@
               }).catch(function () {});
           }
           renderDetail();
+          if (typeof onReady === 'function') onReady();
         }
 
         // Warn if someone else is already handling this order.
@@ -1527,6 +1587,32 @@
           '</div>';
       }).join('');
 
+      var paymentBlock = '';
+      if (o.payment && (o.payment.enabled || o.payment.status === 'captured' || o.payment.hasCard)) {
+        var st = o.payment.status;
+        var captured = st === 'captured';
+        var hasCard = !!o.payment.hasCard;
+        var statusText = captured ? '✅ שולם (אשראי)'
+          : st === 'failed' ? '⚠️ החיוב נכשל'
+          : (o.payment.method === 'credit' && hasCard) ? '💳 כרטיס שמור — ממתין לחיוב'
+          : (o.payment.method === 'credit') ? 'אשראי'
+          : 'מזומן (בעת האיסוף/המשלוח)';
+        var collectedStatuses = [STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED];
+        var isCollected = collectedStatuses.indexOf(o.status) !== -1;
+        var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב בכרטיס אשראי';
+        paymentBlock =
+          '<div class="panel">' +
+            '<h2>תשלום</h2>' +
+            '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
+            (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
+            (!captured
+              ? (isCollected
+                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>'
+                : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
+              : '') +
+          '</div>';
+      }
+
       el('detail-view').innerHTML = '' +
         '<div class="back-row">' +
           '<button class="back-btn" onclick="closeDetail()">→ חזרה</button>' +
@@ -1560,6 +1646,8 @@
           '<div class="weigh-total" id="weigh-total"></div>' +
         '</div>' +
 
+        paymentBlock +
+
         '<div class="submit-bar"><div class="inner">' +
           '<button class="btn btn-success" id="collect-btn">✓ עדכן הזמנה כנאספה</button>' +
         '</div></div>';
@@ -1587,6 +1675,7 @@
             setItemPicked(idx, false); // clearing the weight un-collects a kg item
           }
           recomputeWeigh();
+          saveCollectDraft();
         });
         // On blur, reflect the sanitized whole number back into a unit field.
         inp.addEventListener('change', function () {
@@ -1595,6 +1684,7 @@
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
+      if (el('charge-btn')) { el('charge-btn').addEventListener('click', doCharge); }
       el('status-select').addEventListener('change', onManualStatusChange);
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
@@ -1777,6 +1867,420 @@
         });
     }
 
+    // ----- Charge review (adjust items + discounts before charging) -----
+    function doCharge() {
+      var o = state.current;
+      if (!o) return;
+      var open = function () {
+        state.review = {
+          // Only collected items are billed — missing (חסר) stay on the order untouched.
+          items: (o.items || []).filter(function (it) { return it.pickStatus !== 'חסר'; }).map(function (it) {
+            return {
+              id: it.id, productId: null, name: it.name,
+              isWeight: it.isWeightPriced,
+              unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
+              quantity: Number(it.quantity || 0),
+              weightKg: (it.isWeightPriced && it.actualWeightKg != null) ? it.actualWeightKg : '',
+              discountValue: Number(it.discount || 0), discountType: 'ils',
+            };
+          }),
+          orderDiscountValue: Number(o.orderDiscount || 0), orderDiscountType: 'ils',
+          delivery: Number(o.deliveryFee || 0),
+          // Free-delivery is re-evaluated from both the estimate and the final
+          // amount (auto), until the team overrides the משלוח field.
+          deliveryAuto: true,
+          isDelivery: o.fulfillment === 'משלוח',
+          estimateItems: Math.max(0, (Number(o.grandTotal) || 0) - (Number(o.deliveryFee) || 0)),
+          // No card on file (e.g. cash order) → the team enters one manually.
+          hasCard: !!(o.payment && o.payment.hasCard),
+        };
+        renderChargeReview();
+        el('charge-overlay').classList.remove('hidden');
+      };
+      // The picker needs the catalog; the delivery rule needs settings. Load any missing.
+      var needProducts = !(state.products && state.products.length);
+      var needSettings = !state.settings;
+      if (!needProducts && !needSettings) { open(); return; }
+      var calls = [];
+      if (needProducts) calls.push(api('GET', '?action=products').then(function (data) { state.products = data.products || []; state.departments = data.departments || []; }));
+      if (needSettings) calls.push(api('GET', '?action=settings').then(function (data) { state.settings = data.settings || {}; state.payments = data.payments || { enabled: false }; }));
+      Promise.all(calls).then(open).catch(function (err) {
+        if (err.message !== 'unauthorized') showToast('שגיאה בטעינת נתונים');
+        open();
+      });
+    }
+
+    // Mirror of lib/sheets.js: ₪200 free-delivery threshold, ₪25 fee.
+    var CR_FREE_DELIVERY = 200;
+    var CR_DELIVERY_FEE = 25;
+
+    // New team-created invoice (POS): reuses the charge-review modal in "new" mode.
+    function openNewInvoice() {
+      var build = function () {
+        state.current = null;
+        state.review = {
+          isNew: true,
+          customer: { fullName: '', phone: '' },
+          payMethod: 'cash',
+          items: [],
+          orderDiscountValue: 0, orderDiscountType: 'ils',
+          delivery: 0, deliveryAuto: false, isDelivery: false, estimateItems: 0,
+          hasCard: false,
+        };
+        renderChargeReview();
+        el('charge-overlay').classList.remove('hidden');
+      };
+      var needProducts = !(state.products && state.products.length);
+      var needSettings = !state.settings;
+      if (!needProducts && !needSettings) { build(); return; }
+      var calls = [];
+      if (needProducts) calls.push(api('GET', '?action=products').then(function (d) { state.products = d.products || []; state.departments = d.departments || []; }));
+      if (needSettings) calls.push(api('GET', '?action=settings').then(function (d) { state.settings = d.settings || {}; state.payments = d.payments || { enabled: false }; }));
+      Promise.all(calls).then(build).catch(function (err) { if (err.message !== 'unauthorized') showToast('שגיאה בטעינה'); build(); });
+    }
+
+    // --- Manual credit-card entry (team) ---
+    function tkLuhn(d) {
+      if (!/^\d{12,19}$/.test(d)) return false;
+      var s = 0, a = false;
+      for (var i = d.length - 1; i >= 0; i--) { var n = +d[i]; if (a) { n *= 2; if (n > 9) n -= 9; } s += n; a = !a; }
+      return s % 10 === 0;
+    }
+    function tkValidId(v) {
+      var id = String(v || '').replace(/\D/g, '');
+      if (!id.length || id.length > 9) return false;
+      while (id.length < 9) id = '0' + id;
+      var s = 0;
+      for (var i = 0; i < 9; i++) { var n = +id[i] * ((i % 2) + 1); if (n > 9) n -= 9; s += n; }
+      return s % 10 === 0;
+    }
+    function tkValidateCard() {
+      var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
+      if (!tkLuhn(num)) return 'מספר כרטיס לא תקין';
+      var mm = parseInt(el('cr-cc-month').value, 10);
+      if (!(mm >= 1 && mm <= 12)) return 'חודש תוקף לא תקין';
+      var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+      if (!/^\d{2}$/.test(yy)) return 'שנת תוקף לא תקינה';
+      var now = new Date(); var fy = 2000 + parseInt(yy, 10);
+      if (fy < now.getFullYear() || (fy === now.getFullYear() && mm < now.getMonth() + 1)) return 'תוקף הכרטיס פג';
+      if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+      return '';
+    }
+    var tkSumitScript = null;
+    function tkOneScript(src) {
+      return new Promise(function (res, rej) {
+        var s = document.createElement('script');
+        s.src = src; s.onload = res; s.onerror = function () { rej(new Error('טעינת מערכת הסליקה נכשלה')); };
+        document.head.appendChild(s);
+      });
+    }
+    function tkLoadSumit() {
+      if (tkSumitScript) return tkSumitScript;
+      // payments.js depends on jQuery — load it first if missing.
+      tkSumitScript = (window.jQuery ? Promise.resolve() : tkOneScript('https://code.jquery.com/jquery-3.7.1.min.js'))
+        .then(function () { return tkOneScript('https://app.sumit.co.il/scripts/payments.js'); });
+      return tkSumitScript;
+    }
+    // Returns a single-use token. Mock → fake; Sumit → hosted-field tokenizer (// VERIFY).
+    function tokenizeCardTeam() {
+      var p = state.payments || {};
+      if (p.provider === 'mock') return Promise.resolve('mock_tok_' + Date.now());
+      if (p.provider === 'sumit') {
+        if (!p.companyId || !p.apiPublicKey) return Promise.reject(new Error('סליקת אשראי אינה מוגדרת'));
+        var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
+        var month = (el('cr-cc-month').value || '').replace(/\D/g, '');
+        var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+        var year = yy.length === 2 ? '20' + yy : yy;
+        var cvv = (el('cr-cc-cvv').value || '').replace(/\D/g, '');
+        var citizenId = (el('cr-cc-id').value || '').replace(/\D/g, '');
+        var run = tkLoadSumit().then(function () {
+          return new Promise(function (resolve, reject) {
+            /* global OfficeGuy */
+            if (typeof OfficeGuy === 'undefined' || !OfficeGuy.Payments || !OfficeGuy.Payments.Tokenize) { reject(new Error('מערכת הסליקה אינה זמינה')); return; }
+            OfficeGuy.Payments.Tokenize(
+              { CompanyID: p.companyId, APIPublicKey: p.apiPublicKey, ResponseLanguage: 'he' },
+              num, month, year, cvv, citizenId,
+              function (resp) {
+                if (resp && resp.Status === 0 && resp.Data && resp.Data.SingleUseToken) resolve(resp.Data.SingleUseToken);
+                else reject(new Error((resp && resp.UserErrorMessage) || 'פרטי האשראי לא אומתו'));
+              }
+            );
+          });
+        });
+        return Promise.race([
+          run,
+          new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 30000); }),
+        ]);
+      }
+      return Promise.reject(new Error('סליקת אשראי אינה זמינה'));
+    }
+
+    function crLineBillable(it) {
+      // kg item bills weight × price/kg (weight editable, prefilled from weighing)
+      if (it.isWeight) return (Number(it.weightKg) || 0) * (it.unitPrice || 0);
+      return applyUnitDeal(it.quantity, it.unitPrice, it.dealQty, it.dealPrice);
+    }
+    function crResolveDiscount(billable, value, type) {
+      value = Number(value) || 0;
+      var d = type === 'pct' ? billable * Math.min(100, Math.max(0, value)) / 100 : value;
+      return Math.min(billable, Math.max(0, d));
+    }
+    function crNet(it) {
+      var b = crLineBillable(it);
+      return Math.max(0, b - crResolveDiscount(b, it.discountValue, it.discountType));
+    }
+
+    function renderChargeReview() {
+      var r = state.review;
+      var needCard = r.isNew ? (r.payMethod === 'credit') : !r.hasCard;
+      var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : 'סקירה וחיוב';
+      var newHead = !r.isNew ? '' :
+        '<div class="cr-newhead">' +
+          '<input id="cr-cust-name" placeholder="שם הלקוח (לא חובה)" value="' + esc(r.customer.fullName || '') + '">' +
+          '<input id="cr-cust-phone" placeholder="טלפון (לא חובה)" inputmode="tel" value="' + esc(r.customer.phone || '') + '">' +
+          '<div class="cr-pay-method">' +
+            '<label><input type="radio" name="cr-pm" value="cash"' + (r.payMethod === 'cash' ? ' checked' : '') + '> מזומן</label>' +
+            '<label><input type="radio" name="cr-pm" value="credit"' + (r.payMethod === 'credit' ? ' checked' : '') + '> אשראי</label>' +
+          '</div>' +
+        '</div>';
+      var addable = (state.products || []).filter(function (p) {
+        return p.state !== 'hidden' && p.price;
+      });
+      var discCtrl = function (it) {
+        return '<label>הנחה <input class="cr-disc" type="number" min="0" inputmode="decimal" value="' + (it.discountValue || '') + '" data-act="disc">' +
+          '<select class="cr-disc-type" data-act="disctype"><option value="ils"' + (it.discountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (it.discountType === 'pct' ? ' selected' : '') + '>%</option></select></label>';
+      };
+      var rows = r.items.map(function (it, i) {
+        return '<div class="crow" data-i="' + i + '">' +
+          '<div class="cr-top">' +
+            '<span class="cr-name">' + esc(it.name) + '</span>' +
+            '<span class="cr-amt" data-amt></span>' +
+            '<button class="cr-remove" data-act="remove" title="הסר">✕</button>' +
+          '</div>' +
+          '<div class="cr-ctrls">' +
+            (it.isWeight
+              ? '<label>משקל (ק״ג) <input class="cr-qty" type="number" min="0" step="0.01" inputmode="decimal" value="' + (it.weightKg || '') + '" data-act="weight"></label>'
+              : '<label>כמות <input class="cr-qty" type="number" min="0" inputmode="numeric" value="' + esc(it.quantity) + '" data-act="qty"></label>') +
+            discCtrl(it) +
+          '</div>' +
+        '</div>';
+      }).join('');
+      var addOpts = '<option value="">+ הוסף מוצר…</option>' + addable.map(function (p) {
+        return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
+      }).join('');
+      el('charge-body').innerHTML =
+        newHead +
+        rows +
+        '<div class="cr-addrow"><select id="cr-add-select">' + addOpts + '</select>' +
+          '<input id="cr-add-qty" class="cr-qty" type="number" min="1" value="1"><button class="btn btn-ghost" id="cr-add-btn">הוסף</button></div>' +
+        '<div class="cr-order-disc"><label>הנחה לכל ההזמנה</label>' +
+          '<input class="cr-disc" id="cr-order-disc" type="number" min="0" value="' + (r.orderDiscountValue || '') + '">' +
+          '<select class="cr-disc-type" id="cr-order-disc-type"><option value="ils"' + (r.orderDiscountType === 'ils' ? ' selected' : '') + '>₪</option><option value="pct"' + (r.orderDiscountType === 'pct' ? ' selected' : '') + '>%</option></select>' +
+        '</div>' +
+        '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
+          '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
+        (!needCard ? '' :
+          '<div class="cr-card" data-og="form">' +
+            '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
+            '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
+            '<div class="cc-row">' +
+              '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+              '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+              '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
+            '</div>' +
+            '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+            '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
+            '<div class="field-error" id="cr-cc-error"></div>' +
+          '</div>') +
+        '<div class="cr-total" id="cr-total"></div>';
+
+      Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
+        var i = Number(row.getAttribute('data-i'));
+        var q = row.querySelector('[data-act="qty"]');
+        if (q) q.addEventListener('input', function () { r.items[i].quantity = Math.max(0, Math.round(Number(this.value) || 0)); crRecompute(); });
+        var wt = row.querySelector('[data-act="weight"]');
+        if (wt) wt.addEventListener('input', function () { r.items[i].weightKg = Math.max(0, Number(this.value) || 0); crRecompute(); });
+        var d = row.querySelector('[data-act="disc"]');
+        if (d) d.addEventListener('input', function () { r.items[i].discountValue = Number(this.value) || 0; crRecompute(); });
+        var dt = row.querySelector('[data-act="disctype"]');
+        if (dt) dt.addEventListener('change', function () { r.items[i].discountType = this.value; crRecompute(); });
+        var rm = row.querySelector('[data-act="remove"]');
+        if (rm) rm.addEventListener('click', function () { r.items.splice(i, 1); renderChargeReview(); });
+      });
+      el('cr-add-btn').addEventListener('click', function () {
+        var pid = el('cr-add-select').value;
+        if (!pid) return;
+        var p = (state.products || []).find(function (x) { return x.id === pid; });
+        if (!p) return;
+        var isKg = /ק/.test(String(p.priceUnit || p.unit || ''));
+        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: isKg, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: isKg ? 1 : Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), weightKg: '', baseAmount: null, discountValue: 0, discountType: 'ils' });
+        renderChargeReview();
+      });
+      el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
+      el('cr-order-disc-type').addEventListener('change', function () { r.orderDiscountType = this.value; crRecompute(); });
+      el('cr-delivery').addEventListener('input', function () { r.deliveryAuto = false; r.delivery = Math.max(0, Number(this.value) || 0); crRecompute(); });
+      if (r.isNew) {
+        var nm = el('cr-cust-name'); if (nm) nm.addEventListener('input', function () { r.customer.fullName = this.value; });
+        var ph = el('cr-cust-phone'); if (ph) ph.addEventListener('input', function () { r.customer.phone = this.value; });
+        Array.prototype.forEach.call(el('charge-body').querySelectorAll('input[name="cr-pm"]'), function (rb) {
+          rb.addEventListener('change', function () { r.payMethod = this.value; renderChargeReview(); });
+        });
+      }
+      crRecompute();
+    }
+
+    function crRecompute() {
+      var r = state.review;
+      var total = 0;
+      Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
+        var it = r.items[Number(row.getAttribute('data-i'))];
+        if (!it) return;
+        var net = crNet(it);
+        total += net;
+        var amt = row.querySelector('[data-amt]');
+        if (amt) amt.textContent = formatMoney(net);
+      });
+      // Auto delivery: charge ₪25 only when BOTH the estimate and the final amount
+      // are under ₪200 (delivery orders); free otherwise. Off once the team edits it.
+      if (r.deliveryAuto) {
+        var threshold = Number(state.settings && state.settings.freeDeliveryThreshold) || CR_FREE_DELIVERY;
+        var fee = Number(state.settings && state.settings.deliveryFee);
+        if (!(fee >= 0)) { fee = CR_DELIVERY_FEE; }
+        r.delivery = (r.isDelivery && r.estimateItems < threshold && total < threshold) ? fee : 0;
+        var dEl = el('cr-delivery');
+        if (dEl && document.activeElement !== dEl) { dEl.value = r.delivery || ''; }
+      }
+      var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
+      el('cr-total').textContent = 'סה״כ: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
+      var verb = (r.isNew && r.payMethod === 'cash') ? 'צור הזמנה ' : 'אישור וחיוב ';
+      el('charge-confirm').textContent = verb + formatMoney(grand);
+    }
+
+    function submitChargeReview() {
+      var r = state.review;
+      if (!r) return;
+
+      // New invoice (POS): create the order (+ optional card charge).
+      if (r.isNew) {
+        if (!r.items.length) { showToast('יש להוסיף מוצרים'); return; }
+        var newItems = r.items.map(function (it) {
+          var dA = Math.round(crResolveDiscount(crLineBillable(it), it.discountValue, it.discountType) * 100);
+          var b = { productId: it.productId, discountAgorot: dA };
+          if (it.isWeight) b.weightKg = it.weightKg; else b.quantity = it.quantity;
+          return b;
+        });
+        var nTotal = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
+        var order = {
+          customer: r.customer,
+          items: newItems,
+          paymentMethod: r.payMethod,
+          orderDiscountAgorot: Math.round(crResolveDiscount(nTotal, r.orderDiscountValue, r.orderDiscountType) * 100),
+          deliveryAgorot: Math.round((Number(r.delivery) || 0) * 100),
+        };
+        var nbtn = el('charge-confirm');
+        var send = function () {
+          nbtn.disabled = true; nbtn.textContent = 'שומר…';
+          api('POST', '', { action: 'create-order', order: order, member: state.member }).then(function (resp) {
+            el('charge-overlay').classList.add('hidden');
+            showToast(resp.charged ? ('✅ נוצר וחויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')) : 'ההזמנה נוצרה ✓');
+            if (resp.chargeError) showToast('⚠️ נוצר ללא חיוב: ' + resp.chargeError);
+            loadOrders();
+          }).catch(function (err) {
+            nbtn.disabled = false; crRecompute();
+            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה ביצירת ההזמנה');
+          });
+        };
+        if (r.payMethod === 'credit') {
+          var ccErr = tkValidateCard();
+          if (ccErr) { el('cr-cc-error').textContent = ccErr; return; }
+          el('cr-cc-error').textContent = '';
+          nbtn.disabled = true; nbtn.textContent = 'מאמת כרטיס…';
+          tokenizeCardTeam().then(function (tok) { order.paymentToken = tok; send(); }).catch(function (e) {
+            nbtn.disabled = false; crRecompute();
+            el('cr-cc-error').textContent = e.message || 'שגיאה באימות הכרטיס';
+          });
+        } else { send(); }
+        return;
+      }
+
+      var o = state.current;
+      if (!o || !r) return;
+      if (!r.items.length) { showToast('אין פריטים לחיוב'); return; }
+      var items = r.items.map(function (it) {
+        var discAgorot = Math.round(crResolveDiscount(crLineBillable(it), it.discountValue, it.discountType) * 100);
+        var base = { discountAgorot: discAgorot };
+        if (it.isWeight) base.weightKg = it.weightKg; else base.quantity = it.quantity;
+        if (it.id) base.id = it.id; else base.productId = it.productId;
+        return base;
+      });
+      var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
+      var orderDiscAgorot = Math.round(crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType) * 100);
+      var deliveryAgorot = Math.round((Number(r.delivery) || 0) * 100);
+      var review = { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot };
+      var btn = el('charge-confirm');
+
+      var post = function () {
+        btn.disabled = true;
+        btn.textContent = 'מחייב…';
+        api('POST', '', { action: 'charge', orderId: o.orderId, review: review }).then(function (resp) {
+          el('charge-overlay').classList.add('hidden');
+          showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
+          openOrder(o.orderId);
+        }).catch(function (err) {
+          btn.disabled = false;
+          crRecompute();
+          if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
+        });
+      };
+
+      // No card on file → validate + tokenize the manually-entered card first.
+      if (!r.hasCard) {
+        var cardErr = tkValidateCard();
+        if (cardErr) { el('cr-cc-error').textContent = cardErr; return; }
+        el('cr-cc-error').textContent = '';
+        btn.disabled = true;
+        btn.textContent = 'מאמת כרטיס…';
+        tokenizeCardTeam().then(function (token) { review.paymentToken = token; post(); }).catch(function (e) {
+          btn.disabled = false;
+          crRecompute();
+          el('cr-cc-error').textContent = e.message || 'שגיאה באימות הכרטיס';
+        });
+        return;
+      }
+      post();
+    }
+
+    // Persist in-progress collection locally so leaving the page doesn't lose it.
+    function saveCollectDraft() {
+      var o = state.current;
+      if (!o || !o.orderId) return;
+      try {
+        var map = {};
+        state.currentItems.forEach(function (it) {
+          if (!it.id) return;
+          map[it.id] = { picked: !!it.picked, actualWeightKg: it.actualWeightKg, actualQuantity: it.actualQuantity };
+        });
+        localStorage.setItem('prinukCollect:' + o.orderId, JSON.stringify(map));
+      } catch (e) { /* ignore */ }
+    }
+    function applyCollectDraft(orderId) {
+      try {
+        var raw = localStorage.getItem('prinukCollect:' + orderId);
+        if (!raw) return;
+        var map = JSON.parse(raw) || {};
+        state.currentItems.forEach(function (it) {
+          var d = it.id && map[it.id];
+          if (!d) return;
+          it.picked = !!d.picked;
+          if (d.actualWeightKg !== undefined) it.actualWeightKg = d.actualWeightKg;
+          if (d.actualQuantity !== undefined) it.actualQuantity = d.actualQuantity;
+        });
+      } catch (e) { /* ignore */ }
+    }
+    function clearCollectDraft(orderId) {
+      try { localStorage.removeItem('prinukCollect:' + orderId); } catch (e) { /* ignore */ }
+    }
+
     function setItemPicked(idx, picked) {
       var it = state.currentItems[idx];
       if (!it) return;
@@ -1806,6 +2310,7 @@
       }
       updateSummaryLine();
       recomputeWeigh();
+      saveCollectDraft();
     }
 
     function updateSummaryLine() {
@@ -1881,6 +2386,8 @@
 
       api('POST', '', { action: 'collect', orderId: o.orderId, member: state.member, items: items, closeMissing: closeMissing })
         .then(function (r) {
+          // Saved to the server now — drop the local in-progress draft.
+          clearCollectDraft(o.orderId);
           // Update local list state so the badge reflects immediately.
           var match = state.orders.find(function (x) { return x.orderId === o.orderId; });
           if (match) { match.status = r.status; match.collectedBy = r.collectedBy; match.pickedAt = r.pickedAt; }
@@ -1894,7 +2401,20 @@
             else if (r.telegram.reason === 'no-bot-token') showToast('⚠️ חסר טוקן בוט טלגרם');
             else showToast('⚠️ שליחת טלגרם נכשלה: ' + (r.telegram.reason || 'לא ידוע'));
           }
-          closeDetail();
+          // Finalized order → keep it open and offer to take payment now (card,
+          // incl. manual entry for cash orders).
+          var finalized = r.status !== STATUS.PICKING;
+          if (finalized && o.payment && o.payment.enabled) {
+            askYesNo('ההזמנה סומנה כנאספה. לעבור לתשלום עכשיו?').then(function (yes) {
+              if (yes) {
+                openOrder(o.orderId, doCharge); // reload (fresh weighed amounts) then open the charge review
+              } else {
+                closeDetail();
+              }
+            });
+          } else {
+            closeDetail();
+          }
         })
         .catch(function (err) {
           btn.disabled = false;
@@ -2015,6 +2535,8 @@
       { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
       { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
       { key: 'notificationEmails', label: 'אימייל להתראות הזמנות', hint: 'אפשר כמה כתובות מופרדות בפסיק', type: 'input' },
+      { key: 'freeDeliveryThreshold', label: 'סכום למשלוח חינם (₪)', hint: 'מעל סכום זה המשלוח חינם', type: 'input' },
+      { key: 'deliveryFee', label: 'דמי משלוח (₪)', type: 'input' },
       { key: 'telegramPickedChatId', label: 'טלגרם — ערוץ הזמנות שנאספו', hint: 'מזהה הצ׳אט (Chat ID) של הערוץ שאליו תישלח סיכום ההזמנה כשהליקוט מסתיים', type: 'input' },
       { key: 'orderCutoffDisplayTime', label: 'שעת חיתוך — תצוגה ללקוח', hint: 'מוצג כ"ניתן להזמין עד …" על מוצרים מוגבלי-זמן (פורמט HH:MM)', type: 'input' },
       { key: 'orderCutoffEnforceTime', label: 'שעת חיתוך — חסימה בפועל', hint: 'אחרי שעה זו אי אפשר להזמין את אותם מוצרים (פורמט HH:MM)', type: 'input' },
@@ -2024,7 +2546,9 @@
     function loadSettings() {
       el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
       api('GET', '?action=settings').then(function (data) {
-        renderSettings(data.settings || {});
+        state.settings = data.settings || {};
+        state.payments = data.payments || { enabled: false };
+        renderSettings(state.settings);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
       });
@@ -2054,6 +2578,7 @@
       btn.disabled = true;
       btn.textContent = 'שומר…';
       api('POST', '', { action: 'settings-update', settings: payload }).then(function () {
+        state.settings = Object.assign(state.settings || {}, payload);
         showToast('ההגדרות נשמרו');
       }).catch(function (err) {
         if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשמירה');
@@ -2198,6 +2723,7 @@
       el('pf-state').value = (p && p.orderCutoff) ? 'cutoff' : (p ? p.state : 'active');
       el('pf-subcat').value = (p && p.subcategory) ? p.subcategory : '';
       el('pf-volume').value = (p && p.volumeMl !== '' && p.volumeMl != null) ? p.volumeMl : '';
+      el('pf-vat-exempt').checked = p ? (p.vatExempt !== false) : true;
       el('pf-error').textContent = '';
       el('pf-delete-row').style.display = p ? 'flex' : 'none';
       el('modal-overlay').classList.remove('hidden');
@@ -2213,6 +2739,10 @@
       btn.addEventListener('click', function () { bulkSetProductStatus(this.getAttribute('data-bulk')); });
     });
     el('pbb-clear').addEventListener('click', function () { state.selectedProducts = {}; renderProducts(); });
+    el('charge-cancel').addEventListener('click', function () { el('charge-overlay').classList.add('hidden'); });
+    el('charge-confirm').addEventListener('click', submitChargeReview);
+    el('new-invoice-btn').addEventListener('click', openNewInvoice);
+    el('charge-overlay').addEventListener('click', function (e) { if (e.target === this) el('charge-overlay').classList.add('hidden'); });
     el('pf-cancel').addEventListener('click', closeProductForm);
     el('modal-overlay').addEventListener('click', function (e) { if (e.target === this) closeProductForm(); });
     el('prod-search').addEventListener('input', renderProducts);
@@ -2297,6 +2827,7 @@
         orderCutoff: stateSel === 'cutoff',
         subcategory: el('pf-subcat').value,
         volumeMl: el('pf-volume').value.trim() === '' ? '' : parseInt(el('pf-volume').value, 10),
+        vatExempt: el('pf-vat-exempt').checked,
         weightPerUnitKg: el('pf-weight').value.trim() === '' ? '' : parseFloat(el('pf-weight').value),
         imageUrl: el('pf-image-url').value.trim(),
       };
