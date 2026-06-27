@@ -277,16 +277,26 @@ module.exports = async function handler(req, res) {
 
       // --- Order printing (returns a PDF; authenticated, contains PII) ---
       if (action === 'orders-pdf') {
-        const mode = body.mode === 'headers' ? 'headers' : 'full';
+        const mode = ['headers', 'picked'].includes(body.mode) ? body.mode : 'full';
         const opts = Array.isArray(body.codes) && body.codes.length
           ? { codes: body.codes.map(String) }
           : { scope: body.scope || {} };
         const orders = await getOrdersDetailed(opts);
         if (!orders.length) return res.status(400).json({ error: 'אין הזמנות להדפסה.' });
         const settings = await getSettings();
-        const pdf = mode === 'headers'
-          ? await createOrdersHeadersPdf(orders, settings)
-          : await createOrdersFullPdf(orders, settings);
+        let pdf;
+        if (mode === 'headers') {
+          pdf = await createOrdersHeadersPdf(orders, settings);
+        } else if (mode === 'picked') {
+          // Same document produced when an order is collected (final weighed
+          // amounts, no estimate), but for the whole selected set together.
+          pdf = await createOrdersFullPdf(orders, settings, {
+            title: settings.saleName ? 'הזמנות שנאספו — ' + settings.saleName : 'הזמנות שנאספו',
+            hideEstimate: true,
+          });
+        } else {
+          pdf = await createOrdersFullPdf(orders, settings);
+        }
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename="orders.pdf"');
         res.setHeader('Cache-Control', 'no-store');

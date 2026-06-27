@@ -252,7 +252,7 @@ async function runSmokeTest(baseUrl, executablePath) {
       throw new Error('Expected summary total to include ₪18, got: ' + result.summaryTotal);
     }
 
-    if (result.freeDeliveryNow !== '9' || !result.freeDeliveryText.includes('₪182')) {
+    if (result.freeDeliveryNow !== '6' || !result.freeDeliveryText.includes('₪282')) {
       throw new Error('Expected free-delivery progress for ₪18 subtotal, got: ' + JSON.stringify(result));
     }
 

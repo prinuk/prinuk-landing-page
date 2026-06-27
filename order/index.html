@@ -2352,14 +2352,14 @@
             gap: 26px;
         }
 
-        .store-announcement span {
+        .store-announcement span:not(.hood-tip-icon):not(.hood-tip-bubble) {
             display: inline-flex;
             align-items: center;
             gap: 10px;
             white-space: nowrap;
         }
 
-        .store-announcement span:not(.store-announcement-bsd) + span::before {
+        .store-announcement span:not(.store-announcement-bsd) + span:not(.hood-tip-bubble)::before {
             width: 4px;
             height: 4px;
             content: "";
@@ -4112,6 +4112,76 @@
             font-weight: 800;
         }
 
+        /* "Which neighborhoods?" tooltip on delivery-area messages. */
+        .hood-tip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-inline-start: 4px;
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        .hood-tip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--amber, #b9791a);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1;
+            opacity: 0.92;
+            transition: opacity 0.15s ease;
+        }
+        .hood-tip:hover .hood-tip-icon,
+        .hood-tip.open .hood-tip-icon { opacity: 1; }
+        .hood-tip-icon::before { content: "i"; font-style: italic; }
+        .hood-tip-bubble {
+            position: absolute;
+            top: calc(100% + 9px);
+            inset-inline-end: -7px;
+            z-index: 600;
+            display: none;
+            width: max-content;
+            max-width: 230px;
+            padding: 9px 13px;
+            background: #273229;
+            color: #f3f6f1;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: start;
+            border-radius: 11px;
+            box-shadow: 0 10px 26px rgba(20, 33, 22, 0.32);
+            white-space: normal;
+        }
+        .hood-tip-bubble::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            inset-inline-end: 13px;
+            border: 6px solid transparent;
+            border-bottom-color: #273229;
+        }
+        .hood-tip-bubble strong {
+            display: block;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.01em;
+            color: #aecdab;
+            margin-bottom: 4px;
+        }
+        .hood-tip:hover .hood-tip-bubble,
+        .hood-tip:focus-visible .hood-tip-bubble,
+        .hood-tip.open .hood-tip-bubble { display: block; }
+
         .delivery-fields select {
             width: 100%;
             min-height: 42px;
@@ -4384,6 +4454,60 @@
             .move-banner-text strong { font-size: 15.5px; }
             .move-banner-text span { font-size: 14px; }
         }
+
+        /* Weekly "order earlier next week" reminder banner (task 5). */
+        .weekly-reminder {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            max-width: 1180px;
+            margin: 16px auto 0;
+            padding: 16px 20px;
+            background: linear-gradient(180deg, #fff3d0 0%, #ffe7a8 100%);
+            border: 1.5px solid #ecb43f;
+            border-inline-start: 6px solid #d98a14;
+            border-radius: 16px;
+            color: #6b4011;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.5;
+            box-shadow: 0 6px 18px rgba(176, 120, 20, 0.18);
+        }
+        .weekly-reminder.hidden { display: none; }
+        .weekly-reminder-emoji {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: inset 0 0 0 2px #ecb43f;
+            font-size: 22px;
+            line-height: 1;
+        }
+        .weekly-reminder-text { flex: 1; }
+        .weekly-reminder-close {
+            flex: none;
+            appearance: none;
+            border: none;
+            background: rgba(255, 255, 255, 0.6);
+            color: #8a5a12;
+            width: 28px;
+            height: 28px;
+            font-size: 20px;
+            line-height: 26px;
+            text-align: center;
+            padding: 0;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .weekly-reminder-close:hover { background: #fff; color: #6b4011; }
+        @media (max-width: 600px) {
+            .weekly-reminder { margin: 12px 12px 0; padding: 13px 14px; gap: 11px; font-size: 14.5px; border-radius: 14px; }
+            .weekly-reminder-emoji { width: 34px; height: 34px; font-size: 19px; }
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4460,10 +4584,16 @@
     <div class="store-announcement">
         <div class="store-announcement-inner">
             <span class="store-announcement-bsd">בס״ד</span>
-            <span class="store-announcement-primary">משלוח חינם בקנייה מעל 200 ש״ח</span>
+            <span class="store-announcement-primary">משלוח חינם בקנייה מעל 300 ש״ח · לשכונות נבחרות בירושלים בלבד<button type="button" class="hood-tip" aria-label="אילו שכונות?"><span class="hood-tip-icon" aria-hidden="true"></span><span class="hood-tip-bubble" role="tooltip"></span></button></span>
             <span>המכירה השבועית · בכל יום רביעי</span>
             <span>בכשרות מהודרת</span>
         </div>
+    </div>
+
+    <div id="weeklyReminder" class="weekly-reminder hidden" role="status">
+        <span class="weekly-reminder-emoji" aria-hidden="true">💡</span>
+        <span id="weeklyReminderText" class="weekly-reminder-text"></span>
+        <button id="weeklyReminderClose" class="weekly-reminder-close" type="button" aria-label="סגירת ההודעה">×</button>
     </div>
 
     <header class="store-header">
@@ -4510,7 +4640,7 @@
 
     <div class="shell">
         <div class="bsd-mark">בס״ד</div>
-        <div class="sale-strip">משלוח חינם בקנייה מעל 200 ש״ח · הזמנה שבועית של תוצרת טרייה ואיכותית</div>
+        <div class="sale-strip">משלוח חינם בקנייה מעל 300 ש״ח · לשכונות נבחרות בירושלים בלבד · הזמנה שבועית של תוצרת טרייה ואיכותית</div>
         <header class="topbar">
             <div class="brand">
                 <p class="brand-eyebrow">טרי · איכותי · בכשרות מהודרת</p>
@@ -4575,7 +4705,7 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
                             <div class="info-card-body">
                                 <div class="info-card-title">משלוח</div>
-                                <p class="info-card-text">25 ש״ח · חינם בהזמנה מעל 200 ש״ח</p>
+                                <p class="info-card-text">15 ש״ח · חינם בהזמנה מעל 300 ש״ח · לשכונות נבחרות בירושלים בלבד<button type="button" class="hood-tip" aria-label="אילו שכונות?"><span class="hood-tip-icon" aria-hidden="true"></span><span class="hood-tip-bubble" role="tooltip"></span></button></p>
                             </div>
                         </div>
 
@@ -4680,7 +4810,7 @@
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
-                        <p class="delivery-area-note">משלוח לשכונות נבחרות בירושלים בלבד. לשאר האזורים — איסוף עצמי.</p>
+                        <p class="delivery-area-note">משלוח לשכונות נבחרות בירושלים בלבד<button type="button" class="hood-tip" aria-label="אילו שכונות?"><span class="hood-tip-icon" aria-hidden="true"></span><span class="hood-tip-bubble" role="tooltip"></span></button>. לשאר האזורים — איסוף עצמי.</p>
                         <label class="field delivery-neighborhood">
                             <span>שכונה <span class="required-star">*</span></span>
                             <select id="neighborhood" name="neighborhood">
@@ -4759,7 +4889,7 @@
                     </label>
 
                     <div class="finish-order">
-                        <p class="estimate-note finish-estimate-note">הסכום מוערך — החיוב הסופי נקבע בעת הליקוט לפי המשקל והכמויות בפועל. משלוח חינם בהזמנה מעל ₪200.</p>
+                        <p class="estimate-note finish-estimate-note">הסכום מוערך — החיוב הסופי נקבע בעת הליקוט לפי המשקל והכמויות בפועל. משלוח חינם בהזמנה מעל ₪300, לשכונות נבחרות בירושלים בלבד.</p>
                         <button id="finishOrderButton" class="submit finish-order-button" type="submit">
                             <span id="finishOrderLabel">שליחת הזמנה</span>
                             <span id="finishOrderTotal" class="finish-order-total"></span>
@@ -4794,7 +4924,7 @@
                         aria-label="התקדמות למשלוח חינם" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                         <span id="freeDeliveryFill" class="free-delivery-fill"></span>
                     </div>
-                    <div id="freeDeliveryMessage" class="free-delivery-message">משלוח חינם בקנייה מעל ₪200</div>
+                    <div id="freeDeliveryMessage" class="free-delivery-message">משלוח חינם בקנייה מעל ₪300</div>
                 </div>
                 <div class="submit-row">
                     <div class="summary-meta">
@@ -4905,12 +5035,106 @@
                 return d.getHours() * 60 + d.getMinutes();
             }
         }
+        function israelWeekday() {
+            try {
+                var s = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' }).format(new Date());
+                var map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+                return map[s] != null ? map[s] : new Date().getDay();
+            } catch (e) { return new Date().getDay(); }
+        }
+        var HEB_WEEKDAYS = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'];
+        function settingDay(key, fallback) {
+            var d = parseInt(String((catalog.settings && catalog.settings[key]) || ''), 10);
+            return (d >= 0 && d <= 6) ? d : fallback;
+        }
         function cutoffDisplayTime() {
             return String((catalog.settings && catalog.settings.orderCutoffDisplayTime) || '03:00').trim() || '03:00';
         }
+        // Customer-facing label, e.g. "יום רביעי 3:00".
+        function cutoffDisplayLabel() {
+            return HEB_WEEKDAYS[settingDay('orderCutoffDay', 3)] + ' ' + cutoffDisplayTime();
+        }
+        // Time-limited items are orderable until orderCutoffDay at the enforce time,
+        // then closed for the rest of the week (reopening the next Sunday).
         function isCutoffClosedNow() {
+            var cutoffDay = settingDay('orderCutoffDay', 3);
+            var today = israelWeekday();
+            if (today < cutoffDay) return false;
+            if (today > cutoffDay) return true;
             var enforce = parseHHMM(catalog.settings && catalog.settings.orderCutoffEnforceTime, 6 * 60);
             return israelNowMinutes() >= enforce;
+        }
+
+        // Weekly "order earlier next week" reminder banner (task 5). Active from
+        // weeklyReminderDay at weeklyReminderTime through the end of the week.
+        var WEEKLY_REMINDER_DISMISS_KEY = 'prinukWeeklyReminderDismissed:v1';
+        function israelDateStr() {
+            try {
+                return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+            } catch (e) { return new Date().toISOString().slice(0, 10); }
+        }
+        // Sunday-anchored id for the current week, so a dismissal lasts the week
+        // and the banner returns the next cycle.
+        function currentWeekId() {
+            var d = new Date(israelDateStr() + 'T00:00:00Z');
+            d.setUTCDate(d.getUTCDate() - israelWeekday());
+            return d.toISOString().slice(0, 10);
+        }
+        function isWeeklyReminderActive() {
+            var s = catalog.settings || {};
+            if (String(s.weeklyReminderEnabled || 'on').trim().toLowerCase() === 'off') return false;
+            if (!String(s.weeklyReminderText || '').trim()) return false;
+            var day = settingDay('weeklyReminderDay', 3);
+            var today = israelWeekday();
+            if (today < day) return false;
+            if (today > day) return true;
+            return israelNowMinutes() >= parseHHMM(s.weeklyReminderTime, 0);
+        }
+        function updateWeeklyReminder() {
+            var banner = document.getElementById('weeklyReminder');
+            if (!banner) return;
+            var dismissed = false;
+            try { dismissed = localStorage.getItem(WEEKLY_REMINDER_DISMISS_KEY) === currentWeekId(); } catch (e) {}
+            if (!isWeeklyReminderActive() || dismissed) {
+                banner.classList.add('hidden');
+                return;
+            }
+            document.getElementById('weeklyReminderText').textContent = String((catalog.settings || {}).weeklyReminderText || '').trim();
+            banner.classList.remove('hidden');
+        }
+        function dismissWeeklyReminder() {
+            try { localStorage.setItem(WEEKLY_REMINDER_DISMISS_KEY, currentWeekId()); } catch (e) {}
+            var banner = document.getElementById('weeklyReminder');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        // Fill the "אילו שכונות?" tooltips from the delivery <select> (single
+        // source of truth), and let a tap open them on touch devices.
+        function initNeighborhoodTooltips() {
+            var tips = document.querySelectorAll('.hood-tip');
+            if (!tips.length) return;
+            var select = document.getElementById('neighborhood');
+            var names = select
+                ? Array.prototype.slice.call(select.options)
+                    .map(function (o) { return (o.value || '').trim(); })
+                    .filter(Boolean)
+                : [];
+            if (!names.length) return;
+            var bubbleHtml = '<strong>שכונות המשלוח בירושלים:</strong>' + escapeHtml(names.join(' · '));
+            Array.prototype.forEach.call(tips, function (tip) {
+                var bubble = tip.querySelector('.hood-tip-bubble');
+                if (bubble) bubble.innerHTML = bubbleHtml;
+                tip.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var wasOpen = tip.classList.contains('open');
+                    Array.prototype.forEach.call(tips, function (t) { t.classList.remove('open'); });
+                    if (!wasOpen) tip.classList.add('open');
+                });
+            });
+            document.addEventListener('click', function () {
+                Array.prototype.forEach.call(tips, function (t) { t.classList.remove('open'); });
+            });
         }
 
         var productById = {};
@@ -4928,8 +5152,8 @@
         var REGULAR_BASKET_STORAGE_KEY = 'prinukRegularBasket:v1';
         var CUSTOMER_DETAILS_STORAGE_KEY = 'prinukCustomerDetails:v1';
         var KG_STEP = 0.5;
-        var FREE_DELIVERY_THRESHOLD = 200;
-        var DELIVERY_FEE = 25;
+        var FREE_DELIVERY_THRESHOLD = 300;
+        var DELIVERY_FEE = 15;
         var EMPTY_CART_HTML = '<div class="cart-empty">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1 12H5L6 8Zm3 0a3 3 0 0 1 6 0"/><path d="M14.5 13.2c-1.6 0-2.6-1.2-2.6-2.9 1.7 0 2.9 1 2.9 2.6m-.3.3c0-1.7 1-2.9 2.7-2.9 0 1.7-1.2 2.9-2.9 2.9"/></svg>'
             + '<div class="cart-empty-title">הסל עדיין ריק</div>'
@@ -5053,6 +5277,9 @@
         });
         els.statusClose.addEventListener('click', closeStatusModal);
         els.statusDismiss.addEventListener('click', closeStatusModal);
+        var weeklyReminderCloseBtn = document.getElementById('weeklyReminderClose');
+        if (weeklyReminderCloseBtn) weeklyReminderCloseBtn.addEventListener('click', dismissWeeklyReminder);
+        initNeighborhoodTooltips();
         els.orderConfirmSend.addEventListener('click', function () {
             if (pendingOrder) {
                 sendOrder(pendingOrder.payload, pendingOrder.collected);
@@ -6090,6 +6317,7 @@
                     var cs = catalog.settings || {};
                     if (Number(cs.freeDeliveryThreshold) > 0) { FREE_DELIVERY_THRESHOLD = Number(cs.freeDeliveryThreshold); }
                     if (Number(cs.deliveryFee) >= 0 && cs.deliveryFee !== '' && cs.deliveryFee != null) { DELIVERY_FEE = Number(cs.deliveryFee); }
+                    updateWeeklyReminder();
                     renderCatalog();
                     applyPaymentsConfig();
                 })
@@ -6362,7 +6590,7 @@
                 '</div>',
                 '</div>',
                 renderUnitControls(product),
-                product.orderCutoff ? '<div class="cutoff-note">⏰ ניתן להזמין עד ' + escapeHtml(cutoffDisplayTime()) + '</div>' : '',
+                product.orderCutoff ? '<div class="cutoff-note">⏰ ניתן להזמין עד ' + escapeHtml(cutoffDisplayLabel()) + '</div>' : '',
                 renderProductNote(product),
                 '</article>'
             ].join('');
@@ -6388,11 +6616,11 @@
             return [
                 '<article class="product-row out-of-stock" style="' + escapeAttr(getCategoryStyle(categoryName)) + '" data-product-id="' + escapeAttr(product.id) + '" data-name="' + escapeAttr(product.name) + '" data-out-of-stock="1" aria-disabled="true">',
                 '<div class="product-info">',
-                renderProductImage(product, true, 'נסגר להיום'),
+                renderProductImage(product, true, 'נסגר השבוע'),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
                 priceHtml(product),
-                '<span class="cutoff-note closed">ההזמנה נסגרה (ניתן עד ' + escapeHtml(cutoffDisplayTime()) + ')</span>',
+                '<span class="cutoff-note closed">ההזמנה נסגרה לשבוע זה (ניתן היה עד ' + escapeHtml(cutoffDisplayLabel()) + ')</span>',
                 '</div>',
                 '</div>',
                 '</article>'
@@ -6834,11 +7062,11 @@
             els.freeDeliveryProgress.classList.toggle('is-complete', remaining === 0);
 
             if (!total) {
-                els.freeDeliveryMessage.textContent = 'משלוח חינם בקנייה מעל ₪' + FREE_DELIVERY_THRESHOLD;
+                els.freeDeliveryMessage.textContent = 'משלוח חינם בקנייה מעל ₪' + FREE_DELIVERY_THRESHOLD + ' · לשכונות נבחרות בירושלים בלבד';
             } else if (remaining > 0) {
-                els.freeDeliveryMessage.textContent = 'עוד ₪' + formatMoney(remaining) + ' למשלוח חינם';
+                els.freeDeliveryMessage.textContent = 'עוד ₪' + formatMoney(remaining) + ' למשלוח חינם (לשכונות נבחרות בירושלים)';
             } else {
-                els.freeDeliveryMessage.textContent = 'הגעתם למשלוח חינם';
+                els.freeDeliveryMessage.textContent = 'הגעתם למשלוח חינם 🌿 לשכונות נבחרות בירושלים';
             }
         }
 

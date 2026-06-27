@@ -44,6 +44,25 @@ function israelNowMinutes() {
     return d.getHours() * 60 + d.getMinutes();
   }
 }
+function israelWeekday() {
+  try {
+    const s = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' }).format(new Date());
+    const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return map[s] != null ? map[s] : new Date().getDay();
+  } catch (e) {
+    return new Date().getDay();
+  }
+}
+// Time-limited items are orderable until orderCutoffDay at orderCutoffEnforceTime,
+// then closed for the rest of the week (reopening the next Sunday).
+function isWeeklyCutoffClosed(settings) {
+  let cutoffDay = parseInt(String((settings && settings.orderCutoffDay) || '3'), 10);
+  if (!(cutoffDay >= 0 && cutoffDay <= 6)) cutoffDay = 3;
+  const today = israelWeekday();
+  if (today < cutoffDay) return false;
+  if (today > cutoffDay) return true;
+  return israelNowMinutes() >= parseHHMM(settings && settings.orderCutoffEnforceTime, 6 * 60);
+}
 
 // GET ?order=<id>&token=<token> — read an order back so the customer can edit it.
 async function handleGetEdit(req, res) {
@@ -120,14 +139,17 @@ module.exports = async function handler(req, res) {
       };
     }
 
-    // Reject time-limited items submitted after the daily cutoff.
-    if (israelNowMinutes() >= parseHHMM(settings.orderCutoffEnforceTime, 6 * 60)) {
+    // Reject time-limited items submitted after the weekly cutoff.
+    if (isWeeklyCutoffClosed(settings)) {
       const cutoffIds = new Set((catalog.products || []).filter((p) => p.orderCutoff).map((p) => p.id));
       const closed = (order.items || [])
         .filter((it) => it.product && cutoffIds.has(it.product.id))
         .map((it) => it.product.name);
       if (closed.length) {
-        const disp = String(settings.orderCutoffDisplayTime || '03:00');
+        const HEB_WEEKDAYS = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'];
+        let cutoffDay = parseInt(String(settings.orderCutoffDay || '3'), 10);
+        if (!(cutoffDay >= 0 && cutoffDay <= 6)) cutoffDay = 3;
+        const disp = HEB_WEEKDAYS[cutoffDay] + ' ' + String(settings.orderCutoffDisplayTime || '03:00');
         return res.status(409).json({
           error: 'הפריטים הבאים ניתנים להזמנה רק עד ' + disp + ', ולא ניתן להזמין אותם כעת: '
             + closed.join(', ') + '. אפשר להסיר אותם ולשלוח שוב.',
