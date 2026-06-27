@@ -756,7 +756,7 @@
         <span class="pbb-label">שנה סטטוס ל:</span>
         <button class="chip" data-bulk="active">זמין</button>
         <button class="chip" data-bulk="oos">אזל מהמלאי</button>
-        <button class="chip" data-bulk="cutoff">ניתן להזמין עד 3:00</button>
+        <button class="chip" data-bulk="cutoff">מוגבל-זמן (חיתוך שבועי)</button>
         <button class="chip" data-bulk="hidden">מוסתר</button>
         <button class="btn-link" id="pbb-clear">ניקוי בחירה</button>
       </div>
@@ -872,7 +872,7 @@
           <label for="pf-state">סטטוס</label>
           <select id="pf-state">
             <option value="active">פעיל (מוצג וניתן להזמנה)</option>
-            <option value="cutoff">ניתן להזמין עד 3:00 (נחסם בהמשך היום)</option>
+            <option value="cutoff">מוגבל-זמן (נחסם ביום החיתוך השבועי)</option>
             <option value="oos">אזל מהמלאי (מוצג, לא ניתן להזמנה)</option>
             <option value="hidden">מוסתר (לא מוצג ללקוחות)</option>
           </select>
@@ -2526,6 +2526,12 @@
     });
 
     // ---------- Settings ----------
+    var WEEKDAY_OPTIONS = [
+      { value: '0', label: 'יום ראשון' }, { value: '1', label: 'יום שני' },
+      { value: '2', label: 'יום שלישי' }, { value: '3', label: 'יום רביעי' },
+      { value: '4', label: 'יום חמישי' }, { value: '5', label: 'יום שישי' },
+      { value: '6', label: 'שבת' },
+    ];
     var SETTINGS_FIELDS = [
       { key: 'title', label: 'כותרת האתר', type: 'input' },
       { key: 'description', label: 'תיאור', type: 'textarea' },
@@ -2538,8 +2544,13 @@
       { key: 'freeDeliveryThreshold', label: 'סכום למשלוח חינם (₪)', hint: 'מעל סכום זה המשלוח חינם', type: 'input' },
       { key: 'deliveryFee', label: 'דמי משלוח (₪)', type: 'input' },
       { key: 'telegramPickedChatId', label: 'טלגרם — ערוץ הזמנות שנאספו', hint: 'מזהה הצ׳אט (Chat ID) של הערוץ שאליו תישלח סיכום ההזמנה כשהליקוט מסתיים', type: 'input' },
+      { key: 'orderCutoffDay', label: 'יום חיתוך שבועי', hint: 'מוצרים מוגבלי-זמן ניתנים להזמנה עד יום זה בשעת החסימה, ואז נסגרים עד תחילת השבוע הבא', type: 'select', options: WEEKDAY_OPTIONS },
       { key: 'orderCutoffDisplayTime', label: 'שעת חיתוך — תצוגה ללקוח', hint: 'מוצג כ"ניתן להזמין עד …" על מוצרים מוגבלי-זמן (פורמט HH:MM)', type: 'input' },
-      { key: 'orderCutoffEnforceTime', label: 'שעת חיתוך — חסימה בפועל', hint: 'אחרי שעה זו אי אפשר להזמין את אותם מוצרים (פורמט HH:MM)', type: 'input' },
+      { key: 'orderCutoffEnforceTime', label: 'שעת חיתוך — חסימה בפועל', hint: 'אחרי שעה זו ביום החיתוך אי אפשר להזמין את אותם מוצרים (פורמט HH:MM)', type: 'input' },
+      { key: 'weeklyReminderEnabled', label: 'תזכורת שבועית — הצגה', hint: 'הצגת הודעה שמעודדת להזמין מוקדם בשבוע הבא', type: 'select', options: [{ value: 'on', label: 'מוצג' }, { value: 'off', label: 'מוסתר' }] },
+      { key: 'weeklyReminderDay', label: 'תזכורת שבועית — מאיזה יום', hint: 'מהיום הזה ועד סוף השבוע תוצג ההודעה לכל מי שנכנס לאתר', type: 'select', options: WEEKDAY_OPTIONS },
+      { key: 'weeklyReminderTime', label: 'תזכורת שבועית — מאיזו שעה', hint: 'בדרך כלל 00:00 (תחילת היום). פורמט HH:MM', type: 'input' },
+      { key: 'weeklyReminderText', label: 'תזכורת שבועית — נוסח ההודעה', type: 'textarea' },
       { key: 'logoUrl', label: 'קישור ללוגו', type: 'input' },
     ];
 
@@ -2559,11 +2570,21 @@
       SETTINGS_FIELDS.forEach(function (f) {
         var val = esc(s[f.key] == null ? '' : s[f.key]);
         var hint = f.hint ? ' <span class="hint">— ' + esc(f.hint) + '</span>' : '';
+        var control;
+        if (f.type === 'textarea') {
+          control = '<textarea id="set-' + f.key + '">' + val + '</textarea>';
+        } else if (f.type === 'select') {
+          var cur = String(s[f.key] == null ? '' : s[f.key]);
+          control = '<select id="set-' + f.key + '" class="status-select">' +
+            f.options.map(function (o) {
+              return '<option value="' + esc(o.value) + '"' + (o.value === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+            }).join('') + '</select>';
+        } else {
+          control = '<input id="set-' + f.key + '" type="text" value="' + val + '">';
+        }
         html += '<div class="set-field">' +
           '<label for="set-' + f.key + '">' + esc(f.label) + hint + '</label>' +
-          (f.type === 'textarea'
-            ? '<textarea id="set-' + f.key + '">' + val + '</textarea>'
-            : '<input id="set-' + f.key + '" type="text" value="' + val + '">') +
+          control +
           '</div>';
       });
       html += '<div class="settings-actions"><button class="btn btn-primary" id="set-save">שמירת הגדרות</button></div>';
@@ -2591,7 +2612,7 @@
     function productPill(p) {
       if (p.state === 'oos') return '<span class="pill oos">אזל</span>';
       if (p.state === 'hidden') return '<span class="pill hidden">מוסתר</span>';
-      if (p.orderCutoff) return '<span class="pill cutoff">עד 3:00</span>';
+      if (p.orderCutoff) return '<span class="pill cutoff">מוגבל-זמן</span>';
       return '<span class="pill active">פעיל</span>';
     }
 
@@ -2663,7 +2684,7 @@
     function bulkSetProductStatus(status) {
       var ids = Object.keys(state.selectedProducts);
       if (!ids.length) return;
-      var labels = { active: 'זמין', oos: 'אזל מהמלאי', hidden: 'מוסתר', cutoff: 'ניתן להזמין עד 3:00' };
+      var labels = { active: 'זמין', oos: 'אזל מהמלאי', hidden: 'מוסתר', cutoff: 'מוגבל-זמן' };
       if (!window.confirm('לשנות ' + ids.length + ' מוצרים לסטטוס "' + (labels[status] || status) + '"?')) return;
       api('POST', '', { action: 'products-bulk-status', ids: ids, status: status }).then(function (r) {
         ids.forEach(function (id) {
