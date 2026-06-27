@@ -4112,6 +4112,57 @@
             font-weight: 800;
         }
 
+        /* "Which neighborhoods?" tooltip on delivery-area messages. */
+        .hood-tip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-inline-start: 4px;
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font: inherit;
+        }
+        .hood-tip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--amber, #b9791a);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .hood-tip-icon::before { content: "i"; font-style: italic; }
+        .hood-tip-bubble {
+            position: absolute;
+            top: calc(100% + 8px);
+            inset-inline-end: 0;
+            z-index: 30;
+            display: none;
+            width: max-content;
+            max-width: 240px;
+            padding: 9px 12px;
+            background: #2f3b30;
+            color: #fff;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: start;
+            border-radius: 10px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+            white-space: normal;
+        }
+        .hood-tip-bubble strong { display: block; font-weight: 800; margin-bottom: 3px; }
+        .hood-tip:hover .hood-tip-bubble,
+        .hood-tip:focus-visible .hood-tip-bubble,
+        .hood-tip.open .hood-tip-bubble { display: block; }
+
         .delivery-fields select {
             width: 100%;
             min-height: 42px;
@@ -4388,37 +4439,55 @@
         /* Weekly "order earlier next week" reminder banner (task 5). */
         .weekly-reminder {
             display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            align-items: center;
+            gap: 13px;
             max-width: 1180px;
-            margin: 12px auto 0;
-            padding: 12px 16px;
-            background: #fff7e6;
-            border: 1px solid #f0d79a;
-            border-radius: 14px;
-            color: #6b4d12;
-            font-size: 14.5px;
+            margin: 16px auto 0;
+            padding: 16px 20px;
+            background: linear-gradient(180deg, #fff3d0 0%, #ffe7a8 100%);
+            border: 1.5px solid #ecb43f;
+            border-inline-start: 6px solid #d98a14;
+            border-radius: 16px;
+            color: #6b4011;
+            font-size: 16px;
+            font-weight: 700;
             line-height: 1.5;
-            box-shadow: 0 1px 3px rgba(107, 77, 18, 0.06);
+            box-shadow: 0 6px 18px rgba(176, 120, 20, 0.18);
         }
         .weekly-reminder.hidden { display: none; }
-        .weekly-reminder-emoji { font-size: 18px; flex: none; line-height: 1.4; }
+        .weekly-reminder-emoji {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: inset 0 0 0 2px #ecb43f;
+            font-size: 22px;
+            line-height: 1;
+        }
         .weekly-reminder-text { flex: 1; }
         .weekly-reminder-close {
             flex: none;
             appearance: none;
             border: none;
-            background: transparent;
-            color: #9a7b32;
-            font-size: 22px;
-            line-height: 1;
-            padding: 0 2px;
+            background: rgba(255, 255, 255, 0.6);
+            color: #8a5a12;
+            width: 28px;
+            height: 28px;
+            font-size: 20px;
+            line-height: 26px;
+            text-align: center;
+            padding: 0;
             cursor: pointer;
-            border-radius: 8px;
+            border-radius: 50%;
         }
-        .weekly-reminder-close:hover { color: #6b4d12; }
+        .weekly-reminder-close:hover { background: #fff; color: #6b4011; }
         @media (max-width: 600px) {
-            .weekly-reminder { margin: 10px 12px 0; padding: 11px 13px; font-size: 13.5px; border-radius: 12px; }
+            .weekly-reminder { margin: 12px 12px 0; padding: 13px 14px; gap: 11px; font-size: 14.5px; border-radius: 14px; }
+            .weekly-reminder-emoji { width: 34px; height: 34px; font-size: 19px; }
         }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
@@ -4617,7 +4686,7 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7zM7 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
                             <div class="info-card-body">
                                 <div class="info-card-title">משלוח</div>
-                                <p class="info-card-text">15 ש״ח · חינם בהזמנה מעל 300 ש״ח · לשכונות נבחרות בירושלים בלבד</p>
+                                <p class="info-card-text">15 ש״ח · חינם בהזמנה מעל 300 ש״ח · לשכונות נבחרות בירושלים בלבד<button type="button" class="hood-tip" aria-label="אילו שכונות?"><span class="hood-tip-icon" aria-hidden="true"></span><span class="hood-tip-bubble" role="tooltip"></span></button></p>
                             </div>
                         </div>
 
@@ -4722,7 +4791,7 @@
                     </div>
 
                     <div id="deliveryFields" class="delivery-fields hidden">
-                        <p class="delivery-area-note">משלוח לשכונות נבחרות בירושלים בלבד. לשאר האזורים — איסוף עצמי.</p>
+                        <p class="delivery-area-note">משלוח לשכונות נבחרות בירושלים בלבד<button type="button" class="hood-tip" aria-label="אילו שכונות?"><span class="hood-tip-icon" aria-hidden="true"></span><span class="hood-tip-bubble" role="tooltip"></span></button>. לשאר האזורים — איסוף עצמי.</p>
                         <label class="field delivery-neighborhood">
                             <span>שכונה <span class="required-star">*</span></span>
                             <select id="neighborhood" name="neighborhood">
@@ -5020,6 +5089,35 @@
             if (banner) banner.classList.add('hidden');
         }
 
+        // Fill the "אילו שכונות?" tooltips from the delivery <select> (single
+        // source of truth), and let a tap open them on touch devices.
+        function initNeighborhoodTooltips() {
+            var tips = document.querySelectorAll('.hood-tip');
+            if (!tips.length) return;
+            var select = document.getElementById('neighborhood');
+            var names = select
+                ? Array.prototype.slice.call(select.options)
+                    .map(function (o) { return (o.value || '').trim(); })
+                    .filter(Boolean)
+                : [];
+            if (!names.length) return;
+            var bubbleHtml = '<strong>שכונות המשלוח בירושלים:</strong>' + escapeHtml(names.join(' · '));
+            Array.prototype.forEach.call(tips, function (tip) {
+                var bubble = tip.querySelector('.hood-tip-bubble');
+                if (bubble) bubble.innerHTML = bubbleHtml;
+                tip.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var wasOpen = tip.classList.contains('open');
+                    Array.prototype.forEach.call(tips, function (t) { t.classList.remove('open'); });
+                    if (!wasOpen) tip.classList.add('open');
+                });
+            });
+            document.addEventListener('click', function () {
+                Array.prototype.forEach.call(tips, function (t) { t.classList.remove('open'); });
+            });
+        }
+
         var productById = {};
         var activeCategory = '';
         var noticeScrollGuardTimer = null;
@@ -5162,6 +5260,7 @@
         els.statusDismiss.addEventListener('click', closeStatusModal);
         var weeklyReminderCloseBtn = document.getElementById('weeklyReminderClose');
         if (weeklyReminderCloseBtn) weeklyReminderCloseBtn.addEventListener('click', dismissWeeklyReminder);
+        initNeighborhoodTooltips();
         els.orderConfirmSend.addEventListener('click', function () {
             if (pendingOrder) {
                 sendOrder(pendingOrder.payload, pendingOrder.collected);
