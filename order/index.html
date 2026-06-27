@@ -2352,14 +2352,14 @@
             gap: 26px;
         }
 
-        .store-announcement span {
+        .store-announcement span:not(.hood-tip-icon):not(.hood-tip-bubble) {
             display: inline-flex;
             align-items: center;
             gap: 10px;
             white-space: nowrap;
         }
 
-        .store-announcement span:not(.store-announcement-bsd) + span::before {
+        .store-announcement span:not(.store-announcement-bsd) + span:not(.hood-tip-bubble)::before {
             width: 4px;
             height: 4px;
             content: "";
@@ -4129,36 +4129,55 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             border-radius: 50%;
             background: var(--amber, #b9791a);
             color: #fff;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
             line-height: 1;
+            opacity: 0.92;
+            transition: opacity 0.15s ease;
         }
+        .hood-tip:hover .hood-tip-icon,
+        .hood-tip.open .hood-tip-icon { opacity: 1; }
         .hood-tip-icon::before { content: "i"; font-style: italic; }
         .hood-tip-bubble {
             position: absolute;
-            top: calc(100% + 8px);
-            inset-inline-end: 0;
+            top: calc(100% + 9px);
+            inset-inline-end: -7px;
             z-index: 600;
             display: none;
             width: max-content;
-            max-width: 240px;
-            padding: 9px 12px;
-            background: #2f3b30;
-            color: #fff;
+            max-width: 230px;
+            padding: 9px 13px;
+            background: #273229;
+            color: #f3f6f1;
             font-size: 12.5px;
             font-weight: 600;
             line-height: 1.5;
             text-align: start;
-            border-radius: 10px;
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+            border-radius: 11px;
+            box-shadow: 0 10px 26px rgba(20, 33, 22, 0.32);
             white-space: normal;
         }
-        .hood-tip-bubble strong { display: block; font-weight: 800; margin-bottom: 3px; }
+        .hood-tip-bubble::before {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            inset-inline-end: 13px;
+            border: 6px solid transparent;
+            border-bottom-color: #273229;
+        }
+        .hood-tip-bubble strong {
+            display: block;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.01em;
+            color: #aecdab;
+            margin-bottom: 4px;
+        }
         .hood-tip:hover .hood-tip-bubble,
         .hood-tip:focus-visible .hood-tip-bubble,
         .hood-tip.open .hood-tip-bubble { display: block; }
