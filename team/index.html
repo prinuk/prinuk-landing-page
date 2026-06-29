@@ -457,6 +457,7 @@
     .scope-bar .scope-label { color: var(--muted); }
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    .scope-bar .scope-count { margin-inline-start: auto; font-weight: 700; color: var(--accent); }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
     .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
@@ -716,6 +717,7 @@
           <input type="date" id="scope-to" />
           <button class="btn" id="scope-apply">הצג</button>
         </span>
+        <span id="scope-count" class="scope-count"></span>
       </div>
 
       <div class="print-bar">
@@ -1262,6 +1264,9 @@
       el('c-waiting').textContent = w;
       el('c-picking').textContent = p;
       el('c-done').textContent = d;
+      // Total orders for the selected scope (current sale / past sale / date range).
+      var scEl = el('scope-count');
+      if (scEl) { scEl.textContent = state.orders.length ? ('סה״כ ' + state.orders.length + ' הזמנות') : ''; }
     }
 
     function renderList() {
