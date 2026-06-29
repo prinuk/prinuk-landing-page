@@ -8303,12 +8303,10 @@
                 year.value = year.value.replace(/\D/g, '').slice(0, 2);
                 ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
                 refreshExpiry();
-                if (year.value.length >= 2) {
-                    if (isCardcom()) {
-                        var cf = document.getElementById('CardComCvv');
-                        if (cf && cf.contentWindow) { cf.contentWindow.focus(); }
-                    } else { cvv.focus(); }
-                }
+                // For Cardcom the CVV is a cross-origin iframe we can't focus into,
+                // so leave the cursor on year — the customer taps CVV. (sumit/mock
+                // use our own CVV input, so autotab there.)
+                if (year.value.length >= 2 && !isCardcom()) { cvv.focus(); }
             });
             year.addEventListener('blur', function () { refreshExpiry(true); });
 
