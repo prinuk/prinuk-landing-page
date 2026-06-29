@@ -2068,10 +2068,13 @@
       s.src = tkCardcomBase() + '/External/OpenFields/3DS.js?v=' + Date.now();
       document.head.appendChild(s);
     }
-    function tkInjectFrame(slotId, path, height, onload) {
+    // name MUST be CardComCardNumber / CardComCvv / CardComMasterFrame — Cardcom's
+    // master script locates the field iframes via window.parent.frames[name].
+    function tkInjectFrame(slotId, path, height, name, onload) {
       var slot = el(slotId); if (!slot) return null;
       slot.innerHTML = '';
       var f = document.createElement('iframe');
+      f.name = name; f.id = name;
       f.style.cssText = 'width:100%;height:' + (height || 40) + 'px;border:none;display:block;';
       if (onload) { f.onload = onload; }
       f.src = tkCardcomBase() + path;
@@ -2144,9 +2147,9 @@
               }, '*');
               resolve();
             }
-            tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40, tick);
-            tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40, tick);
-            tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, tick);
+            tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40, 'CardComCardNumber', tick);
+            tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40, 'CardComCvv', tick);
+            tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, 'CardComMasterFrame', tick);
           });
         })
         .catch(function (err) { tkCardcom.ready = null; throw err; });
