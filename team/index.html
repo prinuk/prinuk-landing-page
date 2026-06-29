@@ -2047,8 +2047,13 @@
     function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
     function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
     function tkCardcomCss() {
-      return 'input{font-family:inherit;font-size:16px;width:100%;height:40px;border:none;outline:none;'
-        + 'padding:8px 10px;box-sizing:border-box;direction:ltr;text-align:left;background:transparent;}';
+      // Target #cardNumber / #cvvField by id (beats Cardcom's own defaults) so the
+      // inner field is borderless/transparent and the outer iframe is the box.
+      return 'body{margin:0;padding:0;}'
+        + '#cardNumber,#cvvField{box-sizing:border-box;width:100%;height:40px;line-height:40px;'
+        + 'border:0;outline:0;margin:0;background:transparent;font-family:inherit;font-size:16px;}'
+        + '#cardNumber{padding:0 35px;}'
+        + '#cvvField{padding:0 12px;text-align:center;}';
     }
     function tkReviewGrandAgorot() {
       var r = state.review; if (!r) return 0;

@@ -7886,10 +7886,16 @@
         function cardcomBase() {
             return (catalog.payments && catalog.payments.baseUrl) || 'https://secure.cardcom.solutions';
         }
-        // CSS injected INTO each Cardcom field iframe so the inner <input> matches our look.
+        // CSS injected INTO each Cardcom field iframe. Must target #cardNumber /
+        // #cvvField by id (higher specificity than Cardcom's own defaults) so the
+        // inner field is borderless + transparent and the outer iframe is the
+        // visible box (matching our form inputs).
         function cardcomFieldCss() {
-            return 'input{font-family:inherit;font-size:16px;width:100%;height:42px;border:none;outline:none;'
-                + 'padding:9px 11px;box-sizing:border-box;direction:ltr;text-align:left;background:transparent;color:#1c2a17;}';
+            return 'body{margin:0;padding:0;}'
+                + '#cardNumber,#cvvField{box-sizing:border-box;width:100%;height:44px;line-height:44px;'
+                + 'border:0;outline:0;margin:0;background:transparent;font-family:inherit;font-size:16px;color:#17242f;}'
+                + '#cardNumber{padding:0 35px;}'
+                + '#cvvField{padding:0 12px;text-align:center;}';
         }
         function cardcomEstimateAgorot() {
             try {
