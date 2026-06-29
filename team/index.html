@@ -457,6 +457,13 @@
     .scope-bar .scope-label { color: var(--muted); }
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    .scope-bar .scope-count { margin-inline-start: auto; font-weight: 700; color: var(--accent); }
+    .hr-bar { height: 14px; min-width: 2px; border-radius: 7px; background: var(--accent); }
+    .rep-acc { border: 1px solid var(--line); border-radius: 12px; margin: 10px 16px; background: var(--surface); overflow: hidden; }
+    .rep-acc > summary { cursor: pointer; padding: 13px 16px; font-size: 16px; font-weight: 700; color: var(--accent-dark, var(--accent)); list-style: none; }
+    .rep-acc > summary::-webkit-details-marker { display: none; }
+    .rep-acc > summary::after { content: '▸'; float: left; color: var(--muted); transition: transform .15s; }
+    .rep-acc[open] > summary::after { transform: rotate(90deg); }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
     .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
@@ -577,6 +584,11 @@
     .cr-card input { width: 100%; margin-bottom: 8px; }
     .cr-card .cc-row { display: flex; gap: 8px; }
     .cr-card .cc-row input { flex: 1; min-width: 0; text-align: center; }
+    /* Cardcom OPEN FIELDS hosted-field iframes — border on the slot div (reliable),
+       transparent borderless iframe inside, clipped to the radius. */
+    .cc-frame-slot { width: 100%; margin-bottom: 8px; height: 40px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
+    .cc-frame-slot iframe { width: 100%; height: 40px; border: 0; background: transparent; display: block; }
+    .cr-card .cc-row .cc-cvv-slot { flex: 1; min-width: 0; margin-bottom: 0; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -711,6 +723,7 @@
           <input type="date" id="scope-to" />
           <button class="btn" id="scope-apply">הצג</button>
         </span>
+        <span id="scope-count" class="scope-count"></span>
       </div>
 
       <div class="print-bar">
@@ -774,6 +787,11 @@
         <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
       </div>
 
+      <details id="acc-weekly" class="rep-acc">
+        <summary>📈 דוח הזמנות שבועי</summary>
+        <div id="weekly-report-body"><div class="loading">טוען…</div></div>
+      </details>
+
       <div class="scope-bar">
         <span class="scope-label">דוח עבור:</span>
         <select id="rep-scope-select"><option value="current">מכירה נוכחית</option></select>
@@ -784,11 +802,17 @@
           <button class="btn" id="rep-scope-apply">הצג</button>
         </span>
       </div>
-      <div class="report-head">
-        <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
-        <button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button>
-      </div>
-      <div id="weight-summary-body"><div class="loading">טוען…</div></div>
+
+      <details id="acc-hourly" class="rep-acc">
+        <summary>🕐 התפלגות הזמנות לפי שעה</summary>
+        <div id="hourly-report-body"><div class="loading">טוען…</div></div>
+      </details>
+
+      <details id="acc-weight" class="rep-acc">
+        <summary>⚖️ סיכום משקל ויחידות לקנייה</summary>
+        <div style="text-align:left;padding:0 16px 8px;"><button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button></div>
+        <div id="weight-summary-body"><div class="loading">טוען…</div></div>
+      </details>
     </div>
 
     <!-- SETTINGS TAB -->
@@ -1149,17 +1173,98 @@
       if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
       el('rep-scope-range').classList.add('hidden');
       state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
-      loadWeightSummary();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
     });
     el('rep-scope-apply').addEventListener('click', function () {
       state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
-      loadWeightSummary();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
     });
     el('weight-print-btn').addEventListener('click', printWeightSummary);
 
     // ---------- Reports ----------
+    // Each report is a collapsible section, loaded lazily when expanded.
     function loadReports() {
-      loadWeightSummary();
+      // Reload whatever is already open (e.g. after returning to the tab).
+      if (el('acc-weekly').open) loadWeeklyReport();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
+    }
+    el('acc-weekly').addEventListener('toggle', function () { if (this.open) loadWeeklyReport(); });
+    el('acc-hourly').addEventListener('toggle', function () { if (this.open) loadHourlyReport(); });
+    el('acc-weight').addEventListener('toggle', function () { if (this.open) loadWeightSummary(); });
+
+    // Orders-by-hour for the selected report scope (sale / range / all). Hour is
+    // the team's local time (Israel), which is what "at Y hour" means here.
+    function loadHourlyReport() {
+      var body = el('hourly-report-body');
+      body.innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=list' + scopeParamsFor(state.reportScope)).then(function (data) {
+        var orders = (data && data.orders) || [];
+        if (!orders.length) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
+        var buckets = new Array(24).fill(0);
+        var sums = new Array(24).fill(0); // ₪ total of orders in each hour
+        var totalN = 0, totalSum = 0;
+        orders.forEach(function (o) {
+          var ts = o.timestamp || o.createdAt;
+          if (!ts) return;
+          var h = new Date(ts).getHours();
+          if (h < 0 || h >= 24) return;
+          buckets[h]++; totalN++;
+          var amt = Number(o.grandTotal) || 0;
+          sums[h] += amt; totalSum += amt;
+        });
+        var maxN = Math.max.apply(null, buckets) || 1;
+        var rows = '';
+        var cumN = 0; // running (cumulative) order count through the hours
+        for (var h = 0; h < 24; h++) {
+          cumN += buckets[h];
+          var pct = Math.round(buckets[h] / maxN * 100);
+          var hh = (h < 10 ? '0' + h : h) + ':00';
+          rows += '<tr><td class="num">' + hh + '</td>' +
+            '<td><div class="hr-bar" style="width:' + pct + '%"></div></td>' +
+            '<td class="num">' + buckets[h] + '</td>' +
+            '<td class="num">' + cumN + '</td>' +
+            '<td class="num">₪' + esc(formatMoney(sums[h])) + '</td></tr>';
+        }
+        body.innerHTML = '<table class="report-table"><thead><tr>' +
+          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th><th class="num">מצטבר</th><th class="num">סכום</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr class="dept-row"><td>סה״כ</td><td></td><td class="num">' + totalN + '</td>' +
+          '<td class="num">' + totalN + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalSum)) + '</td></tr>' +
+          '</tbody></table>';
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
+    }
+
+    // Weekly orders report: one row per sale/week with order count + revenue.
+    function loadWeeklyReport() {
+      var body = el('weekly-report-body');
+      body.innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=weekly-report').then(function (data) {
+        var weeks = (data && data.weeks) || [];
+        if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
+        var totalOrders = 0, totalRevenue = 0;
+        var rows = weeks.map(function (w) {
+          totalOrders += w.count; totalRevenue += w.revenue || 0;
+          var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
+          return '<tr><td>' + esc(w.saleName) + '</td>' +
+            '<td class="num">' + w.count + '</td>' +
+            '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
+            '<td class="num">' + esc(dateLabel) + '</td></tr>';
+        }).join('');
+        body.innerHTML = '<table class="report-table"><thead><tr>' +
+          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">תאריך אחרון</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td><td></td></tr>' +
+          '</tbody></table>';
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
     }
 
     function loadWeightSummary() {
@@ -1257,6 +1362,9 @@
       el('c-waiting').textContent = w;
       el('c-picking').textContent = p;
       el('c-done').textContent = d;
+      // Total orders for the selected scope (current sale / past sale / date range).
+      var scEl = el('scope-count');
+      if (scEl) { scEl.textContent = state.orders.length ? ('סה״כ ' + state.orders.length + ' הזמנות') : ''; }
     }
 
     function renderList() {
@@ -1889,7 +1997,10 @@
               id: it.id, productId: null, name: it.name,
               isWeight: it.isWeightPriced,
               unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
-              quantity: Number(it.quantity || 0),
+              // Bill what was COLLECTED: unit items use the collected quantity
+              // (actualQuantity) and weight items the collected weight — falling
+              // back to the ordered amount only if nothing was recorded.
+              quantity: (!it.isWeightPriced && it.actualQuantity != null) ? Number(it.actualQuantity) : Number(it.quantity || 0),
               weightKg: (it.isWeightPriced && it.actualWeightKg != null) ? it.actualWeightKg : '',
               discountValue: Number(it.discount || 0), discountType: 'ils',
             };
@@ -1965,6 +2076,18 @@
       return s % 10 === 0;
     }
     function tkValidateCard() {
+      // Cardcom OPEN FIELDS: card number + CVV are in Cardcom iframes (self-validated);
+      // only check the fields we own here (expiry + ת״ז).
+      if (tkIsCardcom()) {
+        var mmC = parseInt(el('cr-cc-month').value, 10);
+        if (!(mmC >= 1 && mmC <= 12)) return 'חודש תוקף לא תקין';
+        var yyC = (el('cr-cc-year').value || '').replace(/\D/g, '');
+        if (!/^\d{2}$/.test(yyC)) return 'שנת תוקף לא תקינה';
+        var nowC = new Date(); var fyC = 2000 + parseInt(yyC, 10);
+        if (fyC < nowC.getFullYear() || (fyC === nowC.getFullYear() && mmC < nowC.getMonth() + 1)) return 'תוקף הכרטיס פג';
+        if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+        return '';
+      }
       var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
       if (!tkLuhn(num)) return 'מספר כרטיס לא תקין';
       var mm = parseInt(el('cr-cc-month').value, 10);
@@ -2022,7 +2145,168 @@
           new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 30000); }),
         ]);
       }
+      if (p.provider === 'cardcom') return tkCardcomTokenize();
       return Promise.reject(new Error('סליקת אשראי אינה זמינה'));
+    }
+
+    // ---- Cardcom OPEN FIELDS for the dashboard (hosted card iframes) ----
+    var tkCardcom = { lpId: null, ready: null, master: null };
+    function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
+    function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
+    function tkCardcomCss() {
+      // Target #cardNumber / #cvvField by id (beats Cardcom's own defaults) so the
+      // inner field is borderless/transparent and the outer iframe is the box.
+      return 'html,body{margin:0;padding:0;background:transparent;}'
+        + '#cardNumber,#cvvField{box-sizing:border-box;width:100%;height:40px;line-height:40px;'
+        + 'border:0;outline:0;margin:0;background:transparent;font-family:inherit;font-size:16px;}'
+        + '#cardNumber{padding:0 35px;}'
+        + '#cvvField{padding:0 12px;text-align:center;}';
+    }
+    function tkReviewGrandAgorot() {
+      var r = state.review; if (!r) return 0;
+      var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
+      var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (Number(r.delivery) || 0);
+      return Math.max(0, Math.round(grand * 100));
+    }
+    function tk3DS() {
+      if (window.__cardcom3ds) return;
+      window.__cardcom3ds = true;
+      var s = document.createElement('script');
+      s.src = tkCardcomBase() + '/External/OpenFields/3DS.js?v=' + Date.now();
+      document.head.appendChild(s);
+    }
+    // name MUST be CardComCardNumber / CardComCvv / CardComMasterFrame — Cardcom's
+    // master script locates the field iframes via window.parent.frames[name].
+    function tkInjectFrame(slotId, path, height, name, onload) {
+      var slot = el(slotId); if (!slot) return null;
+      slot.innerHTML = '';
+      var f = document.createElement('iframe');
+      f.name = name; f.id = name;
+      f.style.cssText = 'width:100%;height:' + (height || 40) + 'px;border:none;display:block;';
+      if (onload) { f.onload = onload; }
+      f.src = tkCardcomBase() + path;
+      slot.appendChild(f);
+      return f;
+    }
+    function tkResetCardcom() {
+      tkCardcom.ready = null; tkCardcom.lpId = null; tkCardcom.master = null;
+      ['cr-cc-number-slot', 'cr-cc-cvv-slot', 'cr-cardcom-master'].forEach(function (id) {
+        var s = el(id); if (s) { s.innerHTML = ''; }
+      });
+    }
+    // After a failed attempt the LowProfile is spent + fields lock — rebuild a
+    // fresh session so the team can re-enter and retry (only if the slots exist).
+    function tkReinitCardcomForRetry() {
+      tkResetCardcom();
+      if (el('cr-cc-number-slot')) { tkEnsureCardcom().catch(function () { /* shown on next submit */ }); }
+    }
+    // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
+    function tkCardBlockHtml(needCard) {
+      if (!needCard) return '';
+      if (tkIsCardcom()) {
+        return '<div class="cr-card">' +
+          '<div class="cr-card-title">💳 פרטי כרטיס אשראי</div>' +
+          '<div id="cr-cc-number-slot" class="cc-frame-slot"></div>' +
+          '<div class="cc-row">' +
+            '<input id="cr-cc-month" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+            '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+            '<div id="cr-cc-cvv-slot" class="cc-frame-slot cc-cvv-slot"></div>' +
+          '</div>' +
+          '<input id="cr-cc-id" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+          '<div id="cr-cardcom-master" style="position:absolute;width:0;height:0;overflow:hidden;"></div>' +
+          '<div class="field-error" id="cr-cc-error"></div>' +
+        '</div>';
+      }
+      return '<div class="cr-card" data-og="form">' +
+        '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
+        '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
+        '<div class="cc-row">' +
+          '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+          '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+          '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
+        '</div>' +
+        '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+        '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
+        '<div class="field-error" id="cr-cc-error"></div>' +
+      '</div>';
+    }
+    // Create a fresh CreateTokenOnly LowProfile + load/init the field iframes.
+    function tkEnsureCardcom() {
+      if (tkCardcom.ready) return tkCardcom.ready;
+      tk3DS();
+      tkCardcom.ready = fetch('/api/payment-init', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountAgorot: tkReviewGrandAgorot() })
+      })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+        .then(function (out) {
+          var d = out.d || {};
+          if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
+          tkCardcom.lpId = d.lowProfileId;
+          // Post `init` (CSS + LowProfile code) only after all three iframes load.
+          return new Promise(function (resolve) {
+            var loaded = 0;
+            function tick() {
+              loaded += 1;
+              if (loaded < 3 || !tkCardcom.master) return;
+              tkCardcom.master.contentWindow.postMessage({
+                action: 'init',
+                cardFieldCSS: tkCardcomCss(),
+                cvvFieldCSS: tkCardcomCss(),
+                placeholder: '',
+                cvvPlaceholder: 'CVV',
+                lowProfileCode: tkCardcom.lpId,
+                language: 'he'
+              }, '*');
+              resolve();
+            }
+            tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40, 'CardComCardNumber', tick);
+            tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40, 'CardComCvv', tick);
+            tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, 'CardComMasterFrame', tick);
+          });
+        })
+        .catch(function (err) { tkCardcom.ready = null; throw err; });
+      return tkCardcom.ready;
+    }
+    function tkCardcomTokenize() {
+      return tkEnsureCardcom().then(function () {
+        return new Promise(function (resolve, reject) {
+          var done = false;
+          function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
+          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return m || 'שגיאה באימות הכרטיס'; }
+          function onMsg(e) {
+            var msg = e.data || {};
+            if (msg.action === 'HandleSubmit') {
+              cleanup();
+              if (msg.data && msg.data.IsSuccess) resolve(tkCardcom.lpId);
+              else { tkReinitCardcomForRetry(); reject(new Error(fmtErr(msg.data && msg.data.Description))); }
+            } else if (msg.action === 'HandleEror') {
+              cleanup(); tkReinitCardcomForRetry();
+              reject(new Error(fmtErr(msg.message)));
+            }
+          }
+          var timer = setTimeout(function () { cleanup(); tkReinitCardcomForRetry(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 60000);
+          window.addEventListener('message', onMsg);
+          var month = (el('cr-cc-month').value || '').replace(/\D/g, '');
+          var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+          var citizen = (el('cr-cc-id').value || '').replace(/\D/g, '') || '000000000';
+          var r = state.review || {};
+          var cust = r.customer || {};
+          // Cardcom requires a card-owner name. Use the POS customer name, or the
+          // existing order's customer name when charging a saved/manual card.
+          var ownerName = cust.fullName || (state.current && state.current.fullName) || '';
+          var ownerPhone = cust.phone || (state.current && state.current.phone) || '';
+          tkCardcom.master.contentWindow.postMessage({
+            action: 'doTransaction',
+            cardOwnerId: citizen,
+            cardOwnerName: ownerName,
+            cardOwnerPhone: ownerPhone,
+            expirationMonth: month,
+            expirationYear: yy,
+            numberOfPayments: '1'
+          }, '*');
+        });
+      });
     }
 
     function crLineBillable(it) {
@@ -2044,9 +2328,10 @@
       var r = state.review;
       var needCard = r.isNew ? (r.payMethod === 'credit') : !r.hasCard;
       var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : 'סקירה וחיוב';
+      var namePlaceholder = r.payMethod === 'credit' ? 'שם בעל הכרטיס (חובה לאשראי)' : 'שם הלקוח (לא חובה)';
       var newHead = !r.isNew ? '' :
         '<div class="cr-newhead">' +
-          '<input id="cr-cust-name" placeholder="שם הלקוח (לא חובה)" value="' + esc(r.customer.fullName || '') + '">' +
+          '<input id="cr-cust-name" placeholder="' + esc(namePlaceholder) + '" value="' + esc(r.customer.fullName || '') + '">' +
           '<input id="cr-cust-phone" placeholder="טלפון (לא חובה)" inputmode="tel" value="' + esc(r.customer.phone || '') + '">' +
           '<div class="cr-pay-method">' +
             '<label><input type="radio" name="cr-pm" value="cash"' + (r.payMethod === 'cash' ? ' checked' : '') + '> מזומן</label>' +
@@ -2089,19 +2374,7 @@
         '</div>' +
         '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
           '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
-        (!needCard ? '' :
-          '<div class="cr-card" data-og="form">' +
-            '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
-            '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
-            '<div class="cc-row">' +
-              '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
-              '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
-              '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
-            '</div>' +
-            '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
-            '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
-            '<div class="field-error" id="cr-cc-error"></div>' +
-          '</div>') +
+        tkCardBlockHtml(needCard) +
         '<div class="cr-total" id="cr-total"></div>';
 
       Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
@@ -2123,7 +2396,16 @@
         var p = (state.products || []).find(function (x) { return x.id === pid; });
         if (!p) return;
         var isKg = /ק/.test(String(p.priceUnit || p.unit || ''));
-        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: isKg, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: isKg ? 1 : Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), weightKg: '', baseAmount: null, discountValue: 0, discountType: 'ils' });
+        // The add-row number box is the quantity for unit items and the WEIGHT
+        // (kg) for weight-priced items — use it either way so the line isn't ₪0.
+        var addVal = Number(el('cr-add-qty').value) || 0;
+        r.items.push({
+          id: null, productId: p.id, name: p.name, isWeight: isKg,
+          unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice,
+          quantity: isKg ? 1 : Math.max(1, Math.round(addVal || 1)),
+          weightKg: isKg ? (addVal > 0 ? addVal : '') : '',
+          baseAmount: null, discountValue: 0, discountType: 'ils',
+        });
         renderChargeReview();
       });
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
@@ -2136,7 +2418,15 @@
           rb.addEventListener('change', function () { r.payMethod = this.value; renderChargeReview(); });
         });
       }
+      // Re-enable the confirm button — a prior failed/interrupted charge may have
+      // left it disabled, and reopening the modal must always allow a new attempt.
+      var cfBtn = el('charge-confirm'); if (cfBtn) { cfBtn.disabled = false; }
       crRecompute();
+      // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
+      if (needCard && tkIsCardcom()) {
+        tkResetCardcom();
+        tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+      }
     }
 
     function crRecompute() {
@@ -2150,13 +2440,14 @@
         var amt = row.querySelector('[data-amt]');
         if (amt) amt.textContent = formatMoney(net);
       });
-      // Auto delivery: charge ₪25 only when BOTH the estimate and the final amount
-      // are under ₪200 (delivery orders); free otherwise. Off once the team edits it.
+      // Auto delivery: for a delivery order, add the fee whenever the FINAL
+      // (collected) amount is under the free-delivery threshold; free otherwise.
+      // Off once the team edits the משלוח field.
       if (r.deliveryAuto) {
         var threshold = Number(state.settings && state.settings.freeDeliveryThreshold) || CR_FREE_DELIVERY;
         var fee = Number(state.settings && state.settings.deliveryFee);
         if (!(fee >= 0)) { fee = CR_DELIVERY_FEE; }
-        r.delivery = (r.isDelivery && r.estimateItems < threshold && total < threshold) ? fee : 0;
+        r.delivery = (r.isDelivery && total < threshold) ? fee : 0;
         var dEl = el('cr-delivery');
         if (dEl && document.activeElement !== dEl) { dEl.value = r.delivery || ''; }
       }
@@ -2197,10 +2488,18 @@
             loadOrders();
           }).catch(function (err) {
             nbtn.disabled = false; crRecompute();
+            // Server failed after the card was tokenized → the OPEN FIELDS session
+            // is spent; rebuild it so the team can retry.
+            if (tkIsCardcom() && r.payMethod === 'credit') { tkReinitCardcomForRetry(); }
             if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה ביצירת ההזמנה');
           });
         };
         if (r.payMethod === 'credit') {
+          if (!String(r.customer.fullName || '').trim()) {
+            el('cr-cc-error').textContent = 'יש להזין שם בעל הכרטיס לחיוב באשראי.';
+            var nmEl = el('cr-cust-name'); if (nmEl) nmEl.focus();
+            return;
+          }
           var ccErr = tkValidateCard();
           if (ccErr) { el('cr-cc-error').textContent = ccErr; return; }
           el('cr-cc-error').textContent = '';
@@ -2239,6 +2538,9 @@
         }).catch(function (err) {
           btn.disabled = false;
           crRecompute();
+          // If the team manually entered a card and the server charge failed, the
+          // OPEN FIELDS session is spent → rebuild it for a retry.
+          if (tkIsCardcom() && !r.hasCard) { tkReinitCardcomForRetry(); }
           if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
         });
       };

@@ -134,6 +134,7 @@ module.exports = async function handler(req, res) {
       order.payment = {
         method: 'credit',
         providerCustomerRef: saved.customerRef || '',
+        cardExpiry: saved.cardExpiry || '',
         cardLast4: saved.cardLast4 || '',
         brand: saved.brand || '',
       };

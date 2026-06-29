@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const {
   listOrdersForDashboard,
   getSalesList,
+  getWeeklyReport,
   getWeightSummary,
   getOrdersDetailed,
   readOrderForDashboard,
@@ -190,6 +191,11 @@ module.exports = async function handler(req, res) {
       if (action === 'sales') {
         const sales = await getSalesList();
         return res.json({ ok: true, sales });
+      }
+
+      if (action === 'weekly-report') {
+        const weeks = await getWeeklyReport();
+        return res.json({ ok: true, weeks });
       }
 
       if (action === 'weight-summary') {
