@@ -2151,7 +2151,7 @@
                 cardFieldCSS: tkCardcomCss(),
                 cvvFieldCSS: tkCardcomCss(),
                 placeholder: '',
-                cvvPlaceholder: '',
+                cvvPlaceholder: 'CVV',
                 lowProfileCode: tkCardcom.lpId,
                 language: 'he'
               }, '*');
@@ -2301,6 +2301,9 @@
           rb.addEventListener('change', function () { r.payMethod = this.value; renderChargeReview(); });
         });
       }
+      // Re-enable the confirm button — a prior failed/interrupted charge may have
+      // left it disabled, and reopening the modal must always allow a new attempt.
+      var cfBtn = el('charge-confirm'); if (cfBtn) { cfBtn.disabled = false; }
       crRecompute();
       // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
       if (needCard && tkIsCardcom()) {
