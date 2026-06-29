@@ -2288,7 +2288,16 @@
         var p = (state.products || []).find(function (x) { return x.id === pid; });
         if (!p) return;
         var isKg = /ק/.test(String(p.priceUnit || p.unit || ''));
-        r.items.push({ id: null, productId: p.id, name: p.name, isWeight: isKg, unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice, quantity: isKg ? 1 : Math.max(1, Math.round(Number(el('cr-add-qty').value) || 1)), weightKg: '', baseAmount: null, discountValue: 0, discountType: 'ils' });
+        // The add-row number box is the quantity for unit items and the WEIGHT
+        // (kg) for weight-priced items — use it either way so the line isn't ₪0.
+        var addVal = Number(el('cr-add-qty').value) || 0;
+        r.items.push({
+          id: null, productId: p.id, name: p.name, isWeight: isKg,
+          unitPrice: Number(p.price || 0), dealQty: p.dealQty, dealPrice: p.dealPrice,
+          quantity: isKg ? 1 : Math.max(1, Math.round(addVal || 1)),
+          weightKg: isKg ? (addVal > 0 ? addVal : '') : '',
+          baseAmount: null, discountValue: 0, discountType: 'ils',
+        });
         renderChargeReview();
       });
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
