@@ -4508,6 +4508,18 @@
             .weekly-reminder { margin: 12px 12px 0; padding: 13px 14px; gap: 11px; font-size: 14.5px; border-radius: 14px; }
             .weekly-reminder-emoji { width: 34px; height: 34px; font-size: 19px; }
         }
+        /* Cardcom OPEN FIELDS hosted-field iframes — match the form inputs so the
+           card-number / CVV iframes look like the rest of the checkout. */
+        .cc-frame-slot { width: 100%; }
+        .cc-frame-slot iframe {
+            width: 100%;
+            height: 44px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            background: #fff;
+            display: block;
+        }
+        .cc-frame-slot.is-invalid-field iframe { border-color: #c0392b; }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4857,6 +4869,8 @@
                             <div class="cc-number-wrap">
                                 <input id="ccNumber" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="23" dir="ltr">
                                 <span id="ccBrand" class="cc-brand" aria-live="polite"></span>
+                                <!-- Cardcom OPEN FIELDS: card-number iframe injected here when provider=cardcom -->
+                                <div id="ccNumberFrameSlot" class="cc-frame-slot hidden"></div>
                             </div>
                         </label>
                         <label class="field cc-f-sm">
@@ -4870,6 +4884,8 @@
                         <label class="field cc-f-sm">
                             <span>CVV <span class="required-star">*</span></span>
                             <input id="ccCvv" type="text" inputmode="numeric" autocomplete="cc-csc" data-og="cvv" maxlength="4" dir="ltr">
+                            <!-- Cardcom OPEN FIELDS: CVV iframe injected here when provider=cardcom -->
+                            <div id="ccCvvFrameSlot" class="cc-frame-slot hidden"></div>
                         </label>
                         <label class="field cc-f-id">
                             <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
@@ -4881,6 +4897,8 @@
                         <!-- Hidden mirrors read by Sumit's tokenizer: digits-only card number + 4-digit year -->
                         <input type="hidden" id="ogCardNumber" data-og="cardnumber">
                         <input type="hidden" id="ogYear" data-og="expirationyear">
+                        <!-- Cardcom OPEN FIELDS master iframe (0×0, coordinates tokenization) -->
+                        <div id="cardcomMasterSlot" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden;"></div>
                     </div>
 
                     <label class="field" style="margin-top: 12px;">
@@ -7846,6 +7864,10 @@
             if (provider === 'mock') {
                 return Promise.resolve('mock_tok_' + Date.now());
             }
+            if (provider === 'cardcom') {
+                // Returns the LowProfileId; the server resolves it into the card token.
+                return cardcomTokenize();
+            }
             if (provider === 'sumit') {
                 return Promise.race([
                     sumitTokenize(),
@@ -7853,6 +7875,149 @@
                 ]);
             }
             return Promise.reject(new Error('תשלום באשראי אינו זמין כרגע.'));
+        }
+
+        // ---- Cardcom OPEN FIELDS (hosted card iframes; card data never touches us) ----
+        var cardcom = { lpId: null, ready: null, master: null };
+
+        function isCardcom() {
+            return ((catalog.payments && catalog.payments.provider) || '') === 'cardcom';
+        }
+        function cardcomBase() {
+            return (catalog.payments && catalog.payments.baseUrl) || 'https://secure.cardcom.solutions';
+        }
+        // CSS injected INTO each Cardcom field iframe so the inner <input> matches our look.
+        function cardcomFieldCss() {
+            return 'input{font-family:inherit;font-size:16px;width:100%;height:42px;border:none;outline:none;'
+                + 'padding:9px 11px;box-sizing:border-box;direction:ltr;text-align:left;background:transparent;color:#1c2a17;}';
+        }
+        function cardcomEstimateAgorot() {
+            try {
+                var c = collectItems();
+                var total = roundMoney((c.estimatedTotal || 0) + deliveryFeeFor(c.estimatedTotal || 0));
+                return Math.max(0, Math.round(total * 100));
+            } catch (e) { return 0; }
+        }
+        function load3DSScript() {
+            if (window.__cardcom3ds) return;
+            window.__cardcom3ds = true;
+            var s = document.createElement('script');
+            s.src = cardcomBase() + '/External/OpenFields/3DS.js?v=' + Date.now();
+            document.head.appendChild(s);
+        }
+        function injectCardcomFrame(slotId, path, height) {
+            var slot = document.getElementById(slotId);
+            if (!slot) return null;
+            slot.innerHTML = '';
+            var f = document.createElement('iframe');
+            f.style.width = '100%';
+            f.style.height = (height || 44) + 'px';
+            f.style.border = 'none';
+            f.style.display = 'block';
+            f.src = cardcomBase() + path;
+            slot.appendChild(f);
+            return f;
+        }
+        // Create a fresh LowProfile (CreateTokenOnly) + (re)load the field iframes +
+        // init them. Resolves when the iframes are ready to accept a card.
+        function ensureCardcom() {
+            if (cardcom.ready) return cardcom.ready;
+            load3DSScript();
+            cardcom.ready = fetch('/api/payment-init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amountAgorot: cardcomEstimateAgorot() })
+            })
+                .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+                .then(function (r) {
+                    if (!r.ok || !r.d.lowProfileId) {
+                        throw new Error((r.d && r.d.error) || 'לא הצלחנו לפתוח את טופס התשלום.');
+                    }
+                    cardcom.lpId = r.d.lowProfileId;
+                    injectCardcomFrame('ccNumberFrameSlot', '/api/openfields/cardNumber', 44);
+                    injectCardcomFrame('ccCvvFrameSlot', '/api/openfields/CVV', 44);
+                    return new Promise(function (resolve) {
+                        var master = document.createElement('iframe');
+                        master.style.cssText = 'display:block;width:0;height:0;border:none;';
+                        master.onload = function () {
+                            master.contentWindow.postMessage({
+                                action: 'init',
+                                cardFieldCSS: cardcomFieldCss(),
+                                cvvFieldCSS: cardcomFieldCss(),
+                                placeholder: '0000 0000 0000 0000',
+                                cvvPlaceholder: 'CVV',
+                                lowProfileCode: cardcom.lpId,
+                                language: 'he'
+                            }, '*');
+                            cardcom.master = master;
+                            resolve();
+                        };
+                        master.src = cardcomBase() + '/api/openfields/master';
+                        var slot = document.getElementById('cardcomMasterSlot');
+                        if (slot) { slot.innerHTML = ''; slot.appendChild(master); }
+                    });
+                })
+                .catch(function (err) { cardcom.ready = null; throw err; });
+            return cardcom.ready;
+        }
+        // Run the card deal inside the iframes and resolve with the LowProfileId.
+        function cardcomTokenize() {
+            return ensureCardcom().then(function () {
+                return new Promise(function (resolve, reject) {
+                    var done = false;
+                    function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
+                    function onMsg(e) {
+                        var msg = e.data || {};
+                        if (msg.action === 'HandleSubmit') {
+                            cleanup();
+                            if (msg.data && msg.data.IsSuccess) { resolve(cardcom.lpId); }
+                            else { resetCardcom(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
+                        } else if (msg.action === 'HandleEror') {
+                            cleanup(); resetCardcom();
+                            reject(new Error(msg.message || 'אירעה שגיאה באימות הכרטיס. נסו שוב.'));
+                        }
+                    }
+                    var timer = setTimeout(function () { cleanup(); resetCardcom(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
+                    window.addEventListener('message', onMsg);
+                    var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
+                    var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
+                    var citizen = (document.getElementById('ccCitizen').value || '').replace(/\D/g, '') || '000000000';
+                    var nameEl = document.getElementById('fullName');
+                    var phoneEl = document.getElementById('phone');
+                    var emailEl = document.getElementById('email');
+                    cardcom.master.contentWindow.postMessage({
+                        action: 'doTransaction',
+                        cardOwnerId: citizen,
+                        cardOwnerName: (nameEl && nameEl.value) || '',
+                        cardOwnerEmail: (emailEl && emailEl.value) || '',
+                        cardOwnerPhone: (phoneEl && phoneEl.value) || '',
+                        expirationMonth: month,
+                        expirationYear: yy,
+                        numberOfPayments: '1'
+                    }, '*');
+                });
+            });
+        }
+        // Tear down the OPEN FIELDS session so the next attempt gets a fresh
+        // LowProfile + clean iframes (a LowProfile deal is single-use).
+        function resetCardcom() {
+            cardcom.ready = null; cardcom.lpId = null; cardcom.master = null;
+            ['ccNumberFrameSlot', 'ccCvvFrameSlot', 'cardcomMasterSlot'].forEach(function (id) {
+                var s = document.getElementById(id); if (s) { s.innerHTML = ''; }
+            });
+        }
+        // Swap the manual card inputs for the Cardcom iframes (or back).
+        function applyCardcomFieldMode(active) {
+            var numInput = document.getElementById('ccNumber');
+            var numBrand = document.getElementById('ccBrand');
+            var numSlot = document.getElementById('ccNumberFrameSlot');
+            var cvvInput = document.getElementById('ccCvv');
+            var cvvSlot = document.getElementById('ccCvvFrameSlot');
+            if (numInput) { numInput.classList.toggle('hidden', active); }
+            if (numBrand) { numBrand.classList.toggle('hidden', active); }
+            if (numSlot) { numSlot.classList.toggle('hidden', !active); }
+            if (cvvInput) { cvvInput.classList.toggle('hidden', active); }
+            if (cvvSlot) { cvvSlot.classList.toggle('hidden', !active); }
         }
 
         var sumitScriptPromise = null;
@@ -7923,6 +8088,8 @@
             });
             var num = document.getElementById('ccNumber');
             if (num) { num.classList.remove('is-invalid-field'); }
+            // Tear down any Cardcom OPEN FIELDS session (fresh one next order).
+            if (isCardcom()) { resetCardcom(); }
         }
 
         // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
@@ -7930,6 +8097,11 @@
             var isCredit = getPaymentMethod() === 'credit';
             if (els.creditCardFields) {
                 els.creditCardFields.classList.toggle('hidden', !isCredit);
+            }
+            if (isCardcom()) {
+                applyCardcomFieldMode(isCredit);
+                // Preload the OPEN FIELDS session so the iframes are ready on submit.
+                if (isCredit) { ensureCardcom().catch(function () { /* surfaced on submit */ }); }
             }
         }
 
@@ -8098,6 +8270,20 @@
 
         // Validate the card on submit (only when credit is the chosen method).
         function validateCreditCard() {
+            // Cardcom OPEN FIELDS: the card number + CVV live in Cardcom's iframes and
+            // are validated there, so we only check the fields we own (expiry + ת״ז).
+            if (isCardcom()) {
+                var ccMonthEl = document.getElementById('ccMonth');
+                var mmC = parseInt(ccMonthEl && ccMonthEl.value, 10);
+                if (!(mmC >= 1 && mmC <= 12)) return { message: 'חודש התוקף אינו תקין.', field: ccMonthEl };
+                var ccYearEl = document.getElementById('ccYear');
+                if (!/^\d{2}$/.test(ccYearEl && ccYearEl.value)) return { message: 'שנת התוקף אינה תקינה.', field: ccYearEl };
+                var expMsgC = expiryError(true);
+                if (expMsgC) return { message: expMsgC, field: ccMonthEl };
+                var ccCitizenEl = document.getElementById('ccCitizen');
+                if (!isValidIsraeliId(ccCitizenEl && ccCitizenEl.value)) return { message: 'תעודת הזהות אינה תקינה.', field: ccCitizenEl };
+                return null;
+            }
             var num = document.getElementById('ccNumber');
             var digits = (num && num.value || '').replace(/\D/g, '');
             var brand = detectCardBrand(digits);
