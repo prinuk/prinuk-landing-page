@@ -2320,13 +2320,14 @@
         var amt = row.querySelector('[data-amt]');
         if (amt) amt.textContent = formatMoney(net);
       });
-      // Auto delivery: charge ₪25 only when BOTH the estimate and the final amount
-      // are under ₪200 (delivery orders); free otherwise. Off once the team edits it.
+      // Auto delivery: for a delivery order, add the fee whenever the FINAL
+      // (collected) amount is under the free-delivery threshold; free otherwise.
+      // Off once the team edits the משלוח field.
       if (r.deliveryAuto) {
         var threshold = Number(state.settings && state.settings.freeDeliveryThreshold) || CR_FREE_DELIVERY;
         var fee = Number(state.settings && state.settings.deliveryFee);
         if (!(fee >= 0)) { fee = CR_DELIVERY_FEE; }
-        r.delivery = (r.isDelivery && r.estimateItems < threshold && total < threshold) ? fee : 0;
+        r.delivery = (r.isDelivery && total < threshold) ? fee : 0;
         var dEl = el('cr-delivery');
         if (dEl && document.activeElement !== dEl) { dEl.value = r.delivery || ''; }
       }
