@@ -459,6 +459,11 @@
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     .scope-bar .scope-count { margin-inline-start: auto; font-weight: 700; color: var(--accent); }
     .hr-bar { height: 14px; min-width: 2px; border-radius: 7px; background: var(--accent); }
+    .rep-acc { border: 1px solid var(--line); border-radius: 12px; margin: 10px 16px; background: var(--surface); overflow: hidden; }
+    .rep-acc > summary { cursor: pointer; padding: 13px 16px; font-size: 16px; font-weight: 700; color: var(--accent-dark, var(--accent)); list-style: none; }
+    .rep-acc > summary::-webkit-details-marker { display: none; }
+    .rep-acc > summary::after { content: '▸'; float: left; color: var(--muted); transition: transform .15s; }
+    .rep-acc[open] > summary::after { transform: rotate(90deg); }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
     .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
@@ -782,6 +787,11 @@
         <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
       </div>
 
+      <details id="acc-weekly" class="rep-acc">
+        <summary>📈 דוח הזמנות שבועי</summary>
+        <div id="weekly-report-body"><div class="loading">טוען…</div></div>
+      </details>
+
       <div class="scope-bar">
         <span class="scope-label">דוח עבור:</span>
         <select id="rep-scope-select"><option value="current">מכירה נוכחית</option></select>
@@ -792,17 +802,17 @@
           <button class="btn" id="rep-scope-apply">הצג</button>
         </span>
       </div>
-      <h3 class="report-title">דוח הזמנות שבועי</h3>
-      <div id="weekly-report-body"><div class="loading">טוען…</div></div>
 
-      <h3 class="report-title">התפלגות הזמנות לפי שעה</h3>
-      <div id="hourly-report-body"><div class="loading">טוען…</div></div>
+      <details id="acc-hourly" class="rep-acc">
+        <summary>🕐 התפלגות הזמנות לפי שעה</summary>
+        <div id="hourly-report-body"><div class="loading">טוען…</div></div>
+      </details>
 
-      <div class="report-head">
-        <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
-        <button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button>
-      </div>
-      <div id="weight-summary-body"><div class="loading">טוען…</div></div>
+      <details id="acc-weight" class="rep-acc">
+        <summary>⚖️ סיכום משקל ויחידות לקנייה</summary>
+        <div style="text-align:left;padding:0 16px 8px;"><button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button></div>
+        <div id="weight-summary-body"><div class="loading">טוען…</div></div>
+      </details>
     </div>
 
     <!-- SETTINGS TAB -->
@@ -1163,22 +1173,27 @@
       if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
       el('rep-scope-range').classList.add('hidden');
       state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
-      loadHourlyReport();
-      loadWeightSummary();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
     });
     el('rep-scope-apply').addEventListener('click', function () {
       state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
-      loadHourlyReport();
-      loadWeightSummary();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
     });
     el('weight-print-btn').addEventListener('click', printWeightSummary);
 
     // ---------- Reports ----------
+    // Each report is a collapsible section, loaded lazily when expanded.
     function loadReports() {
-      loadWeeklyReport();
-      loadHourlyReport();
-      loadWeightSummary();
+      // Reload whatever is already open (e.g. after returning to the tab).
+      if (el('acc-weekly').open) loadWeeklyReport();
+      if (el('acc-hourly').open) loadHourlyReport();
+      if (el('acc-weight').open) loadWeightSummary();
     }
+    el('acc-weekly').addEventListener('toggle', function () { if (this.open) loadWeeklyReport(); });
+    el('acc-hourly').addEventListener('toggle', function () { if (this.open) loadHourlyReport(); });
+    el('acc-weight').addEventListener('toggle', function () { if (this.open) loadWeightSummary(); });
 
     // Orders-by-hour for the selected report scope (sale / range / all). Hour is
     // the team's local time (Israel), which is what "at Y hour" means here.
@@ -1189,11 +1204,16 @@
         var orders = (data && data.orders) || [];
         if (!orders.length) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
         var buckets = new Array(24).fill(0);
+        var sums = new Array(24).fill(0); // ₪ total of orders in each hour
+        var totalN = 0, totalSum = 0;
         orders.forEach(function (o) {
           var ts = o.timestamp || o.createdAt;
           if (!ts) return;
           var h = new Date(ts).getHours();
-          if (h >= 0 && h < 24) buckets[h]++;
+          if (h < 0 || h >= 24) return;
+          buckets[h]++; totalN++;
+          var amt = Number(o.grandTotal) || 0;
+          sums[h] += amt; totalSum += amt;
         });
         var maxN = Math.max.apply(null, buckets) || 1;
         var rows = '';
@@ -1202,11 +1222,15 @@
           var hh = (h < 10 ? '0' + h : h) + ':00';
           rows += '<tr><td class="num">' + hh + '</td>' +
             '<td><div class="hr-bar" style="width:' + pct + '%"></div></td>' +
-            '<td class="num">' + buckets[h] + '</td></tr>';
+            '<td class="num">' + buckets[h] + '</td>' +
+            '<td class="num">₪' + esc(formatMoney(sums[h])) + '</td></tr>';
         }
         body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th>' +
-          '</tr></thead><tbody>' + rows + '</tbody></table>';
+          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th><th class="num">סכום</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr class="dept-row"><td>סה״כ</td><td></td><td class="num">' + totalN + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalSum)) + '</td></tr>' +
+          '</tbody></table>';
       }).catch(function (err) {
         if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
       });
