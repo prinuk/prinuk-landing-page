@@ -7514,6 +7514,11 @@
                     saveCustomerDetailsFromPayload(payload);
                     if (payload) { delete payload.paymentToken; } // don't retain the token in memory
                     clearCreditCardFields(); // never keep card details after sending
+                    // Reset the payment choice so the next order starts clean — otherwise
+                    // credit stays selected over a torn-down Cardcom session (blank/locked
+                    // card boxes). togglePaymentFields hides the card section accordingly.
+                    document.querySelectorAll('input[name="paymentMethod"]').forEach(function (r) { r.checked = false; });
+                    togglePaymentFields();
                     showStatusSuccess(result.data, collected);
                     showMessage('', '');
                     resetProducts();
