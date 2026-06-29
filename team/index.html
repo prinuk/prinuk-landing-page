@@ -2049,7 +2049,7 @@
     function tkCardcomCss() {
       // Target #cardNumber / #cvvField by id (beats Cardcom's own defaults) so the
       // inner field is borderless/transparent and the outer iframe is the box.
-      return 'body{margin:0;padding:0;}'
+      return 'html,body{margin:0;padding:0;background:transparent;}'
         + '#cardNumber,#cvvField{box-sizing:border-box;width:100%;height:40px;line-height:40px;'
         + 'border:0;outline:0;margin:0;background:transparent;font-family:inherit;font-size:16px;}'
         + '#cardNumber{padding:0 35px;}'
@@ -2068,11 +2068,12 @@
       s.src = tkCardcomBase() + '/External/OpenFields/3DS.js?v=' + Date.now();
       document.head.appendChild(s);
     }
-    function tkInjectFrame(slotId, path, height) {
+    function tkInjectFrame(slotId, path, height, onload) {
       var slot = el(slotId); if (!slot) return null;
       slot.innerHTML = '';
       var f = document.createElement('iframe');
       f.style.cssText = 'width:100%;height:' + (height || 40) + 'px;border:none;display:block;';
+      if (onload) { f.onload = onload; }
       f.src = tkCardcomBase() + path;
       slot.appendChild(f);
       return f;
@@ -2126,13 +2127,13 @@
           var d = out.d || {};
           if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
           tkCardcom.lpId = d.lowProfileId;
-          tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40);
-          tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40);
+          // Post `init` (CSS + LowProfile code) only after all three iframes load.
           return new Promise(function (resolve) {
-            var master = document.createElement('iframe');
-            master.style.cssText = 'display:block;width:0;height:0;border:none;';
-            master.onload = function () {
-              master.contentWindow.postMessage({
+            var loaded = 0;
+            function tick() {
+              loaded += 1;
+              if (loaded < 3 || !tkCardcom.master) return;
+              tkCardcom.master.contentWindow.postMessage({
                 action: 'init',
                 cardFieldCSS: tkCardcomCss(),
                 cvvFieldCSS: tkCardcomCss(),
@@ -2141,12 +2142,11 @@
                 lowProfileCode: tkCardcom.lpId,
                 language: 'he'
               }, '*');
-              tkCardcom.master = master;
               resolve();
-            };
-            master.src = tkCardcomBase() + '/api/openfields/master';
-            var slot = el('cr-cardcom-master');
-            if (slot) { slot.innerHTML = ''; slot.appendChild(master); }
+            }
+            tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40, tick);
+            tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40, tick);
+            tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, tick);
           });
         })
         .catch(function (err) { tkCardcom.ready = null; throw err; });
