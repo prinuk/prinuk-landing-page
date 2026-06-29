@@ -7931,7 +7931,7 @@
                 .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
                 .then(function (r) {
                     if (!r.ok || !r.d.lowProfileId) {
-                        throw new Error((r.d && r.d.error) || 'לא הצלחנו לפתוח את טופס התשלום.');
+                        throw new Error((r.d && (r.d.detail || r.d.error)) || 'לא הצלחנו לפתוח את טופס התשלום.');
                     }
                     cardcom.lpId = r.d.lowProfileId;
                     injectCardcomFrame('ccNumberFrameSlot', '/api/openfields/cardNumber', 44);
@@ -8101,7 +8101,12 @@
             if (isCardcom()) {
                 applyCardcomFieldMode(isCredit);
                 // Preload the OPEN FIELDS session so the iframes are ready on submit.
-                if (isCredit) { ensureCardcom().catch(function () { /* surfaced on submit */ }); }
+                if (isCredit) {
+                    ensureCardcom().catch(function (e) {
+                        var er = document.getElementById('ccNumberError');
+                        if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום.'; }
+                    });
+                }
             }
         }
 

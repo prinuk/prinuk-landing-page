@@ -30,7 +30,8 @@ module.exports = async function handler(req, res) {
     });
     if (!r.ok) {
       console.error('payment-init createLowProfile failed:', r.error, PROVIDER);
-      return res.status(502).json({ error: 'לא הצלחנו לפתוח את טופס התשלום. נסו שוב בעוד רגע.' });
+      // detail surfaces the provider error during setup/testing (gated provider).
+      return res.status(502).json({ error: 'לא הצלחנו לפתוח את טופס התשלום. נסו שוב בעוד רגע.', detail: r.error });
     }
     return res.json({ lowProfileId: r.lowProfileId });
   } catch (error) {

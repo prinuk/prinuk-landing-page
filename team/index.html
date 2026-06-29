@@ -2119,7 +2119,7 @@
         .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
         .then(function (out) {
           var d = out.d || {};
-          if (!out.ok || !d.lowProfileId) throw new Error(d.error || 'לא הצלחנו לפתוח את טופס התשלום');
+          if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
           tkCardcom.lpId = d.lowProfileId;
           tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40);
           tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40);
@@ -2284,7 +2284,10 @@
       }
       crRecompute();
       // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
-      if (needCard && tkIsCardcom()) { tkResetCardcom(); tkEnsureCardcom().catch(function () { /* surfaced on submit */ }); }
+      if (needCard && tkIsCardcom()) {
+        tkResetCardcom();
+        tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+      }
     }
 
     function crRecompute() {
