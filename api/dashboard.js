@@ -3,6 +3,7 @@ const {
   listOrdersForDashboard,
   getSalesList,
   getWeeklyReport,
+  getHourlyBySale,
   getWeightSummary,
   getOrdersDetailed,
   readOrderForDashboard,
@@ -196,6 +197,11 @@ module.exports = async function handler(req, res) {
       if (action === 'weekly-report') {
         const weeks = await getWeeklyReport();
         return res.json({ ok: true, weeks });
+      }
+
+      if (action === 'hourly-by-sale') {
+        const sales = await getHourlyBySale();
+        return res.json({ ok: true, sales });
       }
 
       if (action === 'weight-summary') {
