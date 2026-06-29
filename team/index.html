@@ -2167,15 +2167,16 @@
         return new Promise(function (resolve, reject) {
           var done = false;
           function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
+          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return (m || 'שגיאה באימות הכרטיס') + ' [exp ' + month + '/' + yy + ']'; }
           function onMsg(e) {
             var msg = e.data || {};
             if (msg.action === 'HandleSubmit') {
               cleanup();
               if (msg.data && msg.data.IsSuccess) resolve(tkCardcom.lpId);
-              else { tkReinitCardcomForRetry(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל')); }
+              else { tkReinitCardcomForRetry(); reject(new Error(fmtErr(msg.data && msg.data.Description))); }
             } else if (msg.action === 'HandleEror') {
               cleanup(); tkReinitCardcomForRetry();
-              reject(new Error(msg.message || 'שגיאה באימות הכרטיס'));
+              reject(new Error(fmtErr(msg.message)));
             }
           }
           var timer = setTimeout(function () { cleanup(); tkReinitCardcomForRetry(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 60000);
