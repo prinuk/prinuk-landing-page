@@ -405,7 +405,8 @@ module.exports = async function handler(req, res) {
         // Final email to the customer: collected summary + invoice (best-effort).
         if (!result.alreadyCharged) {
           try {
-            const o = await readOrderForDashboard(orderId);
+            const detail = await readOrderForDashboard(orderId);
+            const o = detail && detail.ok ? detail.order : null;
             if (o && o.email) {
               const settings = await getSettings();
               const fe = await sendCustomerFinalEmail(settings, o, o.items, {
