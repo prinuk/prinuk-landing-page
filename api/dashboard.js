@@ -4,6 +4,7 @@ const {
   getSalesList,
   getWeeklyReport,
   getHourlyBySale,
+  getCustomers,
   getWeightSummary,
   getOrdersDetailed,
   readOrderForDashboard,
@@ -203,6 +204,14 @@ module.exports = async function handler(req, res) {
       if (action === 'hourly-by-sale') {
         const sales = await getHourlyBySale();
         return res.json({ ok: true, sales });
+      }
+
+      if (action === 'customers') {
+        const customers = await getCustomers({
+          mode: String((req.query && req.query.mode) || 'all').trim(),
+          saleName: String((req.query && req.query.saleName) || '').trim(),
+        });
+        return res.json({ ok: true, customers });
       }
 
       if (action === 'weight-summary') {
