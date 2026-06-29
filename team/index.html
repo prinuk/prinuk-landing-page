@@ -593,6 +593,7 @@
     .cc-frame-slot { width: 100%; margin-bottom: 8px; height: 40px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
     .cc-frame-slot iframe { width: 100%; height: 40px; border: 0; background: transparent; display: block; }
     .cr-card .cc-row .cc-cvv-slot { flex: 1; min-width: 0; margin-bottom: 0; }
+    .cc-loading-note { color: var(--fresh, #1d9b68); font-weight: 700; font-size: 13px; margin-bottom: 8px; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -2289,6 +2290,7 @@
       if (tkIsCardcom()) {
         return '<div class="cr-card">' +
           '<div class="cr-card-title">💳 פרטי כרטיס אשראי</div>' +
+          '<div id="cr-cc-loading" class="cc-loading-note" style="display:none;">⏳ טוען טופס תשלום מאובטח…</div>' +
           '<div id="cr-cc-number-slot" class="cc-frame-slot"></div>' +
           '<div class="cc-row">' +
             '<input id="cr-cc-month" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
@@ -2360,10 +2362,12 @@
       return tkCardcom.ready;
     }
     // Open the team OPEN FIELDS session with one auto-retry on transient failure.
+    function tkCardcomLoading(on) { var n = el('cr-cc-loading'); if (n) { n.style.display = on ? 'block' : 'none'; } }
     function tkOpenCardcomFields() {
-      tkEnsureCardcom().catch(function () {
+      tkCardcomLoading(true);
+      tkEnsureCardcom().then(function () { tkCardcomLoading(false); }).catch(function () {
         setTimeout(function () {
-          tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+          tkEnsureCardcom().then(function () { tkCardcomLoading(false); }).catch(function (e) { tkCardcomLoading(false); var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
         }, 1500);
       });
     }

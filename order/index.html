@@ -4529,6 +4529,7 @@
             display: block;
         }
         .cc-frame-slot.is-invalid-field { border-color: #c0392b; }
+        .cc-loading-note { color: #165a43; font-weight: 700; font-size: 13.5px; padding: 2px 0; }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4873,6 +4874,7 @@
 
                     <div id="creditCardFields" class="card-fields hidden">
                         <p class="delivery-area-note cc-fullrow">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
+                        <div id="ccLoadingNote" class="cc-fullrow cc-loading-note" style="display:none;">⏳ טוען טופס תשלום מאובטח…</div>
                         <label class="field cc-f-number">
                             <span>מספר כרטיס <span class="required-star">*</span></span>
                             <div class="cc-number-wrap">
@@ -5422,6 +5424,13 @@
                 }
                 togglePaymentFields();
             });
+        });
+
+        // Preload the Cardcom LowProfile on checkout intent (first focus of the
+        // customer details) so the card fields are ready faster when credit is picked.
+        ['fullName', 'phone'].forEach(function (id) {
+            var f = document.getElementById(id);
+            if (f) { f.addEventListener('focus', function () { if (typeof preloadCardcomLp === 'function') { preloadCardcomLp(); } }, { once: true }); }
         });
 
         els.productsRoot.addEventListener('input', function (event) {
@@ -7896,7 +7905,7 @@
         }
 
         // ---- Cardcom OPEN FIELDS (hosted card iframes; card data never touches us) ----
-        var cardcom = { lpId: null, ready: null, master: null };
+        var cardcom = { lpId: null, lpPromise: null, ready: null, master: null };
         var cardcomValid = { number: undefined, cvv: undefined };
         var cardcomMsgBound = false;
         // Persistent listener for the iframe events we use for UX: NEXT_PRESSED
@@ -7982,6 +7991,31 @@
             var s = document.getElementById('ccNumberFrameSlot');
             return !!(cardcom.master && s && s.querySelector('iframe'));
         }
+        function showCardcomLoading(on) {
+            var n = document.getElementById('ccLoadingNote');
+            if (n) { n.style.display = on ? 'block' : 'none'; }
+        }
+        // Create the LowProfile (server → Cardcom). The slow step — preload it on
+        // checkout intent so it's ready before the customer picks credit.
+        function fetchCardcomLp() {
+            return fetch('/api/payment-init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amountAgorot: cardcomEstimateAgorot() })
+            })
+                .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+                .then(function (r) {
+                    if (!r.ok || !r.d.lowProfileId) throw new Error((r.d && (r.d.detail || r.d.error)) || 'לא הצלחנו לפתוח את טופס התשלום.');
+                    return r.d.lowProfileId;
+                });
+        }
+        function preloadCardcomLp() {
+            if (!isCardcom()) return;
+            if (cardcom.lpId || cardcom.lpPromise || cardcom.ready) return;
+            cardcom.lpPromise = fetchCardcomLp()
+                .then(function (id) { cardcom.lpId = id; return id; })
+                .catch(function () { cardcom.lpPromise = null; });
+        }
         function ensureCardcom() {
             // Rebuild if a previous session's iframes were removed/never rendered
             // (a stale cached promise would otherwise leave blank "blocked" boxes).
@@ -7989,17 +8023,13 @@
             if (cardcom.ready) return cardcom.ready;
             bindCardcomMessages();
             load3DSScript();
-            cardcom.ready = fetch('/api/payment-init', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amountAgorot: cardcomEstimateAgorot() })
-            })
-                .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
-                .then(function (r) {
-                    if (!r.ok || !r.d.lowProfileId) {
-                        throw new Error((r.d && (r.d.detail || r.d.error)) || 'לא הצלחנו לפתוח את טופס התשלום.');
-                    }
-                    cardcom.lpId = r.d.lowProfileId;
+            // Reuse a preloaded LowProfile if available; otherwise create one now.
+            var lpP = cardcom.lpId ? Promise.resolve(cardcom.lpId)
+                : (cardcom.lpPromise || fetchCardcomLp());
+            cardcom.ready = lpP
+                .then(function (lowProfileId) {
+                    if (!lowProfileId) throw new Error('לא הצלחנו לפתוח את טופס התשלום.');
+                    cardcom.lpId = lowProfileId;
                     // Load card-number + CVV + master iframes, and only post `init`
                     // (which carries the CSS + LowProfile code) once ALL THREE have
                     // loaded — otherwise the field iframes miss the styling. A watchdog
@@ -8037,9 +8067,11 @@
         // Open the OPEN FIELDS session with one automatic retry on a transient
         // failure (payment-init blip or a stalled iframe), then surface an error.
         function openCardcomFields() {
-            ensureCardcom().catch(function () {
+            showCardcomLoading(true);
+            ensureCardcom().then(function () { showCardcomLoading(false); }).catch(function () {
                 setTimeout(function () {
-                    ensureCardcom().catch(function (e) {
+                    ensureCardcom().then(function () { showCardcomLoading(false); }).catch(function (e) {
+                        showCardcomLoading(false);
                         var er = document.getElementById('ccNumberError');
                         if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום. רעננו את הדף או בחרו תשלום במזומן.'; }
                     });
@@ -8093,7 +8125,7 @@
             if (getPaymentMethod() === 'credit') { openCardcomFields(); }
         }
         function resetCardcom() {
-            cardcom.ready = null; cardcom.lpId = null; cardcom.master = null;
+            cardcom.ready = null; cardcom.lpId = null; cardcom.lpPromise = null; cardcom.master = null;
             cardcomValid.number = undefined; cardcomValid.cvv = undefined;
             ['ccNumberFrameSlot', 'ccCvvFrameSlot', 'cardcomMasterSlot'].forEach(function (id) {
                 var s = document.getElementById(id); if (s) { s.innerHTML = ''; }
