@@ -4510,18 +4510,25 @@
         }
         /* Cardcom OPEN FIELDS hosted-field iframes — match the form inputs so the
            card-number / CVV iframes look like the rest of the checkout. */
-        .cc-frame-slot { width: 100%; }
-        /* Match the form inputs exactly (see the input,textarea rule: surface-tint
-           background, 11px radius, --line border). */
-        .cc-frame-slot iframe {
+        /* The visible box is the slot div (borders render reliably on a div, not
+           on an iframe element); the iframe inside is transparent + borderless,
+           clipped to the rounded corners. Matches the input,textarea rule. */
+        .cc-frame-slot {
             width: 100%;
             height: 42px;
             border: 1px solid var(--line);
             border-radius: 11px;
             background: var(--surface-tint);
+            overflow: hidden;
+        }
+        .cc-frame-slot iframe {
+            width: 100%;
+            height: 42px;
+            border: 0;
+            background: transparent;
             display: block;
         }
-        .cc-frame-slot.is-invalid-field iframe { border-color: #c0392b; }
+        .cc-frame-slot.is-invalid-field { border-color: #c0392b; }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
