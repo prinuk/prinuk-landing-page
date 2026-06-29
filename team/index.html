@@ -1217,18 +1217,22 @@
         });
         var maxN = Math.max.apply(null, buckets) || 1;
         var rows = '';
+        var cumN = 0; // running (cumulative) order count through the hours
         for (var h = 0; h < 24; h++) {
+          cumN += buckets[h];
           var pct = Math.round(buckets[h] / maxN * 100);
           var hh = (h < 10 ? '0' + h : h) + ':00';
           rows += '<tr><td class="num">' + hh + '</td>' +
             '<td><div class="hr-bar" style="width:' + pct + '%"></div></td>' +
             '<td class="num">' + buckets[h] + '</td>' +
+            '<td class="num">' + cumN + '</td>' +
             '<td class="num">₪' + esc(formatMoney(sums[h])) + '</td></tr>';
         }
         body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th><th class="num">סכום</th>' +
+          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th><th class="num">מצטבר</th><th class="num">סכום</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td></td><td class="num">' + totalN + '</td>' +
+          '<td class="num">' + totalN + '</td>' +
           '<td class="num">₪' + esc(formatMoney(totalSum)) + '</td></tr>' +
           '</tbody></table>';
       }).catch(function (err) {
