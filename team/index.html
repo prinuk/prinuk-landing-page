@@ -458,6 +458,7 @@
     .scope-bar select, .scope-bar input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; font: inherit; background: #fff; }
     .scope-bar .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     .scope-bar .scope-count { margin-inline-start: auto; font-weight: 700; color: var(--accent); }
+    .hr-bar { height: 14px; min-width: 2px; border-radius: 7px; background: var(--accent); }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
     .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
@@ -793,6 +794,9 @@
       </div>
       <h3 class="report-title">דוח הזמנות שבועי</h3>
       <div id="weekly-report-body"><div class="loading">טוען…</div></div>
+
+      <h3 class="report-title">התפלגות הזמנות לפי שעה</h3>
+      <div id="hourly-report-body"><div class="loading">טוען…</div></div>
 
       <div class="report-head">
         <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
@@ -1159,10 +1163,12 @@
       if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
       el('rep-scope-range').classList.add('hidden');
       state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
+      loadHourlyReport();
       loadWeightSummary();
     });
     el('rep-scope-apply').addEventListener('click', function () {
       state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
+      loadHourlyReport();
       loadWeightSummary();
     });
     el('weight-print-btn').addEventListener('click', printWeightSummary);
@@ -1170,7 +1176,40 @@
     // ---------- Reports ----------
     function loadReports() {
       loadWeeklyReport();
+      loadHourlyReport();
       loadWeightSummary();
+    }
+
+    // Orders-by-hour for the selected report scope (sale / range / all). Hour is
+    // the team's local time (Israel), which is what "at Y hour" means here.
+    function loadHourlyReport() {
+      var body = el('hourly-report-body');
+      body.innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=list' + scopeParamsFor(state.reportScope)).then(function (data) {
+        var orders = (data && data.orders) || [];
+        if (!orders.length) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
+        var buckets = new Array(24).fill(0);
+        orders.forEach(function (o) {
+          var ts = o.timestamp || o.createdAt;
+          if (!ts) return;
+          var h = new Date(ts).getHours();
+          if (h >= 0 && h < 24) buckets[h]++;
+        });
+        var maxN = Math.max.apply(null, buckets) || 1;
+        var rows = '';
+        for (var h = 0; h < 24; h++) {
+          var pct = Math.round(buckets[h] / maxN * 100);
+          var hh = (h < 10 ? '0' + h : h) + ':00';
+          rows += '<tr><td class="num">' + hh + '</td>' +
+            '<td><div class="hr-bar" style="width:' + pct + '%"></div></td>' +
+            '<td class="num">' + buckets[h] + '</td></tr>';
+        }
+        body.innerHTML = '<table class="report-table"><thead><tr>' +
+          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>';
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
     }
 
     // Weekly orders report: one row per sale/week with order count + revenue.
