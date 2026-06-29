@@ -1894,7 +1894,10 @@
               id: it.id, productId: null, name: it.name,
               isWeight: it.isWeightPriced,
               unitPrice: Number(it.unitPrice || 0), dealQty: it.dealQty, dealPrice: it.dealPrice,
-              quantity: Number(it.quantity || 0),
+              // Bill what was COLLECTED: unit items use the collected quantity
+              // (actualQuantity) and weight items the collected weight — falling
+              // back to the ordered amount only if nothing was recorded.
+              quantity: (!it.isWeightPriced && it.actualQuantity != null) ? Number(it.actualQuantity) : Number(it.quantity || 0),
               weightKg: (it.isWeightPriced && it.actualWeightKg != null) ? it.actualWeightKg : '',
               discountValue: Number(it.discount || 0), discountType: 'ils',
             };
