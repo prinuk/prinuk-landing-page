@@ -593,6 +593,9 @@
     .cc-frame-slot { width: 100%; margin-bottom: 8px; height: 40px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); overflow: hidden; }
     .cc-frame-slot iframe { width: 100%; height: 40px; border: 0; background: transparent; display: block; }
     .cr-card .cc-row .cc-cvv-slot { flex: 1; min-width: 0; margin-bottom: 0; }
+    .cc-loading-note { color: var(--fresh, #1d9b68); font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+    .cust-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; }
+    .cust-actions .btn { width: auto; padding: 8px 14px; font-size: 14px; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -685,6 +688,7 @@
       <button class="tab active" data-tab="orders">📋 הזמנות</button>
       <button class="tab" data-tab="products">🥬 מוצרים</button>
       <button class="tab" data-tab="reports">📊 דוחות</button>
+      <button class="tab" data-tab="customers">👥 לקוחות</button>
       <button class="tab" data-tab="settings">⚙️ הגדרות</button>
     </div>
 
@@ -823,6 +827,25 @@
         <div style="text-align:left;padding:0 16px 8px;"><button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button></div>
         <div id="weight-summary-body"><div class="loading">טוען…</div></div>
       </details>
+    </div>
+
+    <!-- CUSTOMERS TAB -->
+    <div id="customers-tab" class="hidden">
+      <div class="scope-bar">
+        <span class="scope-label">לקוחות:</span>
+        <select id="cust-mode">
+          <option value="all">כל הלקוחות</option>
+          <option value="sale">שהזמינו במכירה</option>
+          <option value="new">לקוחות חדשים במכירה</option>
+        </select>
+        <select id="cust-sale" class="hidden"></select>
+        <span id="cust-count" class="scope-count"></span>
+      </div>
+      <div class="cust-actions">
+        <button class="btn btn-ghost" id="cust-copy-emails">📋 העתק אימיילים</button>
+        <button class="btn btn-ghost" id="cust-copy-phones">📋 העתק טלפונים</button>
+      </div>
+      <div id="customers-body"><div class="loading">טוען…</div></div>
     </div>
 
     <!-- SETTINGS TAB -->
@@ -2281,7 +2304,7 @@
     // fresh session so the team can re-enter and retry (only if the slots exist).
     function tkReinitCardcomForRetry() {
       tkResetCardcom();
-      if (el('cr-cc-number-slot')) { tkEnsureCardcom().catch(function () { /* shown on next submit */ }); }
+      if (el('cr-cc-number-slot')) { tkOpenCardcomFields(); }
     }
     // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
     function tkCardBlockHtml(needCard) {
@@ -2289,6 +2312,7 @@
       if (tkIsCardcom()) {
         return '<div class="cr-card">' +
           '<div class="cr-card-title">💳 פרטי כרטיס אשראי</div>' +
+          '<div id="cr-cc-loading" class="cc-loading-note" style="display:none;">⏳ טוען טופס תשלום מאובטח…</div>' +
           '<div id="cr-cc-number-slot" class="cc-frame-slot"></div>' +
           '<div class="cc-row">' +
             '<input id="cr-cc-month" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
@@ -2313,8 +2337,14 @@
         '<div class="field-error" id="cr-cc-error"></div>' +
       '</div>';
     }
+    function tkFramesPresent() {
+      var s = el('cr-cc-number-slot');
+      return !!(tkCardcom.master && s && s.querySelector('iframe'));
+    }
     // Create a fresh CreateTokenOnly LowProfile + load/init the field iframes.
     function tkEnsureCardcom() {
+      // Rebuild if a previous session's iframes are gone (avoids blank card boxes).
+      if (tkCardcom.ready && !tkFramesPresent()) { tkResetCardcom(); }
       if (tkCardcom.ready) return tkCardcom.ready;
       tk3DS();
       tkCardcom.ready = fetch('/api/payment-init', {
@@ -2326,12 +2356,14 @@
           var d = out.d || {};
           if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
           tkCardcom.lpId = d.lowProfileId;
-          // Post `init` (CSS + LowProfile code) only after all three iframes load.
-          return new Promise(function (resolve) {
-            var loaded = 0;
+          // Post `init` once all 3 iframes load; watchdog rejects on a stall.
+          return new Promise(function (resolve, reject) {
+            var loaded = 0, settled = false;
+            var wd = setTimeout(function () { if (!settled) { settled = true; reject(new Error('טעינת טופס התשלום נכשלה. נסו שוב.')); } }, 12000);
             function tick() {
               loaded += 1;
-              if (loaded < 3 || !tkCardcom.master) return;
+              if (loaded < 3 || !tkCardcom.master || settled) return;
+              settled = true; clearTimeout(wd);
               tkCardcom.master.contentWindow.postMessage({
                 action: 'init',
                 cardFieldCSS: tkCardcomCss(),
@@ -2348,8 +2380,18 @@
             tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, 'CardComMasterFrame', tick);
           });
         })
-        .catch(function (err) { tkCardcom.ready = null; throw err; });
+        .catch(function (err) { tkCardcom.ready = null; tkResetCardcom(); throw err; });
       return tkCardcom.ready;
+    }
+    // Open the team OPEN FIELDS session with one auto-retry on transient failure.
+    function tkCardcomLoading(on) { var n = el('cr-cc-loading'); if (n) { n.style.display = on ? 'block' : 'none'; } }
+    function tkOpenCardcomFields() {
+      tkCardcomLoading(true);
+      tkEnsureCardcom().then(function () { tkCardcomLoading(false); }).catch(function () {
+        setTimeout(function () {
+          tkEnsureCardcom().then(function () { tkCardcomLoading(false); }).catch(function (e) { tkCardcomLoading(false); var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+        }, 1500);
+      });
     }
     function tkCardcomTokenize() {
       return tkEnsureCardcom().then(function () {
@@ -2508,7 +2550,7 @@
       // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
       if (needCard && tkIsCardcom()) {
         tkResetCardcom();
-        tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+        tkOpenCardcomFields();
       }
     }
 
@@ -2818,12 +2860,74 @@
         });
     }
 
+    // ---------- Customers ----------
+    function copyText(t) {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+      return new Promise(function (res) {
+        var ta = document.createElement('textarea');
+        ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        try { document.execCommand('copy'); } catch (e) { /* */ }
+        document.body.removeChild(ta); res();
+      });
+    }
+    function fillCustSaleOptions(sales) {
+      el('cust-sale').innerHTML = (sales || []).map(function (s) {
+        return '<option value="' + esc(s.saleName) + '">' + esc(s.saleName) + ' (' + s.count + ')</option>';
+      }).join('');
+    }
+    function loadCustomers() {
+      var mode = el('cust-mode').value;
+      var needSale = (mode === 'sale' || mode === 'new');
+      el('cust-sale').classList.toggle('hidden', !needSale);
+      var ensureSales = el('cust-sale').options.length
+        ? Promise.resolve()
+        : api('GET', '?action=sales').then(function (d) { fillCustSaleOptions(d.sales || []); });
+      ensureSales.then(function () {
+        var saleName = needSale ? el('cust-sale').value : '';
+        el('customers-body').innerHTML = '<div class="loading">טוען…</div>';
+        return api('GET', '?action=customers&mode=' + encodeURIComponent(mode) + (saleName ? ('&saleName=' + encodeURIComponent(saleName)) : ''));
+      }).then(function (d) {
+        state.customers = (d && d.customers) || [];
+        renderCustomers();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('customers-body').innerHTML = '<div class="empty">שגיאה בטעינת הלקוחות.</div>';
+      });
+    }
+    function renderCustomers() {
+      var list = state.customers || [];
+      el('cust-count').textContent = list.length ? ('סה״כ ' + list.length + ' לקוחות') : '';
+      if (!list.length) { el('customers-body').innerHTML = '<div class="empty">אין לקוחות להצגה.</div>'; return; }
+      var rows = list.map(function (c) {
+        return '<tr><td>' + esc(c.name || '') + '</td>' +
+          '<td class="num" dir="ltr">' + esc(c.phone || '') + '</td>' +
+          '<td dir="ltr">' + esc(c.email || '') + '</td>' +
+          '<td class="num">' + c.orders + '</td>' +
+          '<td>' + esc(c.firstSale || '') + '</td></tr>';
+      }).join('');
+      el('customers-body').innerHTML = '<table class="report-table"><thead><tr>' +
+        '<th>שם</th><th>טלפון</th><th>אימייל</th><th class="num">הזמנות</th><th>מכירה ראשונה</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    function copyCustField(field, sep, label) {
+      var list = state.customers || [];
+      var vals = list.map(function (c) { return String(c[field] || '').trim(); }).filter(Boolean);
+      var uniq = Array.from(new Set(vals));
+      if (!uniq.length) { showToast('אין ' + label + ' להעתקה'); return; }
+      copyText(uniq.join(sep)).then(function () { showToast('הועתקו ' + uniq.length + ' ' + label); });
+    }
+    el('cust-mode').addEventListener('change', loadCustomers);
+    el('cust-sale').addEventListener('change', loadCustomers);
+    el('cust-copy-emails').addEventListener('click', function () { copyCustField('email', ', ', 'אימיילים'); });
+    el('cust-copy-phones').addEventListener('click', function () { copyCustField('phone', '\n', 'טלפונים'); });
+
     // ---------- Tabs ----------
     function showTab(tab) {
       state.tab = tab;
       el('orders-tab').classList.toggle('hidden', tab !== 'orders');
       el('products-tab').classList.toggle('hidden', tab !== 'products');
       el('reports-tab').classList.toggle('hidden', tab !== 'reports');
+      el('customers-tab').classList.toggle('hidden', tab !== 'customers');
       el('settings-tab').classList.toggle('hidden', tab !== 'settings');
       Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
         t.classList.toggle('active', t.getAttribute('data-tab') === tab);
@@ -2838,6 +2942,8 @@
         loadProducts();
       } else if (tab === 'reports') {
         loadReports();
+      } else if (tab === 'customers') {
+        loadCustomers();
       } else if (tab === 'settings') {
         loadSettings();
       }

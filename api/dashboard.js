@@ -4,6 +4,7 @@ const {
   getSalesList,
   getWeeklyReport,
   getHourlyBySale,
+  getCustomers,
   getWeightSummary,
   getOrdersDetailed,
   readOrderForDashboard,
@@ -33,6 +34,7 @@ const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-p
 const { createWeightSummaryPdf } = require('../lib/weight-summary-pdf');
 const { sendPickedOrderTelegram } = require('../lib/telegram');
 const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
+const { sendCustomerFinalEmail } = require('../lib/email');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -202,6 +204,14 @@ module.exports = async function handler(req, res) {
       if (action === 'hourly-by-sale') {
         const sales = await getHourlyBySale();
         return res.json({ ok: true, sales });
+      }
+
+      if (action === 'customers') {
+        const customers = await getCustomers({
+          mode: String((req.query && req.query.mode) || 'all').trim(),
+          saleName: String((req.query && req.query.saleName) || '').trim(),
+        });
+        return res.json({ ok: true, customers });
       }
 
       if (action === 'weight-summary') {
@@ -400,6 +410,23 @@ module.exports = async function handler(req, res) {
             'charge-failed': result.error || 'החיוב נכשל.',
           };
           return res.status(400).json({ error: msgs[result.reason] || result.error || 'החיוב נכשל.' });
+        }
+        // Final email to the customer: collected summary + invoice (best-effort).
+        if (!result.alreadyCharged) {
+          try {
+            const detail = await readOrderForDashboard(orderId);
+            const o = detail && detail.ok ? detail.order : null;
+            if (o && o.email) {
+              const settings = await getSettings();
+              const fe = await sendCustomerFinalEmail(settings, o, o.items, {
+                invoiceUrl: result.invoiceUrl || (o.payment && o.payment.invoiceUrl) || '',
+                amount: result.amount,
+              });
+              result.finalEmail = fe && fe.status;
+            }
+          } catch (err) {
+            console.error('Final email failed:', err);
+          }
         }
         return res.json(result);
       }
