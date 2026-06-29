@@ -2170,7 +2170,7 @@
         return new Promise(function (resolve, reject) {
           var done = false;
           function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
-          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return (m || 'שגיאה באימות הכרטיס') + ' [exp ' + month + '/' + yy + ']'; }
+          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return m || 'שגיאה באימות הכרטיס'; }
           function onMsg(e) {
             var msg = e.data || {};
             if (msg.action === 'HandleSubmit') {
@@ -2189,11 +2189,15 @@
           var citizen = (el('cr-cc-id').value || '').replace(/\D/g, '') || '000000000';
           var r = state.review || {};
           var cust = r.customer || {};
+          // Cardcom requires a card-owner name. Use the POS customer name, or the
+          // existing order's customer name when charging a saved/manual card.
+          var ownerName = cust.fullName || (state.current && state.current.fullName) || '';
+          var ownerPhone = cust.phone || (state.current && state.current.phone) || '';
           tkCardcom.master.contentWindow.postMessage({
             action: 'doTransaction',
             cardOwnerId: citizen,
-            cardOwnerName: cust.fullName || '',
-            cardOwnerPhone: cust.phone || '',
+            cardOwnerName: ownerName,
+            cardOwnerPhone: ownerPhone,
             expirationMonth: month,
             expirationYear: yy,
             numberOfPayments: '1'
@@ -2221,9 +2225,10 @@
       var r = state.review;
       var needCard = r.isNew ? (r.payMethod === 'credit') : !r.hasCard;
       var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : 'סקירה וחיוב';
+      var namePlaceholder = r.payMethod === 'credit' ? 'שם בעל הכרטיס (חובה לאשראי)' : 'שם הלקוח (לא חובה)';
       var newHead = !r.isNew ? '' :
         '<div class="cr-newhead">' +
-          '<input id="cr-cust-name" placeholder="שם הלקוח (לא חובה)" value="' + esc(r.customer.fullName || '') + '">' +
+          '<input id="cr-cust-name" placeholder="' + esc(namePlaceholder) + '" value="' + esc(r.customer.fullName || '') + '">' +
           '<input id="cr-cust-phone" placeholder="טלפון (לא חובה)" inputmode="tel" value="' + esc(r.customer.phone || '') + '">' +
           '<div class="cr-pay-method">' +
             '<label><input type="radio" name="cr-pm" value="cash"' + (r.payMethod === 'cash' ? ' checked' : '') + '> מזומן</label>' +
@@ -2387,6 +2392,11 @@
           });
         };
         if (r.payMethod === 'credit') {
+          if (!String(r.customer.fullName || '').trim()) {
+            el('cr-cc-error').textContent = 'יש להזין שם בעל הכרטיס לחיוב באשראי.';
+            var nmEl = el('cr-cust-name'); if (nmEl) nmEl.focus();
+            return;
+          }
           var ccErr = tkValidateCard();
           if (ccErr) { el('cr-cc-error').textContent = ccErr; return; }
           el('cr-cc-error').textContent = '';
