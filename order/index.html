@@ -7888,6 +7888,34 @@
 
         // ---- Cardcom OPEN FIELDS (hosted card iframes; card data never touches us) ----
         var cardcom = { lpId: null, ready: null, master: null };
+        var cardcomValid = { number: undefined, cvv: undefined };
+        var cardcomMsgBound = false;
+        // Persistent listener for the iframe events we use for UX: NEXT_PRESSED
+        // (card-number complete → jump to the next field) and handleValidations
+        // (live correctness for the card number / CVV, which live in Cardcom iframes).
+        function bindCardcomMessages() {
+            if (cardcomMsgBound) return;
+            cardcomMsgBound = true;
+            window.addEventListener('message', function (e) {
+                var msg = e.data || {};
+                if (msg.action === 'NEXT_PRESSED') {
+                    var ids = ['ccMonth', 'ccYear', 'ccCitizen'];
+                    for (var i = 0; i < ids.length; i++) {
+                        var f = document.getElementById(ids[i]);
+                        if (f && !f.value) { f.focus(); break; }
+                    }
+                } else if (msg.action === 'handleValidations' && (msg.field === 'cardNumber' || msg.field === 'cvv')) {
+                    if (msg.field === 'cardNumber') { cardcomValid.number = !!msg.isValid; }
+                    if (msg.field === 'cvv') { cardcomValid.cvv = !!msg.isValid; }
+                    var er = document.getElementById('ccNumberError');
+                    if (er) {
+                        if (cardcomValid.number === false) { er.textContent = 'מספר הכרטיס אינו תקין — בדקו שוב.'; }
+                        else if (cardcomValid.cvv === false) { er.textContent = 'קוד ה-CVV אינו תקין.'; }
+                        else { er.textContent = ''; }
+                    }
+                }
+            });
+        }
 
         function isCardcom() {
             return ((catalog.payments && catalog.payments.provider) || '') === 'cardcom';
@@ -7943,6 +7971,7 @@
         // init them. Resolves when the iframes are ready to accept a card.
         function ensureCardcom() {
             if (cardcom.ready) return cardcom.ready;
+            bindCardcomMessages();
             load3DSScript();
             cardcom.ready = fetch('/api/payment-init', {
                 method: 'POST',
@@ -8024,6 +8053,7 @@
         // LowProfile + clean iframes (a LowProfile deal is single-use).
         function resetCardcom() {
             cardcom.ready = null; cardcom.lpId = null; cardcom.master = null;
+            cardcomValid.number = undefined; cardcomValid.cvv = undefined;
             ['ccNumberFrameSlot', 'ccCvvFrameSlot', 'cardcomMasterSlot'].forEach(function (id) {
                 var s = document.getElementById(id); if (s) { s.innerHTML = ''; }
             });
@@ -8273,7 +8303,12 @@
                 year.value = year.value.replace(/\D/g, '').slice(0, 2);
                 ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
                 refreshExpiry();
-                if (year.value.length >= 2) { cvv.focus(); }
+                if (year.value.length >= 2) {
+                    if (isCardcom()) {
+                        var cf = document.getElementById('CardComCvv');
+                        if (cf && cf.contentWindow) { cf.contentWindow.focus(); }
+                    } else { cvv.focus(); }
+                }
             });
             year.addEventListener('blur', function () { refreshExpiry(true); });
 
@@ -8300,6 +8335,10 @@
             // Cardcom OPEN FIELDS: the card number + CVV live in Cardcom's iframes and
             // are validated there, so we only check the fields we own (expiry + ת״ז).
             if (isCardcom()) {
+                // Card number + CVV are validated inside Cardcom's iframes; block if
+                // they reported invalid (Cardcom also rejects a bad card on submit).
+                if (cardcomValid.number === false) return { message: 'מספר הכרטיס אינו תקין — בדקו שוב.', field: document.getElementById('CardComCardNumber') };
+                if (cardcomValid.cvv === false) return { message: 'קוד ה-CVV אינו תקין.', field: document.getElementById('CardComCvv') };
                 var ccMonthEl = document.getElementById('ccMonth');
                 var mmC = parseInt(ccMonthEl && ccMonthEl.value, 10);
                 if (!(mmC >= 1 && mmC <= 12)) return { message: 'חודש התוקף אינו תקין.', field: ccMonthEl };
