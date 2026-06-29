@@ -33,6 +33,7 @@ const { createOrdersFullPdf, createOrdersHeadersPdf } = require('../lib/orders-p
 const { createWeightSummaryPdf } = require('../lib/weight-summary-pdf');
 const { sendPickedOrderTelegram } = require('../lib/telegram');
 const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
+const { sendCustomerFinalEmail } = require('../lib/email');
 
 const ALLOWED_STATUSES = [
   ORDER_STATUS_NEW,
@@ -400,6 +401,22 @@ module.exports = async function handler(req, res) {
             'charge-failed': result.error || 'החיוב נכשל.',
           };
           return res.status(400).json({ error: msgs[result.reason] || result.error || 'החיוב נכשל.' });
+        }
+        // Final email to the customer: collected summary + invoice (best-effort).
+        if (!result.alreadyCharged) {
+          try {
+            const o = await readOrderForDashboard(orderId);
+            if (o && o.email) {
+              const settings = await getSettings();
+              const fe = await sendCustomerFinalEmail(settings, o, o.items, {
+                invoiceUrl: result.invoiceUrl || (o.payment && o.payment.invoiceUrl) || '',
+                amount: result.amount,
+              });
+              result.finalEmail = fe && fe.status;
+            }
+          } catch (err) {
+            console.error('Final email failed:', err);
+          }
         }
         return res.json(result);
       }
