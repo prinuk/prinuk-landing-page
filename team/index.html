@@ -577,6 +577,10 @@
     .cr-card input { width: 100%; margin-bottom: 8px; }
     .cr-card .cc-row { display: flex; gap: 8px; }
     .cr-card .cc-row input { flex: 1; min-width: 0; text-align: center; }
+    /* Cardcom OPEN FIELDS hosted-field iframes */
+    .cc-frame-slot { width: 100%; margin-bottom: 8px; }
+    .cc-frame-slot iframe { width: 100%; height: 40px; border: 1px solid var(--line, #e3e8e0); border-radius: 8px; background: #fff; display: block; }
+    .cr-card .cc-row .cc-cvv-slot { flex: 1; min-width: 0; margin-bottom: 0; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -1965,6 +1969,18 @@
       return s % 10 === 0;
     }
     function tkValidateCard() {
+      // Cardcom OPEN FIELDS: card number + CVV are in Cardcom iframes (self-validated);
+      // only check the fields we own here (expiry + ת״ז).
+      if (tkIsCardcom()) {
+        var mmC = parseInt(el('cr-cc-month').value, 10);
+        if (!(mmC >= 1 && mmC <= 12)) return 'חודש תוקף לא תקין';
+        var yyC = (el('cr-cc-year').value || '').replace(/\D/g, '');
+        if (!/^\d{2}$/.test(yyC)) return 'שנת תוקף לא תקינה';
+        var nowC = new Date(); var fyC = 2000 + parseInt(yyC, 10);
+        if (fyC < nowC.getFullYear() || (fyC === nowC.getFullYear() && mmC < nowC.getMonth() + 1)) return 'תוקף הכרטיס פג';
+        if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+        return '';
+      }
       var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
       if (!tkLuhn(num)) return 'מספר כרטיס לא תקין';
       var mm = parseInt(el('cr-cc-month').value, 10);
@@ -2022,7 +2038,149 @@
           new Promise(function (_, reject) { setTimeout(function () { reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 30000); }),
         ]);
       }
+      if (p.provider === 'cardcom') return tkCardcomTokenize();
       return Promise.reject(new Error('סליקת אשראי אינה זמינה'));
+    }
+
+    // ---- Cardcom OPEN FIELDS for the dashboard (hosted card iframes) ----
+    var tkCardcom = { lpId: null, ready: null, master: null };
+    function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
+    function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
+    function tkCardcomCss() {
+      return 'input{font-family:inherit;font-size:16px;width:100%;height:40px;border:none;outline:none;'
+        + 'padding:8px 10px;box-sizing:border-box;direction:ltr;text-align:left;background:transparent;}';
+    }
+    function tkReviewGrandAgorot() {
+      var r = state.review; if (!r) return 0;
+      var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
+      var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (Number(r.delivery) || 0);
+      return Math.max(0, Math.round(grand * 100));
+    }
+    function tk3DS() {
+      if (window.__cardcom3ds) return;
+      window.__cardcom3ds = true;
+      var s = document.createElement('script');
+      s.src = tkCardcomBase() + '/External/OpenFields/3DS.js?v=' + Date.now();
+      document.head.appendChild(s);
+    }
+    function tkInjectFrame(slotId, path, height) {
+      var slot = el(slotId); if (!slot) return null;
+      slot.innerHTML = '';
+      var f = document.createElement('iframe');
+      f.style.cssText = 'width:100%;height:' + (height || 40) + 'px;border:none;display:block;';
+      f.src = tkCardcomBase() + path;
+      slot.appendChild(f);
+      return f;
+    }
+    function tkResetCardcom() {
+      tkCardcom.ready = null; tkCardcom.lpId = null; tkCardcom.master = null;
+      ['cr-cc-number-slot', 'cr-cc-cvv-slot', 'cr-cardcom-master'].forEach(function (id) {
+        var s = el(id); if (s) { s.innerHTML = ''; }
+      });
+    }
+    // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
+    function tkCardBlockHtml(needCard) {
+      if (!needCard) return '';
+      if (tkIsCardcom()) {
+        return '<div class="cr-card">' +
+          '<div class="cr-card-title">💳 פרטי כרטיס אשראי</div>' +
+          '<div id="cr-cc-number-slot" class="cc-frame-slot"></div>' +
+          '<div class="cc-row">' +
+            '<input id="cr-cc-month" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+            '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+            '<div id="cr-cc-cvv-slot" class="cc-frame-slot cc-cvv-slot"></div>' +
+          '</div>' +
+          '<input id="cr-cc-id" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+          '<div id="cr-cardcom-master" style="position:absolute;width:0;height:0;overflow:hidden;"></div>' +
+          '<div class="field-error" id="cr-cc-error"></div>' +
+        '</div>';
+      }
+      return '<div class="cr-card" data-og="form">' +
+        '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
+        '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
+        '<div class="cc-row">' +
+          '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
+          '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
+          '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
+        '</div>' +
+        '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+        '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
+        '<div class="field-error" id="cr-cc-error"></div>' +
+      '</div>';
+    }
+    // Create a fresh CreateTokenOnly LowProfile + load/init the field iframes.
+    function tkEnsureCardcom() {
+      if (tkCardcom.ready) return tkCardcom.ready;
+      tk3DS();
+      tkCardcom.ready = fetch('/api/payment-init', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountAgorot: tkReviewGrandAgorot() })
+      })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+        .then(function (out) {
+          var d = out.d || {};
+          if (!out.ok || !d.lowProfileId) throw new Error(d.error || 'לא הצלחנו לפתוח את טופס התשלום');
+          tkCardcom.lpId = d.lowProfileId;
+          tkInjectFrame('cr-cc-number-slot', '/api/openfields/cardNumber', 40);
+          tkInjectFrame('cr-cc-cvv-slot', '/api/openfields/CVV', 40);
+          return new Promise(function (resolve) {
+            var master = document.createElement('iframe');
+            master.style.cssText = 'display:block;width:0;height:0;border:none;';
+            master.onload = function () {
+              master.contentWindow.postMessage({
+                action: 'init',
+                cardFieldCSS: tkCardcomCss(),
+                cvvFieldCSS: tkCardcomCss(),
+                placeholder: '0000 0000 0000 0000',
+                cvvPlaceholder: 'CVV',
+                lowProfileCode: tkCardcom.lpId,
+                language: 'he'
+              }, '*');
+              tkCardcom.master = master;
+              resolve();
+            };
+            master.src = tkCardcomBase() + '/api/openfields/master';
+            var slot = el('cr-cardcom-master');
+            if (slot) { slot.innerHTML = ''; slot.appendChild(master); }
+          });
+        })
+        .catch(function (err) { tkCardcom.ready = null; throw err; });
+      return tkCardcom.ready;
+    }
+    function tkCardcomTokenize() {
+      return tkEnsureCardcom().then(function () {
+        return new Promise(function (resolve, reject) {
+          var done = false;
+          function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
+          function onMsg(e) {
+            var msg = e.data || {};
+            if (msg.action === 'HandleSubmit') {
+              cleanup();
+              if (msg.data && msg.data.IsSuccess) resolve(tkCardcom.lpId);
+              else { tkResetCardcom(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל')); }
+            } else if (msg.action === 'HandleEror') {
+              cleanup(); tkResetCardcom();
+              reject(new Error(msg.message || 'שגיאה באימות הכרטיס'));
+            }
+          }
+          var timer = setTimeout(function () { cleanup(); tkResetCardcom(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 60000);
+          window.addEventListener('message', onMsg);
+          var month = (el('cr-cc-month').value || '').replace(/\D/g, '');
+          var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
+          var citizen = (el('cr-cc-id').value || '').replace(/\D/g, '') || '000000000';
+          var r = state.review || {};
+          var cust = r.customer || {};
+          tkCardcom.master.contentWindow.postMessage({
+            action: 'doTransaction',
+            cardOwnerId: citizen,
+            cardOwnerName: cust.fullName || '',
+            cardOwnerPhone: cust.phone || '',
+            expirationMonth: month,
+            expirationYear: yy,
+            numberOfPayments: '1'
+          }, '*');
+        });
+      });
     }
 
     function crLineBillable(it) {
@@ -2089,19 +2247,7 @@
         '</div>' +
         '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
           '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
-        (!needCard ? '' :
-          '<div class="cr-card" data-og="form">' +
-            '<div class="cr-card-title">💳 פרטי כרטיס אשראי (הזנה ידנית)</div>' +
-            '<input id="cr-cc-number" data-og="cardnumber" type="text" inputmode="numeric" dir="ltr" placeholder="מספר כרטיס" maxlength="19">' +
-            '<div class="cc-row">' +
-              '<input id="cr-cc-month" data-og="expirationmonth" type="text" inputmode="numeric" dir="ltr" placeholder="MM" maxlength="2">' +
-              '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
-              '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
-            '</div>' +
-            '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
-            '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
-            '<div class="field-error" id="cr-cc-error"></div>' +
-          '</div>') +
+        tkCardBlockHtml(needCard) +
         '<div class="cr-total" id="cr-total"></div>';
 
       Array.prototype.forEach.call(el('charge-body').querySelectorAll('.crow'), function (row) {
@@ -2137,6 +2283,8 @@
         });
       }
       crRecompute();
+      // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
+      if (needCard && tkIsCardcom()) { tkResetCardcom(); tkEnsureCardcom().catch(function () { /* surfaced on submit */ }); }
     }
 
     function crRecompute() {
