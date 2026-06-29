@@ -8022,13 +8022,13 @@
                         if (msg.action === 'HandleSubmit') {
                             cleanup();
                             if (msg.data && msg.data.IsSuccess) { resolve(cardcom.lpId); }
-                            else { resetCardcom(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
+                            else { reinitCardcomForRetry(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
                         } else if (msg.action === 'HandleEror') {
-                            cleanup(); resetCardcom();
+                            cleanup(); reinitCardcomForRetry();
                             reject(new Error(msg.message || 'אירעה שגיאה באימות הכרטיס. נסו שוב.'));
                         }
                     }
-                    var timer = setTimeout(function () { cleanup(); resetCardcom(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
+                    var timer = setTimeout(function () { cleanup(); reinitCardcomForRetry(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
                     window.addEventListener('message', onMsg);
                     var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
                     var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
@@ -8051,6 +8051,12 @@
         }
         // Tear down the OPEN FIELDS session so the next attempt gets a fresh
         // LowProfile + clean iframes (a LowProfile deal is single-use).
+        // After a FAILED attempt the LowProfile is spent and Cardcom locks the
+        // fields — rebuild a fresh session so the customer can re-enter and retry.
+        function reinitCardcomForRetry() {
+            resetCardcom();
+            if (getPaymentMethod() === 'credit') { ensureCardcom().catch(function () { /* shown on next submit */ }); }
+        }
         function resetCardcom() {
             cardcom.ready = null; cardcom.lpId = null; cardcom.master = null;
             cardcomValid.number = undefined; cardcomValid.cvv = undefined;

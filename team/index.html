@@ -2088,6 +2088,12 @@
         var s = el(id); if (s) { s.innerHTML = ''; }
       });
     }
+    // After a failed attempt the LowProfile is spent + fields lock — rebuild a
+    // fresh session so the team can re-enter and retry (only if the slots exist).
+    function tkReinitCardcomForRetry() {
+      tkResetCardcom();
+      if (el('cr-cc-number-slot')) { tkEnsureCardcom().catch(function () { /* shown on next submit */ }); }
+    }
     // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
     function tkCardBlockHtml(needCard) {
       if (!needCard) return '';
@@ -2166,13 +2172,13 @@
             if (msg.action === 'HandleSubmit') {
               cleanup();
               if (msg.data && msg.data.IsSuccess) resolve(tkCardcom.lpId);
-              else { tkResetCardcom(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל')); }
+              else { tkReinitCardcomForRetry(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל')); }
             } else if (msg.action === 'HandleEror') {
-              cleanup(); tkResetCardcom();
+              cleanup(); tkReinitCardcomForRetry();
               reject(new Error(msg.message || 'שגיאה באימות הכרטיס'));
             }
           }
-          var timer = setTimeout(function () { cleanup(); tkResetCardcom(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 60000);
+          var timer = setTimeout(function () { cleanup(); tkReinitCardcomForRetry(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב.')); }, 60000);
           window.addEventListener('message', onMsg);
           var month = (el('cr-cc-month').value || '').replace(/\D/g, '');
           var yy = (el('cr-cc-year').value || '').replace(/\D/g, '');
