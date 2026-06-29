@@ -464,6 +464,10 @@
     .rep-acc > summary::-webkit-details-marker { display: none; }
     .rep-acc > summary::after { content: '▸'; float: left; color: var(--muted); transition: transform .15s; }
     .rep-acc[open] > summary::after { transform: rotate(90deg); }
+    .chart-controls { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0 16px 10px; }
+    .chart-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+    .chart-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .sales-chart { width: 100%; height: auto; display: block; padding: 0 8px 12px; }
     #scope-range { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .print-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 16px 10px; font-size: 14px; }
     .print-bar .print-all { display: inline-flex; align-items: center; gap: 6px; }
@@ -787,8 +791,14 @@
         <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
       </div>
 
+      <details id="acc-chart" class="rep-acc">
+        <summary>📈 השוואת מכירות — הזמנות לפי שעה</summary>
+        <div id="sales-chart-controls" class="chart-controls"><div class="loading">טוען…</div></div>
+        <svg id="sales-chart-svg" class="sales-chart" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="גרף הזמנות לפי שעה"></svg>
+      </details>
+
       <details id="acc-weekly" class="rep-acc">
-        <summary>📈 דוח הזמנות שבועי</summary>
+        <summary>📊 דוח הזמנות שבועי</summary>
         <div id="weekly-report-body"><div class="loading">טוען…</div></div>
       </details>
 
@@ -1187,13 +1197,80 @@
     // Each report is a collapsible section, loaded lazily when expanded.
     function loadReports() {
       // Reload whatever is already open (e.g. after returning to the tab).
+      if (el('acc-chart').open) loadSalesChart();
       if (el('acc-weekly').open) loadWeeklyReport();
       if (el('acc-hourly').open) loadHourlyReport();
       if (el('acc-weight').open) loadWeightSummary();
     }
+    el('acc-chart').addEventListener('toggle', function () { if (this.open) loadSalesChart(); });
     el('acc-weekly').addEventListener('toggle', function () { if (this.open) loadWeeklyReport(); });
     el('acc-hourly').addEventListener('toggle', function () { if (this.open) loadHourlyReport(); });
     el('acc-weight').addEventListener('toggle', function () { if (this.open) loadWeightSummary(); });
+
+    // ---- Sales comparison chart: one line per chosen sale, X=hour, Y=orders ----
+    var CHART_COLORS = ['#0c4c9c', '#1d9b68', '#ec6f4a', '#b46e16', '#8e44ad', '#16a085', '#c0392b', '#2c3e50', '#d35400', '#2980b9'];
+    function chartColorOf(name) {
+      var i = (state.salesChart || []).findIndex(function (s) { return s.saleName === name; });
+      return CHART_COLORS[(i < 0 ? 0 : i) % CHART_COLORS.length];
+    }
+    function loadSalesChart() {
+      el('sales-chart-controls').innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=hourly-by-sale').then(function (data) {
+        state.salesChart = (data && data.sales) || [];
+        if (!state.chartSel) state.chartSel = {};
+        // Default: show the two most recent sales the first time.
+        if (!Object.keys(state.chartSel).length) {
+          state.salesChart.slice(0, 2).forEach(function (s) { state.chartSel[s.saleName] = true; });
+        }
+        renderChartControls();
+        renderSalesChart();
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') el('sales-chart-controls').innerHTML = '<div class="empty">שגיאה בטעינת הגרף.</div>';
+      });
+    }
+    function renderChartControls() {
+      var c = el('sales-chart-controls');
+      if (!state.salesChart.length) { c.innerHTML = '<div class="empty">אין מכירות להצגה.</div>'; return; }
+      c.innerHTML = state.salesChart.map(function (s) {
+        var on = !!state.chartSel[s.saleName];
+        return '<label class="chart-pick"><input type="checkbox" data-sale="' + esc(s.saleName) + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="chart-dot" style="background:' + chartColorOf(s.saleName) + '"></span>' + esc(s.saleName) + ' (' + s.total + ')</label>';
+      }).join('');
+      Array.prototype.forEach.call(c.querySelectorAll('input[type=checkbox]'), function (cb) {
+        cb.addEventListener('change', function () {
+          state.chartSel[this.getAttribute('data-sale')] = this.checked;
+          renderSalesChart();
+        });
+      });
+    }
+    function renderSalesChart() {
+      var svg = el('sales-chart-svg');
+      var selected = (state.salesChart || []).filter(function (s) { return state.chartSel[s.saleName]; });
+      if (!selected.length) { svg.innerHTML = '<text x="20" y="30" font-size="13" fill="#888">בחרו מכירה אחת או יותר…</text>'; return; }
+      var W = 640, H = 340, padL = 36, padR = 14, padT = 14, padB = 34;
+      var plotW = W - padL - padR, plotH = H - padT - padB;
+      var maxY = 1;
+      selected.forEach(function (s) { s.hours.forEach(function (n) { if (n > maxY) maxY = n; }); });
+      var X = function (h) { return padL + (h / 23) * plotW; };
+      var Y = function (n) { return padT + (1 - n / maxY) * plotH; };
+      var p = [];
+      var ticks = Math.min(maxY, 5);
+      for (var t = 0; t <= ticks; t++) {
+        var val = Math.round(maxY * t / ticks);
+        var yy = Y(val);
+        p.push('<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="#eee"/>');
+        p.push('<text x="' + (padL - 5) + '" y="' + (yy + 3) + '" text-anchor="end" font-size="9" fill="#999">' + val + '</text>');
+      }
+      for (var h = 0; h <= 23; h += 3) {
+        p.push('<text x="' + X(h) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="9" fill="#999">' + (h < 10 ? '0' + h : h) + '</text>');
+      }
+      selected.forEach(function (s) {
+        var color = chartColorOf(s.saleName);
+        var pts = s.hours.map(function (n, hh) { return X(hh).toFixed(1) + ',' + Y(n).toFixed(1); }).join(' ');
+        p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts + '"/>');
+      });
+      svg.innerHTML = p.join('');
+    }
 
     // Orders-by-hour for the selected report scope (sale / range / all). Hour is
     // the team's local time (Israel), which is what "at Y hour" means here.
