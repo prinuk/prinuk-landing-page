@@ -2281,7 +2281,7 @@
     // fresh session so the team can re-enter and retry (only if the slots exist).
     function tkReinitCardcomForRetry() {
       tkResetCardcom();
-      if (el('cr-cc-number-slot')) { tkEnsureCardcom().catch(function () { /* shown on next submit */ }); }
+      if (el('cr-cc-number-slot')) { tkOpenCardcomFields(); }
     }
     // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
     function tkCardBlockHtml(needCard) {
@@ -2313,8 +2313,14 @@
         '<div class="field-error" id="cr-cc-error"></div>' +
       '</div>';
     }
+    function tkFramesPresent() {
+      var s = el('cr-cc-number-slot');
+      return !!(tkCardcom.master && s && s.querySelector('iframe'));
+    }
     // Create a fresh CreateTokenOnly LowProfile + load/init the field iframes.
     function tkEnsureCardcom() {
+      // Rebuild if a previous session's iframes are gone (avoids blank card boxes).
+      if (tkCardcom.ready && !tkFramesPresent()) { tkResetCardcom(); }
       if (tkCardcom.ready) return tkCardcom.ready;
       tk3DS();
       tkCardcom.ready = fetch('/api/payment-init', {
@@ -2326,12 +2332,14 @@
           var d = out.d || {};
           if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
           tkCardcom.lpId = d.lowProfileId;
-          // Post `init` (CSS + LowProfile code) only after all three iframes load.
-          return new Promise(function (resolve) {
-            var loaded = 0;
+          // Post `init` once all 3 iframes load; watchdog rejects on a stall.
+          return new Promise(function (resolve, reject) {
+            var loaded = 0, settled = false;
+            var wd = setTimeout(function () { if (!settled) { settled = true; reject(new Error('טעינת טופס התשלום נכשלה. נסו שוב.')); } }, 12000);
             function tick() {
               loaded += 1;
-              if (loaded < 3 || !tkCardcom.master) return;
+              if (loaded < 3 || !tkCardcom.master || settled) return;
+              settled = true; clearTimeout(wd);
               tkCardcom.master.contentWindow.postMessage({
                 action: 'init',
                 cardFieldCSS: tkCardcomCss(),
@@ -2348,8 +2356,16 @@
             tkCardcom.master = tkInjectFrame('cr-cardcom-master', '/api/openfields/master', 0, 'CardComMasterFrame', tick);
           });
         })
-        .catch(function (err) { tkCardcom.ready = null; throw err; });
+        .catch(function (err) { tkCardcom.ready = null; tkResetCardcom(); throw err; });
       return tkCardcom.ready;
+    }
+    // Open the team OPEN FIELDS session with one auto-retry on transient failure.
+    function tkOpenCardcomFields() {
+      tkEnsureCardcom().catch(function () {
+        setTimeout(function () {
+          tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+        }, 1500);
+      });
     }
     function tkCardcomTokenize() {
       return tkEnsureCardcom().then(function () {
@@ -2508,7 +2524,7 @@
       // Cardcom OPEN FIELDS: load the hosted card iframes (fresh LowProfile).
       if (needCard && tkIsCardcom()) {
         tkResetCardcom();
-        tkEnsureCardcom().catch(function (e) { var er = el('cr-cc-error'); if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום'; } });
+        tkOpenCardcomFields();
       }
     }
 

@@ -7973,7 +7973,14 @@
         }
         // Create a fresh LowProfile (CreateTokenOnly) + (re)load the field iframes +
         // init them. Resolves when the iframes are ready to accept a card.
+        function cardcomFramesPresent() {
+            var s = document.getElementById('ccNumberFrameSlot');
+            return !!(cardcom.master && s && s.querySelector('iframe'));
+        }
         function ensureCardcom() {
+            // Rebuild if a previous session's iframes were removed/never rendered
+            // (a stale cached promise would otherwise leave blank "blocked" boxes).
+            if (cardcom.ready && !cardcomFramesPresent()) { resetCardcom(); }
             if (cardcom.ready) return cardcom.ready;
             bindCardcomMessages();
             load3DSScript();
@@ -7990,12 +7997,19 @@
                     cardcom.lpId = r.d.lowProfileId;
                     // Load card-number + CVV + master iframes, and only post `init`
                     // (which carries the CSS + LowProfile code) once ALL THREE have
-                    // loaded — otherwise the field iframes miss the styling.
-                    return new Promise(function (resolve) {
-                        var loaded = 0;
+                    // loaded — otherwise the field iframes miss the styling. A watchdog
+                    // rejects if a frame stalls so the caller can retry (no blank boxes).
+                    return new Promise(function (resolve, reject) {
+                        var loaded = 0, settled = false;
+                        var wd = setTimeout(function () {
+                            if (settled) return;
+                            settled = true;
+                            reject(new Error('טעינת טופס התשלום נכשלה. נסו שוב.'));
+                        }, 12000);
                         function tick() {
                             loaded += 1;
-                            if (loaded < 3 || !cardcom.master) return;
+                            if (loaded < 3 || !cardcom.master || settled) return;
+                            settled = true; clearTimeout(wd);
                             cardcom.master.contentWindow.postMessage({
                                 action: 'init',
                                 cardFieldCSS: cardcomFieldCss(),
@@ -8012,8 +8026,20 @@
                         cardcom.master = injectCardcomFrame('cardcomMasterSlot', '/api/openfields/master', 0, 'CardComMasterFrame', tick);
                     });
                 })
-                .catch(function (err) { cardcom.ready = null; throw err; });
+                .catch(function (err) { cardcom.ready = null; resetCardcom(); throw err; });
             return cardcom.ready;
+        }
+        // Open the OPEN FIELDS session with one automatic retry on a transient
+        // failure (payment-init blip or a stalled iframe), then surface an error.
+        function openCardcomFields() {
+            ensureCardcom().catch(function () {
+                setTimeout(function () {
+                    ensureCardcom().catch(function (e) {
+                        var er = document.getElementById('ccNumberError');
+                        if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום. רעננו את הדף או בחרו תשלום במזומן.'; }
+                    });
+                }, 1500);
+            });
         }
         // Run the card deal inside the iframes and resolve with the LowProfileId.
         function cardcomTokenize() {
@@ -8059,7 +8085,7 @@
         // fields — rebuild a fresh session so the customer can re-enter and retry.
         function reinitCardcomForRetry() {
             resetCardcom();
-            if (getPaymentMethod() === 'credit') { ensureCardcom().catch(function () { /* shown on next submit */ }); }
+            if (getPaymentMethod() === 'credit') { openCardcomFields(); }
         }
         function resetCardcom() {
             cardcom.ready = null; cardcom.lpId = null; cardcom.master = null;
@@ -8162,13 +8188,9 @@
             }
             if (isCardcom()) {
                 applyCardcomFieldMode(isCredit);
-                // Preload the OPEN FIELDS session so the iframes are ready on submit.
-                if (isCredit) {
-                    ensureCardcom().catch(function (e) {
-                        var er = document.getElementById('ccNumberError');
-                        if (er) { er.textContent = (e && e.message) || 'שגיאה בטעינת טופס התשלום.'; }
-                    });
-                }
+                // Preload the OPEN FIELDS session (with auto-retry) so the iframes
+                // are ready on submit.
+                if (isCredit) { openCardcomFields(); }
             }
         }
 
