@@ -7527,6 +7527,10 @@
                 })
                 .catch(function (error) {
                     setSubmitting(false);
+                    // Any failed attempt spends/locks the Cardcom OPEN FIELDS session
+                    // (a tokenize that succeeded then a server error, or a decline) —
+                    // rebuild fresh fields so the customer can retry after closing the error.
+                    if (isCardcom() && getPaymentMethod() === 'credit') { reinitCardcomForRetry(); }
                     showStatusError(getErrorMessage(error));
                 });
         }
@@ -8022,13 +8026,13 @@
                         if (msg.action === 'HandleSubmit') {
                             cleanup();
                             if (msg.data && msg.data.IsSuccess) { resolve(cardcom.lpId); }
-                            else { reinitCardcomForRetry(); reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
+                            else { reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
                         } else if (msg.action === 'HandleEror') {
-                            cleanup(); reinitCardcomForRetry();
+                            cleanup();
                             reject(new Error(msg.message || 'אירעה שגיאה באימות הכרטיס. נסו שוב.'));
                         }
                     }
-                    var timer = setTimeout(function () { cleanup(); reinitCardcomForRetry(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
+                    var timer = setTimeout(function () { cleanup(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
                     window.addEventListener('message', onMsg);
                     var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
                     var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');

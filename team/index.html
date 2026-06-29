@@ -2364,6 +2364,9 @@
             loadOrders();
           }).catch(function (err) {
             nbtn.disabled = false; crRecompute();
+            // Server failed after the card was tokenized → the OPEN FIELDS session
+            // is spent; rebuild it so the team can retry.
+            if (tkIsCardcom() && r.payMethod === 'credit') { tkReinitCardcomForRetry(); }
             if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה ביצירת ההזמנה');
           });
         };
@@ -2406,6 +2409,9 @@
         }).catch(function (err) {
           btn.disabled = false;
           crRecompute();
+          // If the team manually entered a card and the server charge failed, the
+          // OPEN FIELDS session is spent → rebuild it for a retry.
+          if (tkIsCardcom() && !r.hasCard) { tkReinitCardcomForRetry(); }
           if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
         });
       };
