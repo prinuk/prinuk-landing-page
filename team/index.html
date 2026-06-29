@@ -1268,6 +1268,12 @@
         var color = chartColorOf(s.saleName);
         var pts = s.hours.map(function (n, hh) { return X(hh).toFixed(1) + ',' + Y(n).toFixed(1); }).join(' ');
         p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts + '"/>');
+        // Dot markers on hours that had orders (readable on mobile, no hover needed).
+        s.hours.forEach(function (n, hh) {
+          if (n > 0) {
+            p.push('<circle cx="' + X(hh).toFixed(1) + '" cy="' + Y(n).toFixed(1) + '" r="2.6" fill="' + color + '"/>');
+          }
+        });
       });
       svg.innerHTML = p.join('');
     }
