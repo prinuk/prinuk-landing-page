@@ -791,6 +791,9 @@
           <button class="btn" id="rep-scope-apply">הצג</button>
         </span>
       </div>
+      <h3 class="report-title">דוח הזמנות שבועי</h3>
+      <div id="weekly-report-body"><div class="loading">טוען…</div></div>
+
       <div class="report-head">
         <h3 class="report-title">סיכום משקל ויחידות לקנייה</h3>
         <button class="btn btn-ghost" id="weight-print-btn">🖨️ הדפסה</button>
@@ -1166,7 +1169,35 @@
 
     // ---------- Reports ----------
     function loadReports() {
+      loadWeeklyReport();
       loadWeightSummary();
+    }
+
+    // Weekly orders report: one row per sale/week with order count + revenue.
+    function loadWeeklyReport() {
+      var body = el('weekly-report-body');
+      body.innerHTML = '<div class="loading">טוען…</div>';
+      api('GET', '?action=weekly-report').then(function (data) {
+        var weeks = (data && data.weeks) || [];
+        if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
+        var totalOrders = 0, totalRevenue = 0;
+        var rows = weeks.map(function (w) {
+          totalOrders += w.count; totalRevenue += w.revenue || 0;
+          var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
+          return '<tr><td>' + esc(w.saleName) + '</td>' +
+            '<td class="num">' + w.count + '</td>' +
+            '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
+            '<td class="num">' + esc(dateLabel) + '</td></tr>';
+        }).join('');
+        body.innerHTML = '<table class="report-table"><thead><tr>' +
+          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">תאריך אחרון</th>' +
+          '</tr></thead><tbody>' + rows +
+          '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td><td></td></tr>' +
+          '</tbody></table>';
+      }).catch(function (err) {
+        if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
+      });
     }
 
     function loadWeightSummary() {
