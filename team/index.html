@@ -801,6 +801,7 @@
         <summary>📈 השוואת קצב הזמנות (מצטבר מתחילת המכירה)</summary>
         <div id="sales-chart-controls" class="chart-controls"><div class="loading">טוען…</div></div>
         <svg id="sales-chart-svg" class="sales-chart" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="גרף הזמנות לפי שעה"></svg>
+        <div id="sales-chart-table"></div>
       </details>
 
       <details id="acc-weekly" class="rep-acc">
@@ -1264,7 +1265,7 @@
     function renderSalesChart() {
       var svg = el('sales-chart-svg');
       var selected = (state.salesChart || []).filter(function (s) { return state.chartSel[s.saleName]; });
-      if (!selected.length) { svg.innerHTML = '<text x="20" y="30" font-size="13" fill="#888">בחרו מכירה אחת או יותר…</text>'; return; }
+      if (!selected.length) { svg.innerHTML = '<text x="20" y="30" font-size="13" fill="#888">בחרו מכירה אחת או יותר…</text>'; renderSalesTable([]); return; }
       var W = 640, H = 340, padL = 40, padR = 14, padT = 14, padB = 42;
       var plotW = W - padL - padR, plotH = H - padT - padB;
       var maxX = 1, maxY = 1;
@@ -1299,6 +1300,40 @@
         p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts.join(' ') + '"/>');
       });
       svg.innerHTML = p.join('');
+      renderSalesTable(selected);
+    }
+    // A "nice" round step for the table's elapsed-time checkpoints.
+    function niceStep(x) {
+      if (x <= 1) return 1;
+      var pow = Math.pow(10, Math.floor(Math.log10(x)));
+      var n = x / pow;
+      return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+    }
+    // Table view of the same data: cumulative orders per sale at elapsed-time
+    // checkpoints since the sale started.
+    function renderSalesTable(selected) {
+      var wrap = el('sales-chart-table');
+      if (!wrap) return;
+      if (!selected || !selected.length) { wrap.innerHTML = ''; return; }
+      var maxX = 1;
+      selected.forEach(function (s) { var off = s.offsetsHours || []; if (off.length && off[off.length - 1] > maxX) maxX = off[off.length - 1]; });
+      var step = niceStep(maxX / 8) || 1;
+      var checkpoints = [];
+      for (var h = step; h < maxX; h += step) checkpoints.push(h);
+      checkpoints.push(maxX); // final = full total
+      var head = '<th>זמן מתחילת המכירה</th>' + selected.map(function (s) {
+        return '<th class="num"><span class="chart-dot" style="background:' + chartColorOf(s.saleName) + '"></span> ' + esc(s.saleName) + '</th>';
+      }).join('');
+      var rows = checkpoints.map(function (cp) {
+        var isLast = cp >= maxX;
+        var label = isLast ? 'סה״כ' : ('עד ' + Math.round(cp) + ' ש׳');
+        var tds = selected.map(function (s) {
+          var c = (s.offsetsHours || []).filter(function (o) { return o <= cp; }).length;
+          return '<td class="num">' + c + '</td>';
+        }).join('');
+        return '<tr' + (isLast ? ' class="dept-row"' : '') + '><td class="num">' + label + '</td>' + tds + '</tr>';
+      }).join('');
+      wrap.innerHTML = '<div class="table-scroll"><table class="report-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     }
 
     // Weekly orders report: one row per sale/week with order count + revenue.
