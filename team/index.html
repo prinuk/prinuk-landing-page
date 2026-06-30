@@ -798,7 +798,7 @@
       </div>
 
       <details id="acc-chart" class="rep-acc">
-        <summary>📈 השוואת מכירות — הזמנות לפי שעה</summary>
+        <summary>📈 השוואת קצב הזמנות (מצטבר מתחילת המכירה)</summary>
         <div id="sales-chart-controls" class="chart-controls"><div class="loading">טוען…</div></div>
         <svg id="sales-chart-svg" class="sales-chart" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="גרף הזמנות לפי שעה"></svg>
       </details>
@@ -818,11 +818,6 @@
           <button class="btn" id="rep-scope-apply">הצג</button>
         </span>
       </div>
-
-      <details id="acc-hourly" class="rep-acc">
-        <summary>🕐 התפלגות הזמנות לפי יום ושעה</summary>
-        <div id="hourly-report-body"><div class="loading">טוען…</div></div>
-      </details>
 
       <details id="acc-weight" class="rep-acc">
         <summary>⚖️ סיכום משקל ויחידות לקנייה</summary>
@@ -1208,12 +1203,10 @@
       if (this.value === 'range') { el('rep-scope-range').classList.remove('hidden'); return; }
       el('rep-scope-range').classList.add('hidden');
       state.reportScope = readScope(this.value, 'rep-scope-from', 'rep-scope-to');
-      if (el('acc-hourly').open) loadHourlyReport();
       if (el('acc-weight').open) loadWeightSummary();
     });
     el('rep-scope-apply').addEventListener('click', function () {
       state.reportScope = { kind: 'range', from: el('rep-scope-from').value, to: el('rep-scope-to').value };
-      if (el('acc-hourly').open) loadHourlyReport();
       if (el('acc-weight').open) loadWeightSummary();
     });
     el('weight-print-btn').addEventListener('click', printWeightSummary);
@@ -1224,12 +1217,10 @@
       // Reload whatever is already open (e.g. after returning to the tab).
       if (el('acc-chart').open) loadSalesChart();
       if (el('acc-weekly').open) loadWeeklyReport();
-      if (el('acc-hourly').open) loadHourlyReport();
       if (el('acc-weight').open) loadWeightSummary();
     }
     el('acc-chart').addEventListener('toggle', function () { if (this.open) loadSalesChart(); });
     el('acc-weekly').addEventListener('toggle', function () { if (this.open) loadWeeklyReport(); });
-    el('acc-hourly').addEventListener('toggle', function () { if (this.open) loadHourlyReport(); });
     el('acc-weight').addEventListener('toggle', function () { if (this.open) loadWeightSummary(); });
 
     // ---- Sales comparison chart: one line per chosen sale, X=hour, Y=orders ----
@@ -1240,7 +1231,7 @@
     }
     function loadSalesChart() {
       el('sales-chart-controls').innerHTML = '<div class="loading">טוען…</div>';
-      api('GET', '?action=hourly-by-sale').then(function (data) {
+      api('GET', '?action=orders-timeline').then(function (data) {
         state.salesChart = (data && data.sales) || [];
         if (!state.chartSel) state.chartSel = {};
         // Default: show the two most recent sales the first time.
@@ -1268,84 +1259,46 @@
         });
       });
     }
+    // Cumulative orders (Y) vs hours elapsed since each sale started (X), one line
+    // per selected sale — so you can compare how fast orders came in across sales.
     function renderSalesChart() {
       var svg = el('sales-chart-svg');
       var selected = (state.salesChart || []).filter(function (s) { return state.chartSel[s.saleName]; });
       if (!selected.length) { svg.innerHTML = '<text x="20" y="30" font-size="13" fill="#888">בחרו מכירה אחת או יותר…</text>'; return; }
-      var W = 640, H = 340, padL = 36, padR = 14, padT = 14, padB = 34;
+      var W = 640, H = 340, padL = 40, padR = 14, padT = 14, padB = 42;
       var plotW = W - padL - padR, plotH = H - padT - padB;
-      var maxY = 1;
-      selected.forEach(function (s) { s.hours.forEach(function (n) { if (n > maxY) maxY = n; }); });
-      var X = function (h) { return padL + (h / 23) * plotW; };
-      var Y = function (n) { return padT + (1 - n / maxY) * plotH; };
+      var maxX = 1, maxY = 1;
+      selected.forEach(function (s) {
+        var off = s.offsetsHours || [];
+        if (off.length) {
+          if (off[off.length - 1] > maxX) maxX = off[off.length - 1];
+          if (off.length > maxY) maxY = off.length;
+        }
+      });
+      if (maxX <= 0) maxX = 1;
+      var X = function (h) { return padL + (h / maxX) * plotW; };
+      var Y = function (c) { return padT + (1 - c / maxY) * plotH; };
       var p = [];
-      var ticks = Math.min(maxY, 5);
-      for (var t = 0; t <= ticks; t++) {
-        var val = Math.round(maxY * t / ticks);
-        var yy = Y(val);
+      var yTicks = Math.min(maxY, 5);
+      for (var t = 0; t <= yTicks; t++) {
+        var v = Math.round(maxY * t / yTicks);
+        var yy = Y(v);
         p.push('<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="#eee"/>');
-        p.push('<text x="' + (padL - 5) + '" y="' + (yy + 3) + '" text-anchor="end" font-size="9" fill="#999">' + val + '</text>');
+        p.push('<text x="' + (padL - 5) + '" y="' + (yy + 3) + '" text-anchor="end" font-size="9" fill="#999">' + v + '</text>');
       }
-      for (var h = 0; h <= 23; h += 3) {
-        p.push('<text x="' + X(h) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="9" fill="#999">' + (h < 10 ? '0' + h : h) + '</text>');
+      for (var k = 0; k <= 6; k++) {
+        var hv = Math.round(maxX * k / 6);
+        p.push('<text x="' + X(hv) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="9" fill="#999">' + hv + '</text>');
       }
+      p.push('<text x="' + (padL + plotW / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#777">שעות מתחילת המכירה</text>');
       selected.forEach(function (s) {
         var color = chartColorOf(s.saleName);
-        var pts = s.hours.map(function (n, hh) { return X(hh).toFixed(1) + ',' + Y(n).toFixed(1); }).join(' ');
-        p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts + '"/>');
-        // Dot markers on hours that had orders (readable on mobile, no hover needed).
-        s.hours.forEach(function (n, hh) {
-          if (n > 0) {
-            p.push('<circle cx="' + X(hh).toFixed(1) + '" cy="' + Y(n).toFixed(1) + '" r="2.6" fill="' + color + '"/>');
-          }
-        });
+        var off = s.offsetsHours || [];
+        var pts = ['0,' + Y(0).toFixed(1)];
+        for (var i = 0; i < off.length; i++) { pts.push(X(off[i]).toFixed(1) + ',' + Y(i + 1).toFixed(1)); }
+        p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts.join(' ') + '"/>');
       });
       svg.innerHTML = p.join('');
-    }
-
-    // Orders-by-hour for the selected report scope (sale / range / all). Hour is
-    // the team's local time (Israel), which is what "at Y hour" means here.
-    var HEB_WEEKDAYS_SHORT = ['א׳ ראשון', 'ב׳ שני', 'ג׳ שלישי', 'ד׳ רביעי', 'ה׳ חמישי', 'ו׳ שישי', 'ש׳ שבת'];
-    function loadHourlyReport() {
-      var body = el('hourly-report-body');
-      body.innerHTML = '<div class="loading">טוען…</div>';
-      api('GET', '?action=list' + scopeParamsFor(state.reportScope)).then(function (data) {
-        var orders = (data && data.orders) || [];
-        if (!orders.length) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
-        // Matrix: day-of-week (rows) × hour (cols). Local (Israel) time.
-        var grid = []; for (var i = 0; i < 7; i++) { grid.push(new Array(24).fill(0)); }
-        var dayTot = new Array(7).fill(0), hourTot = new Array(24).fill(0);
-        var total = 0, maxCell = 0, minH = 23, maxH = 0;
-        orders.forEach(function (o) {
-          var ts = o.timestamp || o.createdAt; if (!ts) return;
-          var dt = new Date(ts); var wd = dt.getDay(); var h = dt.getHours();
-          if (wd < 0 || wd > 6 || h < 0 || h >= 24) return;
-          grid[wd][h]++; dayTot[wd]++; hourTot[h]++; total++;
-          if (grid[wd][h] > maxCell) maxCell = grid[wd][h];
-          if (h < minH) minH = h; if (h > maxH) maxH = h;
-        });
-        if (!total) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
-        var head = '<th>יום \\ שעה</th>';
-        for (var hh = minH; hh <= maxH; hh++) { head += '<th class="num">' + (hh < 10 ? '0' + hh : hh) + '</th>'; }
-        head += '<th class="num">סה״כ</th>';
-        var rows = '';
-        for (var wd = 0; wd < 7; wd++) {
-          if (!dayTot[wd]) continue; // skip days with no orders
-          var tds = '';
-          for (var h2 = minH; h2 <= maxH; h2++) {
-            var n = grid[wd][h2];
-            var bg = n ? ' style="background:rgba(29,155,104,' + (0.12 + 0.6 * (n / maxCell)).toFixed(2) + ')"' : '';
-            tds += '<td class="num"' + bg + '>' + (n || '') + '</td>';
-          }
-          rows += '<tr><td>' + esc(HEB_WEEKDAYS_SHORT[wd]) + '</td>' + tds + '<td class="num"><b>' + dayTot[wd] + '</b></td></tr>';
-        }
-        var totTds = '';
-        for (var h3 = minH; h3 <= maxH; h3++) { totTds += '<td class="num">' + (hourTot[h3] || '') + '</td>'; }
-        rows += '<tr class="dept-row"><td>סה״כ</td>' + totTds + '<td class="num">' + total + '</td></tr>';
-        body.innerHTML = '<div class="table-scroll"><table class="report-table heat-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
-      }).catch(function (err) {
-        if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
-      });
     }
 
     // Weekly orders report: one row per sale/week with order count + revenue.

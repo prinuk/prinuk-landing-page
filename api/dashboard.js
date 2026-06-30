@@ -3,7 +3,7 @@ const {
   listOrdersForDashboard,
   getSalesList,
   getWeeklyReport,
-  getHourlyBySale,
+  getOrdersTimeline,
   getCustomers,
   getWeightSummary,
   getOrdersDetailed,
@@ -201,8 +201,8 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, weeks });
       }
 
-      if (action === 'hourly-by-sale') {
-        const sales = await getHourlyBySale();
+      if (action === 'orders-timeline') {
+        const sales = await getOrdersTimeline();
         return res.json({ ok: true, sales });
       }
 
