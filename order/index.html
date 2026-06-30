@@ -4530,6 +4530,17 @@
         }
         .cc-frame-slot.is-invalid-field { border-color: #c0392b; }
         .cc-loading-note { color: #165a43; font-weight: 700; font-size: 13.5px; padding: 2px 0; }
+        .cc-payment-explain {
+            border: 1px solid #d7e5db;
+            background: #e9f5ef;
+            color: #165a43;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 13.5px;
+            line-height: 1.5;
+        }
+        .cc-payment-explain p { margin: 0 0 6px; }
+        .cc-payment-explain p:last-child { margin-bottom: 0; }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4873,7 +4884,10 @@
                     </div>
 
                     <div id="creditCardFields" class="card-fields hidden">
-                        <p class="delivery-area-note cc-fullrow">פרטי הכרטיס מאובטחים ומעובדים ישירות מול חברת הסליקה — הם אינם נשמרים אצלנו.</p>
+                        <div class="cc-fullrow cc-payment-explain">
+                            <p>🔒 <b>הכרטיס אינו מחויב בעת ההזמנה.</b> החיוב הסופי מתבצע <b>רק לאחר ליקוט ההזמנה</b> — לפי המשקל והכמויות בפועל.</p>
+                            <p>פרטי האשראי מאובטחים ונשמרים <b>אך ורק אצל חברת הסליקה</b>. אנחנו לעולם לא שומרים את פרטי הכרטיס אצלנו.</p>
+                        </div>
                         <div id="ccLoadingNote" class="cc-fullrow cc-loading-note" style="display:none;">⏳ טוען טופס תשלום מאובטח…</div>
                         <label class="field cc-f-number">
                             <span>מספר כרטיס <span class="required-star">*</span></span>
