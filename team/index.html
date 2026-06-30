@@ -596,6 +596,8 @@
     .cc-loading-note { color: var(--fresh, #1d9b68); font-weight: 700; font-size: 13px; margin-bottom: 8px; }
     .cust-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; }
     .cust-actions .btn { width: auto; padding: 8px 14px; font-size: 14px; }
+    .table-scroll { overflow-x: auto; padding: 0 16px 8px; }
+    .heat-table th, .heat-table td { padding: 6px 8px; font-size: 12.5px; white-space: nowrap; }
     .modal .field select, .modal .field input {
       width: 100%; padding: 12px 13px; border: 1.5px solid var(--line-strong);
       border-radius: var(--radius-sm); font-size: 16px; font-family: inherit;
@@ -818,7 +820,7 @@
       </div>
 
       <details id="acc-hourly" class="rep-acc">
-        <summary>🕐 התפלגות הזמנות לפי שעה</summary>
+        <summary>🕐 התפלגות הזמנות לפי יום ושעה</summary>
         <div id="hourly-report-body"><div class="loading">טוען…</div></div>
       </details>
 
@@ -1303,44 +1305,44 @@
 
     // Orders-by-hour for the selected report scope (sale / range / all). Hour is
     // the team's local time (Israel), which is what "at Y hour" means here.
+    var HEB_WEEKDAYS_SHORT = ['א׳ ראשון', 'ב׳ שני', 'ג׳ שלישי', 'ד׳ רביעי', 'ה׳ חמישי', 'ו׳ שישי', 'ש׳ שבת'];
     function loadHourlyReport() {
       var body = el('hourly-report-body');
       body.innerHTML = '<div class="loading">טוען…</div>';
       api('GET', '?action=list' + scopeParamsFor(state.reportScope)).then(function (data) {
         var orders = (data && data.orders) || [];
         if (!orders.length) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
-        var buckets = new Array(24).fill(0);
-        var sums = new Array(24).fill(0); // ₪ total of orders in each hour
-        var totalN = 0, totalSum = 0;
+        // Matrix: day-of-week (rows) × hour (cols). Local (Israel) time.
+        var grid = []; for (var i = 0; i < 7; i++) { grid.push(new Array(24).fill(0)); }
+        var dayTot = new Array(7).fill(0), hourTot = new Array(24).fill(0);
+        var total = 0, maxCell = 0, minH = 23, maxH = 0;
         orders.forEach(function (o) {
-          var ts = o.timestamp || o.createdAt;
-          if (!ts) return;
-          var h = new Date(ts).getHours();
-          if (h < 0 || h >= 24) return;
-          buckets[h]++; totalN++;
-          var amt = Number(o.grandTotal) || 0;
-          sums[h] += amt; totalSum += amt;
+          var ts = o.timestamp || o.createdAt; if (!ts) return;
+          var dt = new Date(ts); var wd = dt.getDay(); var h = dt.getHours();
+          if (wd < 0 || wd > 6 || h < 0 || h >= 24) return;
+          grid[wd][h]++; dayTot[wd]++; hourTot[h]++; total++;
+          if (grid[wd][h] > maxCell) maxCell = grid[wd][h];
+          if (h < minH) minH = h; if (h > maxH) maxH = h;
         });
-        var maxN = Math.max.apply(null, buckets) || 1;
+        if (!total) { body.innerHTML = '<div class="empty">אין הזמנות בטווח שנבחר.</div>'; return; }
+        var head = '<th>יום \\ שעה</th>';
+        for (var hh = minH; hh <= maxH; hh++) { head += '<th class="num">' + (hh < 10 ? '0' + hh : hh) + '</th>'; }
+        head += '<th class="num">סה״כ</th>';
         var rows = '';
-        var cumN = 0; // running (cumulative) order count through the hours
-        for (var h = 0; h < 24; h++) {
-          cumN += buckets[h];
-          var pct = Math.round(buckets[h] / maxN * 100);
-          var hh = (h < 10 ? '0' + h : h) + ':00';
-          rows += '<tr><td class="num">' + hh + '</td>' +
-            '<td><div class="hr-bar" style="width:' + pct + '%"></div></td>' +
-            '<td class="num">' + buckets[h] + '</td>' +
-            '<td class="num">' + cumN + '</td>' +
-            '<td class="num">₪' + esc(formatMoney(sums[h])) + '</td></tr>';
+        for (var wd = 0; wd < 7; wd++) {
+          if (!dayTot[wd]) continue; // skip days with no orders
+          var tds = '';
+          for (var h2 = minH; h2 <= maxH; h2++) {
+            var n = grid[wd][h2];
+            var bg = n ? ' style="background:rgba(29,155,104,' + (0.12 + 0.6 * (n / maxCell)).toFixed(2) + ')"' : '';
+            tds += '<td class="num"' + bg + '>' + (n || '') + '</td>';
+          }
+          rows += '<tr><td>' + esc(HEB_WEEKDAYS_SHORT[wd]) + '</td>' + tds + '<td class="num"><b>' + dayTot[wd] + '</b></td></tr>';
         }
-        body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שעה</th><th>התפלגות</th><th class="num">הזמנות</th><th class="num">מצטבר</th><th class="num">סכום</th>' +
-          '</tr></thead><tbody>' + rows +
-          '<tr class="dept-row"><td>סה״כ</td><td></td><td class="num">' + totalN + '</td>' +
-          '<td class="num">' + totalN + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalSum)) + '</td></tr>' +
-          '</tbody></table>';
+        var totTds = '';
+        for (var h3 = minH; h3 <= maxH; h3++) { totTds += '<td class="num">' + (hourTot[h3] || '') + '</td>'; }
+        rows += '<tr class="dept-row"><td>סה״כ</td>' + totTds + '<td class="num">' + total + '</td></tr>';
+        body.innerHTML = '<div class="table-scroll"><table class="report-table heat-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
       }).catch(function (err) {
         if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
       });
