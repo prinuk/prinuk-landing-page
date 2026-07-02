@@ -583,6 +583,9 @@
     .cr-newhead input { width: 100%; }
     .cr-pay-method { display: flex; gap: 16px; }
     .cr-pay-method label { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+    .cr-docmode { margin-top: 14px; padding: 12px; border: 1px dashed var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
+    .cr-docmode-toggle { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; }
+    .cr-doc-note { width: 100%; margin-top: 10px; }
     .cr-card { margin-top: 14px; padding: 12px; border: 1px solid var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
     .cr-card-title { font-weight: 800; margin-bottom: 8px; }
     .cr-card input { width: 100%; margin-bottom: 8px; }
@@ -1829,7 +1832,9 @@
           : 'מזומן (בעת האיסוף/המשלוח)';
         var collectedStatuses = [STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED];
         var isCollected = collectedStatuses.indexOf(o.status) !== -1;
-        var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב בכרטיס אשראי';
+        var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי'
+          : (o.payment.method === 'credit') ? '💳 חיוב בכרטיס אשראי'
+          : '🧾 הפקת חשבונית / חיוב';
         paymentBlock =
           '<div class="panel">' +
             '<h2>תשלום</h2>' +
@@ -2126,6 +2131,10 @@
           estimateItems: Math.max(0, (Number(o.grandTotal) || 0) - (Number(o.deliveryFee) || 0)),
           // No card on file (e.g. cash order) → the team enters one manually.
           hasCard: !!(o.payment && o.payment.hasCard),
+          // Paid outside Cardcom (transfer/Bit/cash) → issue a חשבונית מס instead
+          // of charging. Default on for cash orders with no saved card.
+          docMode: !!(o.payment && o.payment.method !== 'credit' && !(o.payment && o.payment.hasCard)),
+          docNote: '',
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -2457,8 +2466,8 @@
 
     function renderChargeReview() {
       var r = state.review;
-      var needCard = r.isNew ? (r.payMethod === 'credit') : !r.hasCard;
-      var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : 'סקירה וחיוב';
+      var needCard = r.isNew ? (r.payMethod === 'credit') : (!r.docMode && !r.hasCard);
+      var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : (r.docMode ? 'הפקת חשבונית מס' : 'סקירה וחיוב');
       var namePlaceholder = r.payMethod === 'credit' ? 'שם בעל הכרטיס (חובה לאשראי)' : 'שם הלקוח (לא חובה)';
       var newHead = !r.isNew ? '' :
         '<div class="cr-newhead">' +
@@ -2505,6 +2514,12 @@
         '</div>' +
         '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
           '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
+        (r.isNew ? '' :
+          '<div class="cr-docmode">' +
+            '<label class="cr-docmode-toggle"><input type="checkbox" id="cr-docmode"' + (r.docMode ? ' checked' : '') + '> ' +
+              'תשלום חיצוני — הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)</label>' +
+            (r.docMode ? '<input id="cr-doc-note" class="cr-doc-note" placeholder="אופן תשלום ואסמכתא — למשל: העברה בנקאית, אסמכתא 12345" value="' + esc(r.docNote || '') + '">' : '') +
+          '</div>') +
         tkCardBlockHtml(needCard) +
         '<div class="cr-total" id="cr-total"></div>';
 
@@ -2542,6 +2557,10 @@
       el('cr-order-disc').addEventListener('input', function () { r.orderDiscountValue = Number(this.value) || 0; crRecompute(); });
       el('cr-order-disc-type').addEventListener('change', function () { r.orderDiscountType = this.value; crRecompute(); });
       el('cr-delivery').addEventListener('input', function () { r.deliveryAuto = false; r.delivery = Math.max(0, Number(this.value) || 0); crRecompute(); });
+      var dmEl = el('cr-docmode');
+      if (dmEl) dmEl.addEventListener('change', function () { r.docMode = this.checked; renderChargeReview(); });
+      var dnEl = el('cr-doc-note');
+      if (dnEl) dnEl.addEventListener('input', function () { r.docNote = this.value; });
       if (r.isNew) {
         var nm = el('cr-cust-name'); if (nm) nm.addEventListener('input', function () { r.customer.fullName = this.value; });
         var ph = el('cr-cust-phone'); if (ph) ph.addEventListener('input', function () { r.customer.phone = this.value; });
@@ -2584,7 +2603,9 @@
       }
       var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
       el('cr-total').textContent = 'סה״כ: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
-      var verb = (r.isNew && r.payMethod === 'cash') ? 'צור הזמנה ' : 'אישור וחיוב ';
+      var verb = (r.isNew && r.payMethod === 'cash') ? 'צור הזמנה '
+        : (!r.isNew && r.docMode) ? '🧾 הפקת חשבונית מס · '
+        : 'אישור וחיוב ';
       el('charge-confirm').textContent = verb + formatMoney(grand);
     }
 
@@ -2658,6 +2679,23 @@
       var deliveryAgorot = Math.round((Number(r.delivery) || 0) * 100);
       var review = { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot };
       var btn = el('charge-confirm');
+
+      // Paid outside Cardcom → issue a חשבונית מס with the payment note (no charge).
+      if (r.docMode) {
+        review.note = r.docNote || '';
+        btn.disabled = true;
+        btn.textContent = 'מפיק חשבונית…';
+        api('POST', '', { action: 'issue-document', orderId: o.orderId, review: review }).then(function (resp) {
+          el('charge-overlay').classList.add('hidden');
+          showToast('🧾 חשבונית מס הופקה' + (resp.amount != null ? ' · ' + formatMoney(resp.amount) : ''));
+          openOrder(o.orderId);
+        }).catch(function (err) {
+          btn.disabled = false;
+          crRecompute();
+          if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהפקת החשבונית');
+        });
+        return;
+      }
 
       var post = function () {
         btn.disabled = true;
