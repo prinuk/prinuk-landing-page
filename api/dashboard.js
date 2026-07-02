@@ -3,7 +3,7 @@ const {
   listOrdersForDashboard,
   getSalesList,
   getWeeklyReport,
-  getHourlyBySale,
+  getOrdersTimeline,
   getCustomers,
   getWeightSummary,
   getOrdersDetailed,
@@ -13,6 +13,7 @@ const {
   setOrderStatus,
   chargeOrder,
   reviewAndCharge,
+  reviewAndIssueDocument,
   createManualOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
@@ -201,8 +202,8 @@ module.exports = async function handler(req, res) {
         return res.json({ ok: true, weeks });
       }
 
-      if (action === 'hourly-by-sale') {
-        const sales = await getHourlyBySale();
+      if (action === 'orders-timeline') {
+        const sales = await getOrdersTimeline();
         return res.json({ ok: true, sales });
       }
 
@@ -427,6 +428,37 @@ module.exports = async function handler(req, res) {
           } catch (err) {
             console.error('Final email failed:', err);
           }
+        }
+        return res.json(result);
+      }
+
+      // Issue a חשבונית מס for an order paid OUTSIDE Cardcom (transfer/Bit/cash).
+      if (action === 'issue-document') {
+        const result = await reviewAndIssueDocument(orderId, body.review || {});
+        if (!result.ok) {
+          const msgs = {
+            notfound: 'ההזמנה לא נמצאה.',
+            unsupported: 'הפקת חשבונית אינה נתמכת בספק התשלומים הנוכחי.',
+            'no-amount': 'אין סכום להפקת חשבונית.',
+            'no-items': 'אין פריטים להפקת חשבונית.',
+            'document-failed': result.error || 'הפקת החשבונית נכשלה.',
+          };
+          return res.status(400).json({ error: msgs[result.reason] || result.error || 'הפקת החשבונית נכשלה.' });
+        }
+        // Final email to the customer: collected summary + the tax invoice (best-effort).
+        try {
+          const detail = await readOrderForDashboard(orderId);
+          const o = detail && detail.ok ? detail.order : null;
+          if (o && o.email) {
+            const settings = await getSettings();
+            const fe = await sendCustomerFinalEmail(settings, o, o.items, {
+              invoiceUrl: result.invoiceUrl || (o.payment && o.payment.invoiceUrl) || '',
+              amount: result.amount,
+            });
+            result.finalEmail = fe && fe.status;
+          }
+        } catch (err) {
+          console.error('Final email (external document) failed:', err);
         }
         return res.json(result);
       }
