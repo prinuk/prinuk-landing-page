@@ -281,6 +281,7 @@
     .badge.st-done { background: var(--fresh-soft); color: var(--fresh); }
     .badge.st-partial { background: #fdebe2; color: var(--fruit); }
     .badge.st-sent { background: var(--surface-2); color: var(--muted); }
+    .badge.origin-manual { background: #ece7fa; color: #6a4fb0; }
 
     .status-select {
       font-size: 13px; font-weight: 600; color: var(--ink);
@@ -726,6 +727,10 @@
           <button class="chip" data-type="all" data-type-active="1">כל הסוגים</button>
           <button class="chip" data-type="משלוח">משלוח</button>
           <button class="chip" data-type="איסוף עצמי">איסוף</button>
+          <span class="sep"></span>
+          <button class="chip active" data-origin="all">הכל</button>
+          <button class="chip" data-origin="web">🌐 אתר</button>
+          <button class="chip" data-origin="manual">🧾 ידני</button>
         </div>
       </div>
 
@@ -1007,7 +1012,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'active', type: 'all' },
+      filters: { search: '', status: 'active', type: 'all', origin: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       selected: {},
@@ -1459,6 +1464,7 @@
         } else if (o.status !== f.status) return false;
       }
       if (f.type !== 'all' && o.fulfillment !== f.type) return false;
+      if (f.origin && f.origin !== 'all' && (o.origin || 'web') !== f.origin) return false;
       if (f.search) {
         var q = f.search.toLowerCase();
         var hay = (o.fullName + ' ' + o.phone + ' ' + o.orderId).toLowerCase();
@@ -1517,6 +1523,7 @@
             '<div class="oc-top">' +
               '<input type="checkbox" class="oc-select" data-id="' + esc(o.orderId) + '"' + (state.selected[o.orderId] ? ' checked' : '') + ' onclick="event.stopPropagation()">' +
               '<span class="oc-name">' + esc(o.fullName || 'ללא שם') + '</span>' +
+              (o.origin === 'manual' ? '<span class="badge origin-manual">🧾 ידני</span>' : '') +
               '<span class="badge ' + sc + '">' + esc(o.status || '—') + '</span>' +
             '</div>' +
             '<div class="oc-meta">' +
@@ -1638,6 +1645,10 @@
       } else if (chip.hasAttribute('data-type')) {
         state.filters.type = chip.getAttribute('data-type');
         Array.prototype.forEach.call(this.querySelectorAll('[data-type]'), function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
+      } else if (chip.hasAttribute('data-origin')) {
+        state.filters.origin = chip.getAttribute('data-origin');
+        Array.prototype.forEach.call(this.querySelectorAll('[data-origin]'), function (c) { c.classList.remove('active'); });
         chip.classList.add('active');
       }
       renderList();
