@@ -298,7 +298,8 @@
     }
     .oc-meta .tag.deliver { background: var(--accent-soft); color: var(--accent); }
     .oc-meta .tag.pickup { background: var(--fresh-soft); color: var(--fresh); }
-    .oc-total { font-weight: 700; color: var(--ink); margin-inline-start: auto; }
+    .oc-total { font-weight: 700; color: var(--muted); font-size: 12.5px; margin-inline-start: auto; }
+    .oc-total.final { color: var(--accent, #1d9b68); font-weight: 800; margin-inline-start: 6px; }
 
     .oc-actions { display: flex; gap: 8px; margin-top: 11px; }
     .mini-btn {
@@ -571,7 +572,8 @@
     .cr-ctrls input { width: 60px; text-align: center; }
     .cr-disc-type { width: 52px; }
     .cr-tag { font-size: 13px; color: var(--muted); }
-    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 16px 0; }
+    .cr-add-search { width: 100%; margin: 16px 0 8px; }
+    .cr-addrow { display: flex; gap: 8px; align-items: center; margin: 0 0 16px; }
     .cr-addrow select { flex: 1; min-width: 0; }
     .cr-addrow input { width: 56px; text-align: center; }
     .cr-addrow .btn { flex: 0 0 auto; width: auto; }
@@ -1522,7 +1524,8 @@
               '<span class="tag ' + (isDeliver ? 'deliver' : 'pickup') + '">' +
                 (isDeliver ? '🚚 משלוח' : '🛍️ איסוף עצמי') + '</span>' +
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
-              (o.grandTotal !== '' ? '<span class="oc-total">' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
+              (o.grandTotal !== '' ? '<span class="oc-total">אומדן ' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
+              (o.finalTotal !== '' && o.finalTotal != null ? '<span class="oc-total final">סופי ' + esc(formatMoney(o.finalTotal)) + '</span>' : '') +
               (o.paymentStatus === 'captured'
                 ? '<span class="oc-paid paid">💳 שולם</span>'
                 : '<span class="oc-paid">לא שולם</span>') +
@@ -2502,9 +2505,12 @@
           '</div>' +
         '</div>';
       }).join('');
-      var addOpts = '<option value="">+ הוסף מוצר…</option>' + addable.map(function (p) {
-        return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
-      }).join('');
+      var buildAddOpts = function (list) {
+        return '<option value="">+ בחר מוצר…</option>' + list.map(function (p) {
+          return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
+        }).join('');
+      };
+      var addOpts = buildAddOpts(addable);
       // Issue-a-tax-invoice option: always for an existing order; for a new POS
       // invoice only when it's a cash / external payment (credit issues its own).
       var showDocMode = r.isNew ? (r.payMethod === 'cash') : true;
@@ -2520,6 +2526,7 @@
       el('charge-body').innerHTML =
         newHead +
         rows +
+        '<input id="cr-add-search" class="cr-add-search" type="search" inputmode="search" autocomplete="off" placeholder="🔍 חיפוש מוצר…">' +
         '<div class="cr-addrow"><select id="cr-add-select">' + addOpts + '</select>' +
           '<input id="cr-add-qty" class="cr-qty" type="number" min="1" value="1"><button class="btn btn-ghost" id="cr-add-btn">הוסף</button></div>' +
         '<div class="cr-order-disc"><label>הנחה לכל ההזמנה</label>' +
@@ -2544,6 +2551,14 @@
         if (dt) dt.addEventListener('change', function () { r.items[i].discountType = this.value; crRecompute(); });
         var rm = row.querySelector('[data-act="remove"]');
         if (rm) rm.addEventListener('click', function () { r.items.splice(i, 1); renderChargeReview(); });
+      });
+      var searchEl = el('cr-add-search');
+      if (searchEl) searchEl.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        var filtered = !q ? addable : addable.filter(function (p) { return (p.name || '').toLowerCase().indexOf(q) !== -1; });
+        el('cr-add-select').innerHTML = buildAddOpts(filtered);
+        // One match → preselect it so "הוסף" works without opening the dropdown.
+        if (filtered.length === 1) el('cr-add-select').value = filtered[0].id;
       });
       el('cr-add-btn').addEventListener('click', function () {
         var pid = el('cr-add-select').value;
