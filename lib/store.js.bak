@@ -590,46 +590,34 @@ async function getWeeklyReport() {
     .sort((a, b) => String(b.lastAt).localeCompare(String(a.lastAt)));
 }
 
-// Per-sale order timeline for the comparison report: orders grouped by
-// (day-since-sale-opened, hour-of-day) in Asia/Jerusalem, so the dashboard can
-// show — chronologically — how many orders came in each hour of each day and the
-// running cumulative, and compare that across sales.
+// Orders per hour-of-day, per sale — for the comparison chart + table (one series
+// per sale; X = clock hour 00–23, Y = orders in that hour). Hour is Asia/Jerusalem.
 const ISRAEL_HOUR_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', hour12: false });
-const ISRAEL_DATE_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' });
 function israelHourOf(d) {
+  if (!d) return -1;
   const h = parseInt(ISRAEL_HOUR_FMT.format(new Date(d)), 10);
-  return Number.isNaN(h) ? 0 : (h >= 24 ? 0 : h);
+  if (Number.isNaN(h)) return -1;
+  return h >= 24 ? 0 : h;
 }
-async function getOrdersTimeline() {
+async function getHourlyBySale() {
   const rows = await db
     .select({ saleName: ordersT.saleName, createdAt: ordersT.createdAt })
     .from(ordersT)
     .where(ne(ordersT.status, 'מבוטל'));
   const bySale = new Map();
+  const lastBy = new Map();
   for (const r of rows) {
-    if (!r.saleName || !r.createdAt) continue;
-    if (!bySale.has(r.saleName)) bySale.set(r.saleName, []);
-    bySale.get(r.saleName).push(r.createdAt);
+    if (!r.saleName) continue;
+    if (!bySale.has(r.saleName)) bySale.set(r.saleName, new Array(24).fill(0));
+    const hr = israelHourOf(r.createdAt);
+    if (hr >= 0 && hr < 24) bySale.get(r.saleName)[hr] += 1;
+    const t = r.createdAt ? new Date(r.createdAt).getTime() : 0;
+    if (!lastBy.has(r.saleName) || t > lastBy.get(r.saleName)) lastBy.set(r.saleName, t);
   }
-  const result = [];
-  for (const [saleName, dates] of bySale) {
-    const items = dates
-      .map((d) => ({ t: new Date(d).getTime(), date: ISRAEL_DATE_FMT.format(new Date(d)), hour: israelHourOf(d) }))
-      .sort((a, b) => a.t - b.t);
-    const dayOf = new Map();
-    let dayCount = 0;
-    const slotMap = new Map(); // "day|hour" -> count
-    for (const it of items) {
-      if (!dayOf.has(it.date)) dayOf.set(it.date, ++dayCount);
-      const key = dayOf.get(it.date) + '|' + it.hour;
-      slotMap.set(key, (slotMap.get(key) || 0) + 1);
-    }
-    const slots = [...slotMap.entries()]
-      .map(([key, count]) => { const parts = key.split('|'); return { day: Number(parts[0]), hour: Number(parts[1]), count }; })
-      .sort((a, b) => (a.day - b.day) || (a.hour - b.hour));
-    result.push({ saleName, total: items.length, last: items[items.length - 1].t, slots });
-  }
-  return result.sort((a, b) => b.last - a.last).map(({ saleName, total, slots }) => ({ saleName, total, slots }));
+  return [...bySale.entries()]
+    .map(([saleName, hours]) => ({ saleName, hours, total: hours.reduce((a, b) => a + b, 0), last: lastBy.get(saleName) || 0 }))
+    .sort((a, b) => b.last - a.last)
+    .map(({ saleName, hours, total }) => ({ saleName, hours, total }));
 }
 
 // Customer export: one row per customer (grouped by phone, else email), with

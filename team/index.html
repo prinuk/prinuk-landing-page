@@ -798,9 +798,9 @@
       </div>
 
       <details id="acc-chart" class="rep-acc">
-        <summary>📈 השוואת מכירות — הזמנות לפי שעה ביום</summary>
+        <summary>📈 השוואת מכירות — הזמנות מצטברות לפי יום ושעה</summary>
         <div id="sales-chart-controls" class="chart-controls"><div class="loading">טוען…</div></div>
-        <svg id="sales-chart-svg" class="sales-chart" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="גרף הזמנות לפי שעה"></svg>
+        <svg id="sales-chart-svg" class="sales-chart" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet" role="img" aria-label="גרף הזמנות מצטברות לפי יום ושעה"></svg>
         <div id="sales-chart-table"></div>
       </details>
 
@@ -1232,7 +1232,7 @@
     }
     function loadSalesChart() {
       el('sales-chart-controls').innerHTML = '<div class="loading">טוען…</div>';
-      api('GET', '?action=hourly-by-sale').then(function (data) {
+      api('GET', '?action=orders-timeline').then(function (data) {
         state.salesChart = (data && data.sales) || [];
         if (!state.chartSel) state.chartSel = {};
         // Default: show the two most recent sales the first time.
@@ -1260,17 +1260,26 @@
         });
       });
     }
-    // Orders per hour-of-day (Y) by clock hour 00–23 (X), one line per selected
-    // sale — compare which hours are busy across sales.
+    // Each sale carries slots[] = [{ day, hour, count }] (day = 1st/2nd/… day since
+    // the sale opened, hour = clock hour), computed server-side in Israel time.
+    // A "pseudo-hour" ((day-1)*24 + hour) gives a monotonic X for the chart.
+    function slotX(s) { return (s.day - 1) * 24 + s.hour; }
+    function hh2(h) { return (h < 10 ? '0' + h : h) + ':00'; }
+    // Chart: cumulative orders (Y) over the sale's timeline (X = day+hour since it
+    // opened), one line per selected sale — how fast orders came in, sale vs sale.
     function renderSalesChart() {
       var svg = el('sales-chart-svg');
       var selected = (state.salesChart || []).filter(function (s) { return state.chartSel[s.saleName]; });
       if (!selected.length) { svg.innerHTML = '<text x="20" y="30" font-size="13" fill="#888">בחרו מכירה אחת או יותר…</text>'; renderSalesTable([]); return; }
-      var W = 640, H = 340, padL = 36, padR = 14, padT = 14, padB = 34;
+      var W = 640, H = 340, padL = 40, padR = 14, padT = 14, padB = 42;
       var plotW = W - padL - padR, plotH = H - padT - padB;
-      var maxY = 1;
-      selected.forEach(function (s) { s.hours.forEach(function (n) { if (n > maxY) maxY = n; }); });
-      var X = function (h) { return padL + (h / 23) * plotW; };
+      var maxX = 1, maxY = 1, maxDay = 1;
+      selected.forEach(function (s) {
+        var slots = s.slots || [];
+        if (s.total > maxY) maxY = s.total;
+        slots.forEach(function (sl) { if (slotX(sl) > maxX) maxX = slotX(sl); if (sl.day > maxDay) maxDay = sl.day; });
+      });
+      var X = function (x) { return padL + (x / maxX) * plotW; };
       var Y = function (n) { return padT + (1 - n / maxY) * plotH; };
       var p = [];
       var ticks = Math.min(maxY, 5);
@@ -1280,37 +1289,67 @@
         p.push('<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="#eee"/>');
         p.push('<text x="' + (padL - 5) + '" y="' + (yy + 3) + '" text-anchor="end" font-size="9" fill="#999">' + v + '</text>');
       }
-      for (var h = 0; h <= 23; h += 3) {
-        p.push('<text x="' + X(h) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="9" fill="#999">' + (h < 10 ? '0' + h : h) + '</text>');
+      // X axis: one tick at the start of each day.
+      for (var d = 1; d <= maxDay; d++) {
+        var xx = X((d - 1) * 24);
+        p.push('<line x1="' + xx.toFixed(1) + '" y1="' + padT + '" x2="' + xx.toFixed(1) + '" y2="' + (H - padB) + '" stroke="#f2f2f2"/>');
+        p.push('<text x="' + xx.toFixed(1) + '" y="' + (H - padB + 15) + '" text-anchor="middle" font-size="9" fill="#999">יום ' + d + '</text>');
       }
+      p.push('<text x="' + (padL + plotW / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10" fill="#666">מתחילת המכירה (מצטבר)</text>');
       selected.forEach(function (s) {
         var color = chartColorOf(s.saleName);
-        var pts = s.hours.map(function (n, hh) { return X(hh).toFixed(1) + ',' + Y(n).toFixed(1); }).join(' ');
-        p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts + '"/>');
-        s.hours.forEach(function (n, hh) { if (n > 0) { p.push('<circle cx="' + X(hh).toFixed(1) + '" cy="' + Y(n).toFixed(1) + '" r="2.6" fill="' + color + '"/>'); } });
+        var cum = 0;
+        var pts = ['0,' + Y(0).toFixed(1)];
+        var dots = [];
+        (s.slots || []).forEach(function (sl) {
+          cum += sl.count;
+          var px = X(slotX(sl)).toFixed(1), py = Y(cum).toFixed(1);
+          pts.push(px + ',' + py);
+          dots.push('<circle cx="' + px + '" cy="' + py + '" r="2.4" fill="' + color + '"/>');
+        });
+        p.push('<polyline fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round" points="' + pts.join(' ') + '"/>');
+        p.push(dots.join(''));
       });
       svg.innerHTML = p.join('');
       renderSalesTable(selected);
     }
-    // Table: orders per clock hour (rows = hours with orders), one column per sale.
+    // Table: chronological, one row per (day, hour) that had orders across the
+    // selected sales; per sale = orders in that slot + running cumulative.
     function renderSalesTable(selected) {
       var wrap = el('sales-chart-table');
       if (!wrap) return;
       if (!selected || !selected.length) { wrap.innerHTML = ''; return; }
-      var active = [];
-      for (var h = 0; h < 24; h++) { if (selected.some(function (s) { return s.hours[h] > 0; })) active.push(h); }
-      if (!active.length) { wrap.innerHTML = ''; return; }
-      var head = '<th>שעה</th>' + selected.map(function (s) {
-        return '<th class="num"><span class="chart-dot" style="background:' + chartColorOf(s.saleName) + '"></span> ' + esc(s.saleName) + '</th>';
+      // Build per-sale "day|hour" -> count maps and the sorted union of slots.
+      var maps = selected.map(function (s) {
+        var m = {};
+        (s.slots || []).forEach(function (sl) { m[sl.day + '|' + sl.hour] = sl.count; });
+        return m;
+      });
+      var seen = {}, slots = [];
+      selected.forEach(function (s) {
+        (s.slots || []).forEach(function (sl) {
+          var k = sl.day + '|' + sl.hour;
+          if (!seen[k]) { seen[k] = 1; slots.push({ key: k, day: sl.day, hour: sl.hour }); }
+        });
+      });
+      if (!slots.length) { wrap.innerHTML = ''; return; }
+      slots.sort(function (a, b) { return (a.day - b.day) || (a.hour - b.hour); });
+      var h1 = '<tr><th rowspan="2">יום</th><th rowspan="2">שעה</th>' + selected.map(function (s) {
+        return '<th colspan="2"><span class="chart-dot" style="background:' + chartColorOf(s.saleName) + '"></span> ' + esc(s.saleName) + '</th>';
+      }).join('') + '</tr>';
+      var h2 = '<tr>' + selected.map(function () { return '<th class="num">הזמנות</th><th class="num">מצטבר</th>'; }).join('') + '</tr>';
+      var cum = selected.map(function () { return 0; });
+      var rows = slots.map(function (sl) {
+        var tds = selected.map(function (s, i) {
+          var c = maps[i][sl.key] || 0;
+          cum[i] += c;
+          return '<td class="num">' + (c || '·') + '</td><td class="num">' + cum[i] + '</td>';
+        }).join('');
+        return '<tr><td class="num">' + sl.day + '</td><td class="num">' + hh2(sl.hour) + '</td>' + tds + '</tr>';
       }).join('');
-      var rows = active.map(function (h) {
-        var hh = (h < 10 ? '0' + h : h) + ':00';
-        var tds = selected.map(function (s) { return '<td class="num">' + (s.hours[h] || '') + '</td>'; }).join('');
-        return '<tr><td class="num">' + hh + '</td>' + tds + '</tr>';
-      }).join('');
-      var totTds = selected.map(function (s) { return '<td class="num">' + s.total + '</td>'; }).join('');
-      rows += '<tr class="dept-row"><td class="num">סה״כ</td>' + totTds + '</tr>';
-      wrap.innerHTML = '<div class="table-scroll"><table class="report-table"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      var totTds = selected.map(function (s) { return '<td class="num" colspan="2">' + s.total + '</td>'; }).join('');
+      rows += '<tr class="dept-row"><td class="num" colspan="2">סה״כ</td>' + totTds + '</tr>';
+      wrap.innerHTML = '<div class="table-scroll"><table class="report-table"><thead>' + h1 + h2 + '</thead><tbody>' + rows + '</tbody></table></div>';
     }
 
     // Weekly orders report: one row per sale/week with order count + revenue.
