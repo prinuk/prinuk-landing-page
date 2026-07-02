@@ -2207,7 +2207,8 @@
         if (!/^\d{2}$/.test(yyC)) return 'שנת תוקף לא תקינה';
         var nowC = new Date(); var fyC = 2000 + parseInt(yyC, 10);
         if (fyC < nowC.getFullYear() || (fyC === nowC.getFullYear() && mmC < nowC.getMonth() + 1)) return 'תוקף הכרטיס פג';
-        if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+        var idv = (el('cr-cc-id').value || '').replace(/\D/g, '');
+        if (idv && !tkValidId(idv)) return 'ת״ז לא תקינה'; // optional — blank → 000000000 placeholder
         return '';
       }
       var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
@@ -2335,7 +2336,7 @@
             '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
             '<div id="cr-cc-cvv-slot" class="cc-frame-slot cc-cvv-slot"></div>' +
           '</div>' +
-          '<input id="cr-cc-id" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+          '<input id="cr-cc-id" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס (לא חובה)" maxlength="9">' +
           '<div id="cr-cardcom-master" style="position:absolute;width:0;height:0;overflow:hidden;"></div>' +
           '<div class="field-error" id="cr-cc-error"></div>' +
         '</div>';
@@ -2348,7 +2349,7 @@
           '<input id="cr-cc-year" type="text" inputmode="numeric" dir="ltr" placeholder="YY" maxlength="2">' +
           '<input id="cr-cc-cvv" data-og="cvv" type="text" inputmode="numeric" dir="ltr" placeholder="CVV" maxlength="4">' +
         '</div>' +
-        '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס" maxlength="9">' +
+        '<input id="cr-cc-id" data-og="citizenid" type="text" inputmode="numeric" dir="ltr" placeholder="ת״ז בעל הכרטיס (לא חובה)" maxlength="9">' +
         '<input type="hidden" id="cr-cc-ogyear" data-og="expirationyear">' +
         '<div class="field-error" id="cr-cc-error"></div>' +
       '</div>';

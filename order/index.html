@@ -266,6 +266,12 @@
             font-weight: 900;
             margin-inline-start: 3px;
         }
+        .field .optional-note {
+            color: var(--muted, #8a8f87);
+            font-weight: 400;
+            font-size: 0.85em;
+            margin-inline-start: 3px;
+        }
 
         .field-error {
             display: none;
@@ -4913,7 +4919,7 @@
                             <div id="ccCvvFrameSlot" class="cc-frame-slot hidden"></div>
                         </label>
                         <label class="field cc-f-id">
-                            <span>ת״ז בעל הכרטיס <span class="required-star">*</span></span>
+                            <span>ת״ז בעל הכרטיס <span class="optional-note">(לא חובה)</span></span>
                             <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
                         </label>
                         <small id="ccNumberError" class="field-error cc-fullrow" aria-live="polite"></small>
@@ -8428,7 +8434,8 @@
                 var expMsgC = expiryError(true);
                 if (expMsgC) return { message: expMsgC, field: ccMonthEl };
                 var ccCitizenEl = document.getElementById('ccCitizen');
-                if (!isValidIsraeliId(ccCitizenEl && ccCitizenEl.value)) return { message: 'תעודת הזהות אינה תקינה.', field: ccCitizenEl };
+                var citValC = (ccCitizenEl && ccCitizenEl.value || '').replace(/\D/g, '');
+                if (citValC && !isValidIsraeliId(citValC)) return { message: 'תעודת הזהות אינה תקינה.', field: ccCitizenEl }; // optional
                 return null;
             }
             var num = document.getElementById('ccNumber');
@@ -8449,7 +8456,8 @@
             var cvv = document.getElementById('ccCvv');
             if (!/^\d{3,4}$/.test(cvv && cvv.value)) return { message: 'קוד ה-CVV אינו תקין.', field: cvv };
             var citizen = document.getElementById('ccCitizen');
-            if (!isValidIsraeliId(citizen && citizen.value)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen };
+            var citVal = (citizen && citizen.value || '').replace(/\D/g, '');
+            if (citVal && !isValidIsraeliId(citVal)) return { message: 'תעודת הזהות אינה תקינה.', field: citizen }; // optional
             return null;
         }
 
