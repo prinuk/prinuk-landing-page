@@ -2168,6 +2168,7 @@
           orderDiscountValue: 0, orderDiscountType: 'ils',
           delivery: 0, deliveryAuto: false, isDelivery: false, estimateItems: 0,
           hasCard: false,
+          docMode: false, docNote: '',
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -2503,6 +2504,18 @@
       var addOpts = '<option value="">+ הוסף מוצר…</option>' + addable.map(function (p) {
         return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
       }).join('');
+      // Issue-a-tax-invoice option: always for an existing order; for a new POS
+      // invoice only when it's a cash / external payment (credit issues its own).
+      var showDocMode = r.isNew ? (r.payMethod === 'cash') : true;
+      var docModeLabel = r.isNew
+        ? 'הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)'
+        : 'תשלום חיצוני — הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)';
+      var docModeHtml = !showDocMode ? '' :
+        '<div class="cr-docmode">' +
+          '<label class="cr-docmode-toggle"><input type="checkbox" id="cr-docmode"' + (r.docMode ? ' checked' : '') + '> ' +
+            esc(docModeLabel) + '</label>' +
+          (r.docMode ? '<input id="cr-doc-note" class="cr-doc-note" placeholder="אופן תשלום ואסמכתא — למשל: העברה בנקאית, אסמכתא 12345" value="' + esc(r.docNote || '') + '">' : '') +
+        '</div>';
       el('charge-body').innerHTML =
         newHead +
         rows +
@@ -2514,12 +2527,7 @@
         '</div>' +
         '<div class="cr-order-disc"><label>משלוח (₪)</label>' +
           '<input class="cr-disc" id="cr-delivery" type="number" min="0" value="' + (r.delivery || '') + '"></div>' +
-        (r.isNew ? '' :
-          '<div class="cr-docmode">' +
-            '<label class="cr-docmode-toggle"><input type="checkbox" id="cr-docmode"' + (r.docMode ? ' checked' : '') + '> ' +
-              'תשלום חיצוני — הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)</label>' +
-            (r.docMode ? '<input id="cr-doc-note" class="cr-doc-note" placeholder="אופן תשלום ואסמכתא — למשל: העברה בנקאית, אסמכתא 12345" value="' + esc(r.docNote || '') + '">' : '') +
-          '</div>') +
+        docModeHtml +
         tkCardBlockHtml(needCard) +
         '<div class="cr-total" id="cr-total"></div>';
 
@@ -2603,7 +2611,7 @@
       }
       var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
       el('cr-total').textContent = 'סה״כ: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
-      var verb = (r.isNew && r.payMethod === 'cash') ? 'צור הזמנה '
+      var verb = (r.isNew && r.payMethod === 'cash') ? (r.docMode ? '🧾 צור והפק חשבונית · ' : 'צור הזמנה ')
         : (!r.isNew && r.docMode) ? '🧾 הפקת חשבונית מס · '
         : 'אישור וחיוב ';
       el('charge-confirm').textContent = verb + formatMoney(grand);
@@ -2630,13 +2638,18 @@
           orderDiscountAgorot: Math.round(crResolveDiscount(nTotal, r.orderDiscountValue, r.orderDiscountType) * 100),
           deliveryAgorot: Math.round((Number(r.delivery) || 0) * 100),
         };
+        // Cash / external payment → optionally issue a חשבונית מס with a note.
+        if (r.payMethod === 'cash' && r.docMode) { order.issueDocument = true; order.docNote = r.docNote || ''; }
         var nbtn = el('charge-confirm');
         var send = function () {
           nbtn.disabled = true; nbtn.textContent = 'שומר…';
           api('POST', '', { action: 'create-order', order: order, member: state.member }).then(function (resp) {
             el('charge-overlay').classList.add('hidden');
-            showToast(resp.charged ? ('✅ נוצר וחויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')) : 'ההזמנה נוצרה ✓');
+            showToast(resp.charged ? ('✅ נוצר וחויב ' + (resp.amount != null ? formatMoney(resp.amount) : ''))
+              : resp.documentIssued ? '🧾 נוצר · חשבונית מס הופקה'
+              : 'ההזמנה נוצרה ✓');
             if (resp.chargeError) showToast('⚠️ נוצר ללא חיוב: ' + resp.chargeError);
+            if (resp.documentError) showToast('⚠️ נוצר ללא חשבונית: ' + resp.documentError);
             loadOrders();
           }).catch(function (err) {
             nbtn.disabled = false; crRecompute();
