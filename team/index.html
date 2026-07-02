@@ -593,6 +593,10 @@
     .cr-newhead input { width: 100%; }
     .cr-pay-method { display: flex; gap: 16px; }
     .cr-pay-method label { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+    .pm-toggle { display: inline-flex; border: 1px solid var(--line, #e3e8e0); border-radius: 8px; overflow: hidden; }
+    .pm-opt { border: none; background: #fff; color: var(--muted); font: inherit; font-weight: 700; padding: 5px 12px; cursor: pointer; }
+    .pm-opt + .pm-opt { border-inline-start: 1px solid var(--line, #e3e8e0); }
+    .pm-opt.active { background: var(--accent, #1d9b68); color: #fff; }
     .cr-docmode { margin-top: 14px; padding: 12px; border: 1px dashed var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
     .cr-docmode-toggle { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; }
     .cr-doc-note { width: 100%; margin-top: 10px; }
@@ -1856,14 +1860,25 @@
         var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי'
           : (o.payment.method === 'credit') ? '💳 חיוב בכרטיס אשראי'
           : '🧾 הפקת חשבונית / חיוב';
+        var methodSwitch = !captured
+          ? '<div class="cust-line"><span class="lbl">אמצעי תשלום</span><span class="val">' +
+              '<span class="pm-toggle">' +
+                '<button type="button" class="pm-opt' + (o.payment.method !== 'credit' ? ' active' : '') + '" data-pm="cash">מזומן</button>' +
+                '<button type="button" class="pm-opt' + (o.payment.method === 'credit' ? ' active' : '') + '" data-pm="credit">אשראי</button>' +
+              '</span></span></div>'
+          : '';
+        var replaceCardBtn = (!captured && isCollected && o.payment.method === 'credit' && (hasCard || st === 'failed'))
+          ? '<button class="btn btn-ghost" id="replace-card-btn" style="margin-top:8px">🔄 החלף פרטי כרטיס' + (st === 'failed' ? ' ונסה שוב' : '') + '</button>'
+          : '';
         paymentBlock =
           '<div class="panel">' +
             '<h2>תשלום</h2>' +
             '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
+            methodSwitch +
             (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
             (!captured
               ? (isCollected
-                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>'
+                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>' + replaceCardBtn
                 : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
               : '') +
           '</div>';
@@ -1940,7 +1955,18 @@
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
-      if (el('charge-btn')) { el('charge-btn').addEventListener('click', doCharge); }
+      if (el('charge-btn')) { el('charge-btn').addEventListener('click', function () { doCharge(); }); }
+      if (el('replace-card-btn')) { el('replace-card-btn').addEventListener('click', function () { doCharge({ forceCard: true }); }); }
+      Array.prototype.forEach.call(el('detail-view').querySelectorAll('.pm-opt'), function (b) {
+        b.addEventListener('click', function () {
+          var m = this.getAttribute('data-pm');
+          if (m === (o.payment && o.payment.method)) return;
+          api('POST', '', { action: 'set-payment-method', orderId: o.orderId, method: m }).then(function () {
+            showToast('אמצעי התשלום עודכן ל' + (m === 'credit' ? 'אשראי' : 'מזומן'));
+            openOrder(o.orderId);
+          }).catch(function (err) { if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשינוי אמצעי התשלום'); });
+        });
+      });
       el('status-select').addEventListener('change', onManualStatusChange);
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
@@ -2159,11 +2185,13 @@
     }
 
     // ----- Charge review (adjust items + discounts before charging) -----
-    function doCharge() {
+    function doCharge(opts) {
+      var forceCard = !!(opts && opts.forceCard === true);
       var o = state.current;
       if (!o) return;
       var open = function () {
         state.review = {
+          forceCard: forceCard,
           // Only collected items are billed — missing (חסר) stay on the order untouched.
           items: (o.items || []).filter(function (it) { return it.pickStatus !== 'חסר'; }).map(function (it) {
             return {
@@ -2189,7 +2217,7 @@
           hasCard: !!(o.payment && o.payment.hasCard),
           // Paid outside Cardcom (transfer/Bit/cash) → issue a חשבונית מס instead
           // of charging. Default on for cash orders with no saved card.
-          docMode: !!(o.payment && o.payment.method !== 'credit' && !(o.payment && o.payment.hasCard)),
+          docMode: !forceCard && !!(o.payment && o.payment.method !== 'credit' && !(o.payment && o.payment.hasCard)),
           docNote: '',
         };
         renderChargeReview();
@@ -2524,7 +2552,7 @@
 
     function renderChargeReview() {
       var r = state.review;
-      var needCard = r.isNew ? (r.payMethod === 'credit') : (!r.docMode && !r.hasCard);
+      var needCard = r.isNew ? (r.payMethod === 'credit') : (!r.docMode && (!r.hasCard || r.forceCard));
       var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : (r.docMode ? 'הפקת חשבונית מס' : 'סקירה וחיוב');
       var namePlaceholder = r.payMethod === 'credit' ? 'שם בעל הכרטיס (חובה לאשראי)' : 'שם הלקוח (לא חובה)';
       var newHead = !r.isNew ? '' :
@@ -2791,13 +2819,13 @@
           crRecompute();
           // If the team manually entered a card and the server charge failed, the
           // OPEN FIELDS session is spent → rebuild it for a retry.
-          if (tkIsCardcom() && !r.hasCard) { tkReinitCardcomForRetry(); }
+          if (tkIsCardcom() && (!r.hasCard || r.forceCard)) { tkReinitCardcomForRetry(); }
           if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בחיוב');
         });
       };
 
-      // No card on file → validate + tokenize the manually-entered card first.
-      if (!r.hasCard) {
+      // No card on file (or replacing the card) → validate + tokenize first.
+      if (!r.hasCard || r.forceCard) {
         var cardErr = tkValidateCard();
         if (cardErr) { el('cr-cc-error').textContent = cardErr; return; }
         el('cr-cc-error').textContent = '';

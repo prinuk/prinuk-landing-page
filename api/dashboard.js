@@ -14,6 +14,7 @@ const {
   chargeOrder,
   reviewAndCharge,
   reviewAndIssueDocument,
+  setOrderPaymentMethod,
   createManualOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
@@ -459,6 +460,15 @@ module.exports = async function handler(req, res) {
           }
         } catch (err) {
           console.error('Final email (external document) failed:', err);
+        }
+        return res.json(result);
+      }
+
+      if (action === 'set-payment-method') {
+        const result = await setOrderPaymentMethod(orderId, String(body.method || ''));
+        if (!result.ok) {
+          const msgs = { notfound: 'ההזמנה לא נמצאה.', locked: 'לא ניתן לשנות אמצעי תשלום לאחר חיוב.' };
+          return res.status(400).json({ error: msgs[result.reason] || 'שגיאה בשינוי אמצעי התשלום.' });
         }
         return res.json(result);
       }
