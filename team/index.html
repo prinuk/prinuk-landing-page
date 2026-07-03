@@ -599,7 +599,9 @@
     .pm-opt.active { background: var(--accent, #1d9b68); color: #fff; }
     .cr-docmode { margin-top: 14px; padding: 12px; border: 1px dashed var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
     .cr-docmode-toggle { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; }
-    .cr-doc-note { width: 100%; margin-top: 10px; }
+    .cr-doc-fields { display: flex; gap: 8px; margin-top: 10px; }
+    .cr-doc-method { flex: 0 0 auto; }
+    .cr-doc-note { flex: 1; min-width: 0; }
     .cr-card { margin-top: 14px; padding: 12px; border: 1px solid var(--line, #e3e8e0); border-radius: 10px; background: #fafbf9; }
     .cr-card-title { font-weight: 800; margin-bottom: 8px; }
     .cr-card input { width: 100%; margin-bottom: 8px; }
@@ -2218,7 +2220,7 @@
           // Paid outside Cardcom (transfer/Bit/cash) → issue a חשבונית מס instead
           // of charging. Default on for cash orders with no saved card.
           docMode: !forceCard && !!(o.payment && o.payment.method !== 'credit' && !(o.payment && o.payment.hasCard)),
-          docNote: '',
+          docNote: '', docMethod: 'transfer',
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -2252,7 +2254,7 @@
           orderDiscountValue: 0, orderDiscountType: 'ils',
           delivery: 0, deliveryAuto: false, isDelivery: false, estimateItems: 0,
           hasCard: false,
-          docMode: false, docNote: '',
+          docMode: false, docNote: '', docMethod: 'transfer',
         };
         renderChargeReview();
         el('charge-overlay').classList.remove('hidden');
@@ -2596,13 +2598,26 @@
       // invoice only when it's a cash / external payment (credit issues its own).
       var showDocMode = r.isNew ? (r.payMethod === 'cash') : true;
       var docModeLabel = r.isNew
-        ? 'הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)'
-        : 'תשלום חיצוני — הפקת חשבונית מס (העברה בנקאית / ביט / מזומן)';
+        ? 'הפקת חשבונית מס קבלה (תשלום חיצוני)'
+        : 'תשלום חיצוני — הפקת חשבונית מס קבלה';
+      var payMethodOpt = function (val, label) {
+        return '<option value="' + val + '"' + (r.docMethod === val ? ' selected' : '') + '>' + label + '</option>';
+      };
       var docModeHtml = !showDocMode ? '' :
         '<div class="cr-docmode">' +
           '<label class="cr-docmode-toggle"><input type="checkbox" id="cr-docmode"' + (r.docMode ? ' checked' : '') + '> ' +
             esc(docModeLabel) + '</label>' +
-          (r.docMode ? '<input id="cr-doc-note" class="cr-doc-note" placeholder="אופן תשלום ואסמכתא — למשל: העברה בנקאית, אסמכתא 12345" value="' + esc(r.docNote || '') + '">' : '') +
+          (r.docMode ?
+            '<div class="cr-doc-fields">' +
+              '<select id="cr-doc-method" class="cr-doc-method">' +
+                payMethodOpt('transfer', 'העברה בנקאית') +
+                payMethodOpt('bit', 'ביט') +
+                payMethodOpt('paybox', 'פייבוקס') +
+                payMethodOpt('paypal', 'PayPal') +
+              '</select>' +
+              '<input id="cr-doc-note" class="cr-doc-note" placeholder="אסמכתא (מס׳ העברה / מזהה תשלום)" value="' + esc(r.docNote || '') + '">' +
+            '</div>'
+          : '') +
         '</div>';
       el('charge-body').innerHTML =
         newHead +
@@ -2666,6 +2681,8 @@
       if (dmEl) dmEl.addEventListener('change', function () { r.docMode = this.checked; renderChargeReview(); });
       var dnEl = el('cr-doc-note');
       if (dnEl) dnEl.addEventListener('input', function () { r.docNote = this.value; });
+      var dmethEl = el('cr-doc-method');
+      if (dmethEl) dmethEl.addEventListener('change', function () { r.docMethod = this.value; });
       if (r.isNew) {
         var nm = el('cr-cust-name'); if (nm) nm.addEventListener('input', function () { r.customer.fullName = this.value; });
         var ph = el('cr-cust-phone'); if (ph) ph.addEventListener('input', function () { r.customer.phone = this.value; });
@@ -2736,7 +2753,7 @@
           deliveryAgorot: Math.round((Number(r.delivery) || 0) * 100),
         };
         // Cash / external payment → optionally issue a חשבונית מס with a note.
-        if (r.payMethod === 'cash' && r.docMode) { order.issueDocument = true; order.docNote = r.docNote || ''; }
+        if (r.payMethod === 'cash' && r.docMode) { order.issueDocument = true; order.docNote = r.docNote || ''; order.docMethod = r.docMethod || ''; order.docReference = r.docNote || ''; }
         var nbtn = el('charge-confirm');
         var send = function () {
           nbtn.disabled = true; nbtn.textContent = 'שומר…';
@@ -2790,9 +2807,11 @@
       var review = { items: items, orderDiscountAgorot: orderDiscAgorot, deliveryAgorot: deliveryAgorot };
       var btn = el('charge-confirm');
 
-      // Paid outside Cardcom → issue a חשבונית מס with the payment note (no charge).
+      // Paid outside Cardcom → issue a חשבונית מס קבלה recording the method (no charge).
       if (r.docMode) {
         review.note = r.docNote || '';
+        review.method = r.docMethod || '';
+        review.reference = r.docNote || '';
         btn.disabled = true;
         btn.textContent = 'מפיק חשבונית…';
         api('POST', '', { action: 'issue-document', orderId: o.orderId, review: review }).then(function (resp) {
