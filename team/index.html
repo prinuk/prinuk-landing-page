@@ -749,8 +749,8 @@
           <button class="chip" data-type="משלוח">משלוח</button>
           <button class="chip" data-type="איסוף עצמי">איסוף</button>
           <span class="sep"></span>
-          <button class="chip active" data-origin="all">הכל</button>
-          <button class="chip" data-origin="web">🌐 אתר</button>
+          <button class="chip" data-origin="all">הכל</button>
+          <button class="chip active" data-origin="web">🌐 אתר</button>
           <button class="chip" data-origin="manual">🧾 ידני</button>
         </div>
       </div>
@@ -1033,7 +1033,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'active', type: 'all', origin: 'all' },
+      filters: { search: '', status: 'active', type: 'all', origin: 'web' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       selected: {},
