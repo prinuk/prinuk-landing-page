@@ -1504,7 +1504,10 @@
 
     function renderCounters() {
       var w = 0, p = 0, d = 0, s = 0;
-      state.orders.forEach(function (o) {
+      // The status counters respect the web/ידני filter so אתר and ידני are separate.
+      var origin = (state.filters && state.filters.origin) || 'all';
+      var list = state.orders.filter(function (o) { return origin === 'all' || (o.origin || 'web') === origin; });
+      list.forEach(function (o) {
         if (o.status === STATUS.NEW) w++;
         else if (o.status === STATUS.PICKING) p++;
         else if (o.status === STATUS.DONE || o.status === STATUS.PARTIAL) d++;
@@ -1516,7 +1519,7 @@
       el('c-done').textContent = d;
       // Total orders for the selected scope (current sale / past sale / date range).
       var scEl = el('scope-count');
-      if (scEl) { scEl.textContent = state.orders.length ? ('סה״כ ' + state.orders.length + ' הזמנות') : ''; }
+      if (scEl) { scEl.textContent = list.length ? ('סה״כ ' + list.length + ' הזמנות') : ''; }
     }
 
     function renderList() {
@@ -1682,6 +1685,7 @@
         state.filters.origin = chip.getAttribute('data-origin');
         Array.prototype.forEach.call(this.querySelectorAll('[data-origin]'), function (c) { c.classList.remove('active'); });
         chip.classList.add('active');
+        renderCounters();
       }
       renderList();
     });
