@@ -268,6 +268,8 @@
     .order-card.st-sent { border-right-color: var(--muted); }
     .oc-paid { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eceff1; color: var(--muted); }
     .oc-paid.paid { background: var(--fresh-soft); color: var(--fresh); }
+    .oc-paid.na { background: #eef0f2; color: #9aa2a9; }
+    .ps-select { font: inherit; padding: 5px 8px; border: 1px solid var(--line, #e3e8e0); border-radius: 8px; background: #fff; }
 
     .oc-top { display: flex; align-items: center; gap: 8px; }
     .oc-name { font-weight: 700; font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1471,6 +1473,14 @@
     }
 
     // ---------- List ----------
+    // Effective displayed payment status: manual override wins, else derive from
+    // the real processor status (captured → paid, else unpaid).
+    function payStatusOf(o) {
+      var m = o && o.paymentStatusManual;
+      if (m === 'paid' || m === 'unpaid' || m === 'na') return m;
+      return (o && o.paymentStatus === 'captured') ? 'paid' : 'unpaid';
+    }
+
     function matchesFilters(o) {
       var f = state.filters;
       if (f.status !== 'all') {
@@ -1552,9 +1562,12 @@
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
               (o.grandTotal !== '' ? '<span class="oc-total">אומדן ' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
               (o.finalTotal !== '' && o.finalTotal != null ? '<span class="oc-total final">סופי ' + esc(formatMoney(o.finalTotal)) + '</span>' : '') +
-              (o.paymentStatus === 'captured'
-                ? '<span class="oc-paid paid">💳 שולם</span>'
-                : '<span class="oc-paid">לא שולם</span>') +
+              (function () {
+                var ps = payStatusOf(o);
+                return ps === 'paid' ? '<span class="oc-paid paid">💳 שולם</span>'
+                  : ps === 'na' ? '<span class="oc-paid na">לא רלוונטי</span>'
+                  : '<span class="oc-paid">לא שולם</span>';
+              })() +
             '</div>' +
             addrLine +
             pickedBy +
@@ -1878,10 +1891,18 @@
         var replaceCardBtn = (!captured && isCollected && o.payment.method === 'credit' && (hasCard || st === 'failed'))
           ? '<button class="btn btn-ghost" id="replace-card-btn" style="margin-top:8px">🔄 החלף פרטי כרטיס' + (st === 'failed' ? ' ונסה שוב' : '') + '</button>'
           : '';
+        var psVal = payStatusOf(o);
+        var psSelect = '<div class="cust-line"><span class="lbl">סטטוס תשלום</span><span class="val">' +
+            '<select id="ps-select" class="ps-select">' +
+              '<option value="unpaid"' + (psVal === 'unpaid' ? ' selected' : '') + '>לא שולם</option>' +
+              '<option value="paid"' + (psVal === 'paid' ? ' selected' : '') + '>שולם</option>' +
+              '<option value="na"' + (psVal === 'na' ? ' selected' : '') + '>לא רלוונטי</option>' +
+            '</select></span></div>';
         paymentBlock =
           '<div class="panel">' +
             '<h2>תשלום</h2>' +
             '<div class="cust-line"><span class="lbl">סטטוס</span><span class="val">' + esc(statusText) + '</span></div>' +
+            psSelect +
             methodSwitch +
             (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
             (!captured
@@ -1965,6 +1986,14 @@
       el('collect-btn').addEventListener('click', submitCollect);
       if (el('charge-btn')) { el('charge-btn').addEventListener('click', function () { doCharge(); }); }
       if (el('replace-card-btn')) { el('replace-card-btn').addEventListener('click', function () { doCharge({ forceCard: true }); }); }
+      if (el('ps-select')) {
+        el('ps-select').addEventListener('change', function () {
+          api('POST', '', { action: 'set-payment-status', orderId: o.orderId, status: this.value }).then(function () {
+            showToast('סטטוס התשלום עודכן');
+            openOrder(o.orderId);
+          }).catch(function (err) { if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בעדכון סטטוס התשלום'); });
+        });
+      }
       Array.prototype.forEach.call(el('detail-view').querySelectorAll('.pm-opt'), function (b) {
         b.addEventListener('click', function () {
           var m = this.getAttribute('data-pm');

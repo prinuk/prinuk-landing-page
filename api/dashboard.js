@@ -15,6 +15,7 @@ const {
   reviewAndCharge,
   reviewAndIssueDocument,
   setOrderPaymentMethod,
+  setOrderPaymentStatusManual,
   createManualOrder,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
@@ -470,6 +471,12 @@ module.exports = async function handler(req, res) {
           const msgs = { notfound: 'ההזמנה לא נמצאה.', locked: 'לא ניתן לשנות אמצעי תשלום לאחר חיוב.' };
           return res.status(400).json({ error: msgs[result.reason] || 'שגיאה בשינוי אמצעי התשלום.' });
         }
+        return res.json(result);
+      }
+
+      if (action === 'set-payment-status') {
+        const result = await setOrderPaymentStatusManual(orderId, String(body.status || ''));
+        if (!result.ok) return res.status(400).json({ error: result.reason === 'notfound' ? 'ההזמנה לא נמצאה.' : 'שגיאה בעדכון סטטוס התשלום.' });
         return res.json(result);
       }
 
