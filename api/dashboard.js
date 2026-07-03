@@ -320,7 +320,8 @@ module.exports = async function handler(req, res) {
             hideEstimate: true,
           });
         } else {
-          pdf = await createOrdersFullPdf(orders, settings);
+          // Printed orders show the final (collected) amount only — no estimate.
+          pdf = await createOrdersFullPdf(orders, settings, { hideEstimate: true });
         }
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename="orders.pdf"');

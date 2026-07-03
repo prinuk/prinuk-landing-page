@@ -770,7 +770,7 @@
       <div class="print-bar">
         <label class="print-all"><input type="checkbox" id="select-all-orders"> בחר הכל</label>
         <span id="select-count" class="select-count"></span>
-        <button class="btn" id="print-full">🖨️ הדפס מלא</button>
+        <button class="btn" id="print-full">🖨️ הדפס הכל</button>
         <button class="btn" id="print-picked">🖨️ סיכום ליקוט</button>
         <button class="btn" id="print-headers">🖨️ כותרות בלבד</button>
       </div>
@@ -1618,7 +1618,7 @@
       var pf = el('print-full');
       var pp = el('print-picked');
       var ph = el('print-headers');
-      if (pf) pf.textContent = n ? ('🖨️ הדפס נבחרות (' + n + ')') : '🖨️ הדפס מלא';
+      if (pf) pf.textContent = n ? ('🖨️ הדפס נבחרות (' + n + ')') : '🖨️ הדפס הכל';
       if (pp) pp.textContent = n ? ('🖨️ סיכום ליקוט (' + n + ')') : '🖨️ סיכום ליקוט';
       if (ph) ph.textContent = n ? ('🖨️ כותרות נבחרות (' + n + ')') : '🖨️ כותרות בלבד';
     }
