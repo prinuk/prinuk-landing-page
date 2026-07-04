@@ -1390,20 +1390,22 @@
       api('GET', '?action=weekly-report').then(function (data) {
         var weeks = (data && data.weeks) || [];
         if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
-        var totalOrders = 0, totalRevenue = 0;
+        var totalOrders = 0, totalRevenue = 0, totalFinal = 0;
         var rows = weeks.map(function (w) {
-          totalOrders += w.count; totalRevenue += w.revenue || 0;
+          totalOrders += w.count; totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
           var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
           return '<tr><td>' + esc(w.saleName) + '</td>' +
             '<td class="num">' + w.count + '</td>' +
             '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
+            '<td class="num">₪' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
             '<td class="num">' + esc(dateLabel) + '</td></tr>';
         }).join('');
         body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">תאריך אחרון</th>' +
+          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td><td></td></tr>' +
+          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
           '</tbody></table>';
       }).catch(function (err) {
         if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
