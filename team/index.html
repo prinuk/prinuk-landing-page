@@ -1884,8 +1884,11 @@
           : 'מזומן (בעת האיסוף/המשלוח)';
         var collectedStatuses = [STATUS.DONE, STATUS.PARTIAL, STATUS.SENT, STATUS.HANDED];
         var isCollected = collectedStatuses.indexOf(o.status) !== -1;
-        var btnLabel = hasCard ? '💳 חיוב הכרטיס בסכום הסופי'
-          : (o.payment.method === 'credit') ? '💳 חיוב בכרטיס אשראי'
+        // The current payment method drives the button — switching to מזומן shows
+        // the invoice action even if a card is on file, and back to אשראי shows
+        // the charge action.
+        var btnLabel = (o.payment.method === 'credit')
+          ? (hasCard ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב בכרטיס אשראי')
           : '🧾 הפקת חשבונית / חיוב';
         var methodSwitch = !captured
           ? '<div class="cust-line"><span class="lbl">אמצעי תשלום</span><span class="val">' +
@@ -2279,7 +2282,8 @@
           hasCard: !!(o.payment && o.payment.hasCard),
           // Paid outside Cardcom (transfer/Bit/cash) → issue a חשבונית מס instead
           // of charging. Default on for cash orders with no saved card.
-          docMode: !forceCard && !!(o.payment && o.payment.method !== 'credit' && !(o.payment && o.payment.hasCard)),
+          // Cash method → issue an invoice (even if a card is saved); credit → charge.
+          docMode: !forceCard && !!(o.payment && o.payment.method !== 'credit'),
           docNote: '', docMethod: 'transfer',
         };
         renderChargeReview();
