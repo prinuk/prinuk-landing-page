@@ -1920,7 +1920,10 @@
               ? (isCollected
                 ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>' + replaceCardBtn
                 : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
-              : '') +
+              // Charged on card but the invoice never issued → let the team create it now.
+              : (!o.payment.invoiceUrl
+                ? '<button class="btn btn-ghost" id="issue-charged-btn" style="margin-top:10px">🧾 הפקת חשבונית להזמנה שחויבה</button>'
+                : '')) +
           '</div>';
       }
 
@@ -1997,6 +2000,17 @@
       el('collect-btn').addEventListener('click', submitCollect);
       if (el('charge-btn')) { el('charge-btn').addEventListener('click', function () { doCharge(); }); }
       if (el('replace-card-btn')) { el('replace-card-btn').addEventListener('click', function () { doCharge({ forceCard: true }); }); }
+      if (el('issue-charged-btn')) {
+        el('issue-charged-btn').addEventListener('click', function () {
+          var btn = this; btn.disabled = true; btn.textContent = 'מפיק חשבונית…';
+          api('POST', '', { action: 'issue-charged-invoice', orderId: o.orderId }).then(function () {
+            showToast('🧾 החשבונית הופקה'); openOrder(o.orderId);
+          }).catch(function (err) {
+            btn.disabled = false; btn.textContent = '🧾 הפקת חשבונית להזמנה שחויבה';
+            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהפקת החשבונית');
+          });
+        });
+      }
       if (el('ps-select')) {
         el('ps-select').addEventListener('change', function () {
           api('POST', '', { action: 'set-payment-status', orderId: o.orderId, status: this.value }).then(function () {

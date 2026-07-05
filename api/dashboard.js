@@ -14,6 +14,7 @@ const {
   chargeOrder,
   reviewAndCharge,
   reviewAndIssueDocument,
+  issueChargedInvoice,
   setOrderPaymentMethod,
   setOrderPaymentStatusManual,
   createManualOrder,
@@ -472,6 +473,23 @@ module.exports = async function handler(req, res) {
         if (!result.ok) {
           const msgs = { notfound: 'ההזמנה לא נמצאה.', locked: 'לא ניתן לשנות אמצעי תשלום לאחר חיוב.' };
           return res.status(400).json({ error: msgs[result.reason] || 'שגיאה בשינוי אמצעי התשלום.' });
+        }
+        return res.json(result);
+      }
+
+      // Issue the missing invoice for an already-charged card order (deal-linked).
+      if (action === 'issue-charged-invoice') {
+        const result = await issueChargedInvoice(orderId);
+        if (!result.ok) {
+          const msgs = {
+            notfound: 'ההזמנה לא נמצאה.',
+            unsupported: 'לא נתמך בספק התשלומים הנוכחי.',
+            'not-charged': 'ההזמנה לא חויבה באשראי.',
+            'already-invoiced': 'כבר קיימת חשבונית להזמנה זו.',
+            'no-deal': 'אין מזהה עסקה לשיוך החשבונית.',
+            'document-failed': result.error || 'הפקת החשבונית נכשלה.',
+          };
+          return res.status(400).json({ error: msgs[result.reason] || result.error || 'הפקת החשבונית נכשלה.' });
         }
         return res.json(result);
       }
