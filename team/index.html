@@ -1718,6 +1718,32 @@
       });
     }
 
+    // Charge succeeded but the invoice wasn't created → alert + let the team retry
+    // the invoice, or explicitly send the customer an email WITHOUT an invoice.
+    function handleInvoiceMissing(orderId, amount) {
+      var amt = amount != null ? ' (' + formatMoney(amount) + ')' : '';
+      askYesNo('החיוב בוצע' + amt + ' אך לא נוצרה חשבונית.\nלנסות להפיק חשבונית שוב?').then(function (retry) {
+        if (retry) {
+          api('POST', '', { action: 'issue-charged-invoice', orderId: orderId }).then(function () {
+            showToast('🧾 החשבונית הופקה והמייל נשלח'); openOrder(orderId);
+          }).catch(function (err) {
+            if (err.message !== 'unauthorized') showToast(err.message || 'הפקת החשבונית נכשלה');
+            askSendWithoutInvoice(orderId);
+          });
+        } else {
+          askSendWithoutInvoice(orderId);
+        }
+      });
+    }
+    function askSendWithoutInvoice(orderId) {
+      askYesNo('לשלוח ללקוח מייל ללא חשבונית?').then(function (yes) {
+        if (!yes) return; // leave it — the invoice can be issued later from the panel
+        api('POST', '', { action: 'send-final-email', orderId: orderId }).then(function (resp) {
+          showToast(resp && resp.hasInvoice ? '📧 המייל נשלח' : '📧 המייל נשלח (ללא חשבונית)');
+        }).catch(function (err) { if (err.message !== 'unauthorized') showToast(err.message || 'שליחת המייל נכשלה'); });
+      });
+    }
+
     // Mark a collected order as gone, straight from the list: 'נשלח' for
     // delivery, 'נמסר' for self-pickup.
     function markDone(orderId, status) {
@@ -2932,7 +2958,10 @@
         api('POST', '', { action: 'charge', orderId: o.orderId, review: review }).then(function (resp) {
           el('charge-overlay').classList.add('hidden');
           showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
-          openOrder(o.orderId);
+          var oid = o.orderId;
+          openOrder(oid);
+          // Charged but the invoice failed → alert + let the team retry or send anyway.
+          if (resp.invoiceMissing) { handleInvoiceMissing(oid, resp.amount); }
         }).catch(function (err) {
           btn.disabled = false;
           crRecompute();

@@ -166,6 +166,22 @@ function parseOrderScope(query) {
   return {};
 }
 
+// Send the customer's final email (collected summary + invoice if present).
+// Returns { sent, reason?, status?, hasInvoice }.
+async function sendFinalEmailFor(orderId) {
+  const detail = await readOrderForDashboard(orderId);
+  const o = detail && detail.ok ? detail.order : null;
+  if (!o) return { sent: false, reason: 'notfound' };
+  if (!o.email) return { sent: false, reason: 'no-email' };
+  const settings = await getSettings();
+  const invoiceUrl = (o.payment && o.payment.invoiceUrl) || '';
+  const amount = (o.finalTotal !== '' && o.finalTotal != null)
+    ? o.finalTotal
+    : (o.actualTotal != null ? o.actualTotal : null);
+  const fe = await sendCustomerFinalEmail(settings, o, o.items, { invoiceUrl, amount });
+  return { sent: true, status: fe && fe.status, hasInvoice: !!invoiceUrl };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -417,24 +433,26 @@ module.exports = async function handler(req, res) {
           };
           return res.status(400).json({ error: msgs[result.reason] || result.error || 'החיוב נכשל.' });
         }
-        // Final email to the customer: collected summary + invoice (best-effort).
+        // Only auto-email the customer when an invoice was actually created. If the
+        // charge succeeded but the invoice failed, DON'T email — flag it so the team
+        // can retry the invoice or explicitly send without one.
         if (!result.alreadyCharged) {
-          try {
-            const detail = await readOrderForDashboard(orderId);
-            const o = detail && detail.ok ? detail.order : null;
-            if (o && o.email) {
-              const settings = await getSettings();
-              const fe = await sendCustomerFinalEmail(settings, o, o.items, {
-                invoiceUrl: result.invoiceUrl || (o.payment && o.payment.invoiceUrl) || '',
-                amount: result.amount,
-              });
-              result.finalEmail = fe && fe.status;
-            }
-          } catch (err) {
-            console.error('Final email failed:', err);
+          if (result.invoiceUrl) {
+            try { const fe = await sendFinalEmailFor(orderId); result.finalEmail = fe.status; }
+            catch (err) { console.error('Final email failed:', err); }
+          } else {
+            result.invoiceMissing = true;
           }
         }
         return res.json(result);
+      }
+
+      // Explicitly send the customer's final email (used for "send without invoice"
+      // after a charge whose invoice failed) — requires the team's action.
+      if (action === 'send-final-email') {
+        const fe = await sendFinalEmailFor(orderId);
+        if (!fe.sent) return res.status(400).json({ error: fe.reason === 'no-email' ? 'אין כתובת מייל ללקוח.' : 'ההזמנה לא נמצאה.' });
+        return res.json({ ok: true, finalEmail: fe.status, hasInvoice: fe.hasInvoice });
       }
 
       // Issue a חשבונית מס for an order paid OUTSIDE Cardcom (transfer/Bit/cash).
@@ -491,6 +509,9 @@ module.exports = async function handler(req, res) {
           };
           return res.status(400).json({ error: msgs[result.reason] || result.error || 'הפקת החשבונית נכשלה.' });
         }
+        // Invoice now exists → send the customer's final email with it.
+        try { const fe = await sendFinalEmailFor(orderId); result.finalEmail = fe.status; }
+        catch (err) { console.error('Final email (after re-issue) failed:', err); }
         return res.json(result);
       }
 
