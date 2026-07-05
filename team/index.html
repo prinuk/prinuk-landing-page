@@ -536,6 +536,8 @@
     .prod-main { flex: 1; min-width: 0; }
     .prod-name { font-weight: 700; font-size: 15.5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
     .prod-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .prod-weight { font-size: 12.5px; color: var(--accent, #1d9b68); font-weight: 600; margin-top: 3px; }
+    .prod-weight.warn { color: #b3690a; }
     .prod-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .prod-bulkbar {
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -3378,6 +3380,18 @@
       var unit = p.priceUnit || p.unit || '';
       var price = p.price ? formatMoney(p.price) + (unit ? ' / ' + esc(unit) : '') : 'ללא מחיר';
       var thumb = '<div class="prod-thumb">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy">' : '🥬') + '</div>';
+      // Weight-priced products: show the estimated per-unit price, or flag a
+      // missing estimate weight (needed to show customers an estimate).
+      var isKg = /ק/.test(p.priceUnit || '');
+      var weightLine = '';
+      if (isKg) {
+        var wpu = Number(p.weightPerUnitKg) || 0;
+        if (wpu > 0) {
+          weightLine = '<div class="prod-weight">⚖️ ~' + formatQuantity(wpu) + ' ק״ג ליח׳ · מחיר משוער ' + formatMoney(wpu * (Number(p.price) || 0)) + '</div>';
+        } else {
+          weightLine = '<div class="prod-weight warn">⚠️ חסר משקל משוער</div>';
+        }
+      }
       return '' +
         '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + (state.selectedProducts[p.id] ? ' is-selected' : '') + '" data-row="' + p.id + '">' +
           '<input type="checkbox" class="prod-check" data-id="' + p.id + '"' + (state.selectedProducts[p.id] ? ' checked' : '') + ' title="בחירה">' +
@@ -3385,6 +3399,7 @@
           '<div class="prod-main">' +
             '<div class="prod-name">' + esc(p.name) + productPill(p) + '</div>' +
             '<div class="prod-sub">' + price + (p.unit ? ' · ' + esc(p.unit) : '') + '</div>' +
+            weightLine +
           '</div>' +
           '<div class="prod-actions">' +
             '<button class="icon-btn" data-act="stock" title="' + (p.state === 'oos' ? 'החזר למלאי' : 'סמן כאזל') + '">' +
