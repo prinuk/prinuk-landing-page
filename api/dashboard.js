@@ -509,9 +509,14 @@ module.exports = async function handler(req, res) {
           };
           return res.status(400).json({ error: msgs[result.reason] || result.error || 'הפקת החשבונית נכשלה.' });
         }
-        // Invoice now exists → send the customer's final email with it.
-        try { const fe = await sendFinalEmailFor(orderId); result.finalEmail = fe.status; }
-        catch (err) { console.error('Final email (after re-issue) failed:', err); }
+        // Invoice now exists → email the customer, unless the team opted out
+        // (e.g. re-issuing an old invoice the customer already has a summary for).
+        if (!body.skipEmail) {
+          try { const fe = await sendFinalEmailFor(orderId); result.finalEmail = fe.status; }
+          catch (err) { console.error('Final email (after re-issue) failed:', err); }
+        } else {
+          result.emailSkipped = true;
+        }
         return res.json(result);
       }
 
