@@ -2028,12 +2028,16 @@
       if (el('replace-card-btn')) { el('replace-card-btn').addEventListener('click', function () { doCharge({ forceCard: true }); }); }
       if (el('issue-charged-btn')) {
         el('issue-charged-btn').addEventListener('click', function () {
-          var btn = this; btn.disabled = true; btn.textContent = 'מפיק חשבונית…';
-          api('POST', '', { action: 'issue-charged-invoice', orderId: o.orderId }).then(function () {
-            showToast('🧾 החשבונית הופקה'); openOrder(o.orderId);
-          }).catch(function (err) {
-            btn.disabled = false; btn.textContent = '🧾 הפקת חשבונית להזמנה שחויבה';
-            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהפקת החשבונית');
+          var btn = this;
+          askYesNo('לשלוח ללקוח מייל עם החשבונית?').then(function (sendEmail) {
+            btn.disabled = true; btn.textContent = 'מפיק חשבונית…';
+            api('POST', '', { action: 'issue-charged-invoice', orderId: o.orderId, skipEmail: !sendEmail }).then(function () {
+              showToast(sendEmail ? '🧾 החשבונית הופקה והמייל נשלח' : '🧾 החשבונית הופקה (ללא מייל)');
+              openOrder(o.orderId);
+            }).catch(function (err) {
+              btn.disabled = false; btn.textContent = '🧾 הפקת חשבונית להזמנה שחויבה';
+              if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהפקת החשבונית');
+            });
           });
         });
       }
