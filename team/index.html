@@ -536,6 +536,8 @@
     .prod-main { flex: 1; min-width: 0; }
     .prod-name { font-weight: 700; font-size: 15.5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
     .prod-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .prod-weight { font-size: 12.5px; color: var(--accent, #1d9b68); font-weight: 600; margin-top: 3px; }
+    .prod-weight.warn { color: #b3690a; }
     .prod-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .prod-bulkbar {
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -1716,6 +1718,32 @@
       });
     }
 
+    // Charge succeeded but the invoice wasn't created → alert + let the team retry
+    // the invoice, or explicitly send the customer an email WITHOUT an invoice.
+    function handleInvoiceMissing(orderId, amount) {
+      var amt = amount != null ? ' (' + formatMoney(amount) + ')' : '';
+      askYesNo('החיוב בוצע' + amt + ' אך לא נוצרה חשבונית.\nלנסות להפיק חשבונית שוב?').then(function (retry) {
+        if (retry) {
+          api('POST', '', { action: 'issue-charged-invoice', orderId: orderId }).then(function () {
+            showToast('🧾 החשבונית הופקה והמייל נשלח'); openOrder(orderId);
+          }).catch(function (err) {
+            if (err.message !== 'unauthorized') showToast(err.message || 'הפקת החשבונית נכשלה');
+            askSendWithoutInvoice(orderId);
+          });
+        } else {
+          askSendWithoutInvoice(orderId);
+        }
+      });
+    }
+    function askSendWithoutInvoice(orderId) {
+      askYesNo('לשלוח ללקוח מייל ללא חשבונית?').then(function (yes) {
+        if (!yes) return; // leave it — the invoice can be issued later from the panel
+        api('POST', '', { action: 'send-final-email', orderId: orderId }).then(function (resp) {
+          showToast(resp && resp.hasInvoice ? '📧 המייל נשלח' : '📧 המייל נשלח (ללא חשבונית)');
+        }).catch(function (err) { if (err.message !== 'unauthorized') showToast(err.message || 'שליחת המייל נכשלה'); });
+      });
+    }
+
     // Mark a collected order as gone, straight from the list: 'נשלח' for
     // delivery, 'נמסר' for self-pickup.
     function markDone(orderId, status) {
@@ -1918,7 +1946,10 @@
               ? (isCollected
                 ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>' + replaceCardBtn
                 : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
-              : '') +
+              // Charged on card but the invoice never issued → let the team create it now.
+              : (!o.payment.invoiceUrl
+                ? '<button class="btn btn-ghost" id="issue-charged-btn" style="margin-top:10px">🧾 הפקת חשבונית להזמנה שחויבה</button>'
+                : '')) +
           '</div>';
       }
 
@@ -1995,6 +2026,17 @@
       el('collect-btn').addEventListener('click', submitCollect);
       if (el('charge-btn')) { el('charge-btn').addEventListener('click', function () { doCharge(); }); }
       if (el('replace-card-btn')) { el('replace-card-btn').addEventListener('click', function () { doCharge({ forceCard: true }); }); }
+      if (el('issue-charged-btn')) {
+        el('issue-charged-btn').addEventListener('click', function () {
+          var btn = this; btn.disabled = true; btn.textContent = 'מפיק חשבונית…';
+          api('POST', '', { action: 'issue-charged-invoice', orderId: o.orderId }).then(function () {
+            showToast('🧾 החשבונית הופקה'); openOrder(o.orderId);
+          }).catch(function (err) {
+            btn.disabled = false; btn.textContent = '🧾 הפקת חשבונית להזמנה שחויבה';
+            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהפקת החשבונית');
+          });
+        });
+      }
       if (el('ps-select')) {
         el('ps-select').addEventListener('change', function () {
           api('POST', '', { action: 'set-payment-status', orderId: o.orderId, status: this.value }).then(function () {
@@ -2916,7 +2958,10 @@
         api('POST', '', { action: 'charge', orderId: o.orderId, review: review }).then(function (resp) {
           el('charge-overlay').classList.add('hidden');
           showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ חויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
-          openOrder(o.orderId);
+          var oid = o.orderId;
+          openOrder(oid);
+          // Charged but the invoice failed → alert + let the team retry or send anyway.
+          if (resp.invoiceMissing) { handleInvoiceMissing(oid, resp.amount); }
         }).catch(function (err) {
           btn.disabled = false;
           crRecompute();
@@ -3378,6 +3423,18 @@
       var unit = p.priceUnit || p.unit || '';
       var price = p.price ? formatMoney(p.price) + (unit ? ' / ' + esc(unit) : '') : 'ללא מחיר';
       var thumb = '<div class="prod-thumb">' + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" loading="lazy">' : '🥬') + '</div>';
+      // Weight-priced products: show the estimated per-unit price, or flag a
+      // missing estimate weight (needed to show customers an estimate).
+      var isKg = /ק/.test(p.priceUnit || '');
+      var weightLine = '';
+      if (isKg) {
+        var wpu = Number(p.weightPerUnitKg) || 0;
+        if (wpu > 0) {
+          weightLine = '<div class="prod-weight">⚖️ ~' + formatQuantity(wpu) + ' ק״ג ליח׳ · מחיר משוער ' + formatMoney(wpu * (Number(p.price) || 0)) + '</div>';
+        } else {
+          weightLine = '<div class="prod-weight warn">⚠️ חסר משקל משוער</div>';
+        }
+      }
       return '' +
         '<div class="prod-row ' + (p.state === 'hidden' ? 'is-hidden' : '') + (state.selectedProducts[p.id] ? ' is-selected' : '') + '" data-row="' + p.id + '">' +
           '<input type="checkbox" class="prod-check" data-id="' + p.id + '"' + (state.selectedProducts[p.id] ? ' checked' : '') + ' title="בחירה">' +
@@ -3385,6 +3442,7 @@
           '<div class="prod-main">' +
             '<div class="prod-name">' + esc(p.name) + productPill(p) + '</div>' +
             '<div class="prod-sub">' + price + (p.unit ? ' · ' + esc(p.unit) : '') + '</div>' +
+            weightLine +
           '</div>' +
           '<div class="prod-actions">' +
             '<button class="icon-btn" data-act="stock" title="' + (p.state === 'oos' ? 'החזר למלאי' : 'סמן כאזל') + '">' +
