@@ -483,6 +483,10 @@
     .report-head .report-title { padding: 0; margin: 12px 0 10px; }
     .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
     .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
+    .cats-actions-top { display: flex; gap: 14px; margin: 6px 0 10px; }
+    .cats-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
+    .cats-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--line, #eee); font-weight: 600; }
+    .wk-sub { color: var(--muted); font-weight: 400; font-size: 11px; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
     .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
@@ -754,6 +758,11 @@
           <button class="chip" data-origin="all">הכל</button>
           <button class="chip active" data-origin="web">🌐 אתר</button>
           <button class="chip" data-origin="manual">🧾 ידני</button>
+          <span class="sep"></span>
+          <button class="chip active" data-paid="all">כל התשלומים</button>
+          <button class="chip" data-paid="paid">💳 שולם</button>
+          <button class="chip" data-paid="unpaid">לא שולם</button>
+          <button class="chip" data-paid="na">לא רלוונטי</button>
         </div>
       </div>
 
@@ -826,8 +835,8 @@
       <div class="report-prints">
         <a class="btn" href="/api/price-list" target="_blank" rel="noopener">📄 מחירון</a>
         <a class="btn" href="/api/flyer" target="_blank" rel="noopener">🪧 פלייר מחירים</a>
-        <a class="btn" href="/api/flyer?perCategory=1" target="_blank" rel="noopener">🪧 פלייר לפי קטגוריה</a>
-        <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
+        <button type="button" class="btn" id="print-flyer-cats">🪧 פלייר לפי קטגוריה</button>
+        <button type="button" class="btn" id="print-signs">🏷️ שלטי מוצרים</button>
       </div>
 
       <details id="acc-chart" class="rep-acc">
@@ -1010,6 +1019,22 @@
     </div>
   </div>
 
+  <!-- Category picker for the product-pages / flyer prints -->
+  <div id="cats-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="cats-title">בחירת קטגוריות להדפסה</h2>
+      <div class="cats-actions-top">
+        <button type="button" class="btn-link" id="cats-all">בחר הכל</button>
+        <button type="button" class="btn-link" id="cats-none">נקה</button>
+      </div>
+      <div id="cats-list" class="cats-list"></div>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="cats-print">🖨️ הדפס</button>
+        <button type="button" class="btn-link" id="cats-cancel">ביטול</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Charge review: adjust items + discounts before charging the card -->
   <div id="charge-overlay" class="modal-overlay hidden">
     <div class="modal charge-modal">
@@ -1035,7 +1060,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'active', type: 'all', origin: 'web' },
+      filters: { search: '', status: 'active', type: 'all', origin: 'web', paid: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       selected: {},
@@ -1392,22 +1417,29 @@
       api('GET', '?action=weekly-report').then(function (data) {
         var weeks = (data && data.weeks) || [];
         if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
-        var totalOrders = 0, totalRevenue = 0, totalFinal = 0;
+        var totalOrders = 0, totalWebRev = 0, totalManualRev = 0, totalRevenue = 0, totalFinal = 0;
+        var moneyCell = function (amount, count) {
+          return '<td class="num">' + esc(formatMoney(amount || 0)) + '<span class="wk-sub"> (' + (count || 0) + ')</span></td>';
+        };
         var rows = weeks.map(function (w) {
-          totalOrders += w.count; totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
+          totalOrders += w.count; totalWebRev += w.webRevenue || 0; totalManualRev += w.manualRevenue || 0;
+          totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
           var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
           return '<tr><td>' + esc(w.saleName) + '</td>' +
             '<td class="num">' + w.count + '</td>' +
-            '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
-            '<td class="num">₪' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
+            moneyCell(w.webRevenue, w.web) +
+            moneyCell(w.manualRevenue, w.manual) +
+            '<td class="num">' + esc(formatMoney(w.revenue || 0)) + '</td>' +
+            '<td class="num">' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
             '<td class="num">' + esc(dateLabel) + '</td></tr>';
         }).join('');
         body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
+          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">🌐 אתר</th><th class="num">🧾 ידני</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
+          '<td class="num">' + esc(formatMoney(totalWebRev)) + '</td><td class="num">' + esc(formatMoney(totalManualRev)) + '</td>' +
+          '<td class="num">' + esc(formatMoney(totalRevenue)) + '</td>' +
+          '<td class="num">' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
           '</tbody></table>';
       }).catch(function (err) {
         if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
@@ -1498,6 +1530,7 @@
       }
       if (f.type !== 'all' && o.fulfillment !== f.type) return false;
       if (f.origin && f.origin !== 'all' && (o.origin || 'web') !== f.origin) return false;
+      if (f.paid && f.paid !== 'all' && payStatusOf(o) !== f.paid) return false;
       if (f.search) {
         var q = f.search.toLowerCase();
         var hay = (o.fullName + ' ' + o.phone + ' ' + o.orderId).toLowerCase();
@@ -1668,6 +1701,40 @@
     el('print-picked').addEventListener('click', function () { printOrders('picked'); });
     el('print-headers').addEventListener('click', function () { printOrders('headers'); });
 
+    // ---- Category picker for the product-pages (signs) / per-category flyer ----
+    var catsPickBase = '';
+    function openCategoryPicker(baseUrl, title) {
+      catsPickBase = baseUrl;
+      el('cats-title').textContent = title || 'בחירת קטגוריות להדפסה';
+      var list = el('cats-list');
+      list.innerHTML = '<div class="loading">טוען…</div>';
+      el('cats-overlay').classList.remove('hidden');
+      var render = function (cats) {
+        if (!cats.length) { list.innerHTML = '<div class="empty">אין קטגוריות.</div>'; return; }
+        list.innerHTML = cats.map(function (c) {
+          return '<label class="cats-item"><input type="checkbox" value="' + esc(c) + '" checked> ' + esc(c) + '</label>';
+        }).join('');
+      };
+      if (state.departments && state.departments.length) { render(state.departments); return; }
+      api('GET', '?action=products').then(function (d) {
+        state.products = d.products || []; state.departments = d.departments || [];
+        render(state.departments || []);
+      }).catch(function () { list.innerHTML = '<div class="empty">שגיאה בטעינת הקטגוריות.</div>'; });
+    }
+    if (el('print-signs')) el('print-signs').addEventListener('click', function () { openCategoryPicker('/api/signs', 'שלטי מוצרים — בחירת קטגוריות'); });
+    if (el('print-flyer-cats')) el('print-flyer-cats').addEventListener('click', function () { openCategoryPicker('/api/flyer?perCategory=1', 'פלייר לפי קטגוריה — בחירת קטגוריות'); });
+    el('cats-cancel').addEventListener('click', function () { el('cats-overlay').classList.add('hidden'); });
+    el('cats-overlay').addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
+    el('cats-all').addEventListener('click', function () { Array.prototype.forEach.call(el('cats-list').querySelectorAll('input'), function (c) { c.checked = true; }); });
+    el('cats-none').addEventListener('click', function () { Array.prototype.forEach.call(el('cats-list').querySelectorAll('input'), function (c) { c.checked = false; }); });
+    el('cats-print').addEventListener('click', function () {
+      var sel = Array.prototype.filter.call(el('cats-list').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+      if (!sel.length) { showToast('בחרו לפחות קטגוריה אחת'); return; }
+      var sep = catsPickBase.indexOf('?') === -1 ? '?' : '&';
+      window.open(catsPickBase + sep + 'categories=' + encodeURIComponent(sel.join(',')), '_blank', 'noopener');
+      el('cats-overlay').classList.add('hidden');
+    });
+
     // Search + filter wiring
     el('search').addEventListener('input', function () {
       state.filters.search = this.value.trim();
@@ -1690,6 +1757,10 @@
         Array.prototype.forEach.call(this.querySelectorAll('[data-origin]'), function (c) { c.classList.remove('active'); });
         chip.classList.add('active');
         renderCounters();
+      } else if (chip.hasAttribute('data-paid')) {
+        state.filters.paid = chip.getAttribute('data-paid');
+        Array.prototype.forEach.call(this.querySelectorAll('[data-paid]'), function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
       }
       renderList();
     });
@@ -2017,10 +2088,12 @@
           recomputeWeigh();
           saveCollectDraft();
         });
-        // On blur, reflect the sanitized whole number back into a unit field.
+        // On blur, reflect the sanitized whole number back into a unit field, and
+        // warn if the entered amount is way off the ordered estimate (likely typo).
         inp.addEventListener('change', function () {
           var it = state.currentItems[Number(this.getAttribute('data-idx'))];
           if (!it.isWeightPriced && it.actualQuantity != null) this.value = it.actualQuantity;
+          checkItemDeviation(it);
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
@@ -2079,6 +2152,44 @@
         return groups * dp + (q - groups * dq) * up;
       }
       return q * up;
+    }
+
+    // Alert when a collected line's amount is way off the ordered estimate (a
+    // likely weight/quantity typo, e.g. 15 instead of 1.5). >3× or <1/3.
+    var DEVIATION_RATIO = 3;
+    function itemDeviation(it) {
+      var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+      var n = (v != null && v !== '') ? Number(v) : null;
+      if (n == null || n <= 0) return null;
+      var estimate = Number(it.lineTotal) || 0;
+      if (estimate <= 0) return null;
+      var actual = it.isWeightPriced ? n * (Number(it.unitPrice) || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice);
+      if (actual <= 0) return null;
+      var ratio = actual / estimate;
+      if (ratio >= DEVIATION_RATIO || ratio <= 1 / DEVIATION_RATIO) return { estimate: estimate, actual: actual };
+      return null;
+    }
+    function checkItemDeviation(it) {
+      var d = itemDeviation(it);
+      if (!d) return;
+      showToast('⚠️ ' + it.name + ': ' + (it.isWeightPriced ? 'המשקל' : 'הכמות') + ' שהוזן חורג מאוד מההזמנה (משוער ' + formatMoney(d.estimate) + ' · בפועל ' + formatMoney(d.actual) + ') — בדקו');
+    }
+    // Whole-order deviation: final total far from the estimate (≥2× or ≤1/2).
+    var ORDER_DEVIATION_RATIO = 2;
+    function orderDeviation() {
+      var est = 0, act = 0;
+      state.currentItems.forEach(function (it) {
+        if (!it.picked) return;
+        var e = Number(it.lineTotal) || 0;
+        var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+        var n = (v != null && v !== '') ? Number(v) : null;
+        var a = (n != null && n > 0) ? (it.isWeightPriced ? n * (Number(it.unitPrice) || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice)) : e;
+        est += e; act += a;
+      });
+      if (est <= 0 || act <= 0) return null;
+      var ratio = act / est;
+      if (ratio >= ORDER_DEVIATION_RATIO || ratio <= 1 / ORDER_DEVIATION_RATIO) return { estimate: est, actual: act };
+      return null;
     }
 
     function recomputeWeigh() {
@@ -2611,7 +2722,11 @@
         return new Promise(function (resolve, reject) {
           var done = false;
           function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
-          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return m || 'שגיאה באימות הכרטיס'; }
+          function fmtErr(m) {
+            if (Array.isArray(m)) m = m.join('; ');
+            var r = String(m || '').trim();
+            return 'אישור התשלום נכשל' + (r ? ': ' + r : '') + '. שים לב: אמריקן אקספרס, דיינרס וכרטיסי תייר / חו״ל אינם נתמכים — נסו כרטיס ישראלי אחר.';
+          }
           function onMsg(e) {
             var msg = e.data || {};
             if (msg.action === 'HandleSubmit') {
@@ -3106,15 +3221,25 @@
       var o = state.current;
       if (!o) return;
 
-      var sum = itemSummary();
-      if (sum.missing > 0) {
-        askFinishChoice(sum.missing).then(function (choice) {
-          if (!choice) return;            // cancelled
-          doCollect(choice === 'close');  // close → mark missing; keep → leave open
-        });
+      // Warn if the collected total is very far from the estimate (likely a typo).
+      var dev = orderDeviation();
+      var proceed = function () {
+        var sum = itemSummary();
+        if (sum.missing > 0) {
+          askFinishChoice(sum.missing).then(function (choice) {
+            if (!choice) return;            // cancelled
+            doCollect(choice === 'close');  // close → mark missing; keep → leave open
+          });
+          return;
+        }
+        doCollect(true);
+      };
+      if (dev) {
+        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות. להמשיך בכל זאת?')
+          .then(function (ok) { if (ok) proceed(); });
         return;
       }
-      doCollect(true);
+      proceed();
     }
 
     function doCollect(closeMissing) {
