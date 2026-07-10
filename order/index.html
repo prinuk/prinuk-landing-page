@@ -4547,6 +4547,12 @@
         }
         .cc-payment-explain p { margin: 0 0 6px; }
         .cc-payment-explain p:last-child { margin-bottom: 0; }
+        .cc-payment-explain .cc-unsupported-note {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #cfe2d6;
+            color: #8a5a00;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4893,6 +4899,7 @@
                         <div class="cc-fullrow cc-payment-explain">
                             <p>🔒 <b>הכרטיס אינו מחויב בעת ההזמנה.</b> החיוב הסופי מתבצע <b>רק לאחר ליקוט ההזמנה</b> — לפי המשקל והכמויות בפועל.</p>
                             <p>פרטי האשראי מאובטחים ונשמרים <b>אך ורק אצל חברת הסליקה</b>. אנחנו לעולם לא שומרים את פרטי הכרטיס אצלנו.</p>
+                            <p class="cc-unsupported-note">⚠️ כרטיסי <b>אמריקן אקספרס</b>, <b>דיינרס</b> וכרטיסי <b>תייר / חו״ל</b> אינם נתמכים. נא להשתמש בכרטיס ישראלי (ויזה / מאסטרקארד / ישראכרט).</p>
                         </div>
                         <div id="ccLoadingNote" class="cc-fullrow cc-loading-note" style="display:none;">⏳ טוען טופס תשלום מאובטח…</div>
                         <label class="field cc-f-number">
@@ -8098,6 +8105,13 @@
                 }, 1500);
             });
         }
+        // Friendly card-failure message. With OPEN FIELDS the brand stays inside
+        // Cardcom's iframe, so we can't block Amex/Diners up front — but an
+        // unsupported brand is a common cause of a rejected deal, so always say so.
+        function cardcomFailMessage(reason) {
+            var r = String(reason || '').trim();
+            return 'אישור התשלום נכשל' + (r ? ': ' + r : '') + '. שימו לב: כרטיסי אמריקן אקספרס, דיינרס וכרטיסי תייר / חו״ל אינם נתמכים — נא לנסות כרטיס ישראלי אחר.';
+        }
         // Run the card deal inside the iframes and resolve with the LowProfileId.
         function cardcomTokenize() {
             return ensureCardcom().then(function () {
@@ -8109,10 +8123,10 @@
                         if (msg.action === 'HandleSubmit') {
                             cleanup();
                             if (msg.data && msg.data.IsSuccess) { resolve(cardcom.lpId); }
-                            else { reject(new Error((msg.data && msg.data.Description) || 'אישור התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.')); }
+                            else { reject(new Error(cardcomFailMessage(msg.data && msg.data.Description))); }
                         } else if (msg.action === 'HandleEror') {
                             cleanup();
-                            reject(new Error(msg.message || 'אירעה שגיאה באימות הכרטיס. נסו שוב.'));
+                            reject(new Error(cardcomFailMessage(msg.message)));
                         }
                     }
                     var timer = setTimeout(function () { cleanup(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);

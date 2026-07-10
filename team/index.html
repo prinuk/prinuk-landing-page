@@ -483,6 +483,9 @@
     .report-head .report-title { padding: 0; margin: 12px 0 10px; }
     .report-prints { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
     .report-prints .btn { width: auto; text-decoration: none; display: inline-flex; align-items: center; padding: 10px 16px; }
+    .cats-actions-top { display: flex; gap: 14px; margin: 6px 0 10px; }
+    .cats-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
+    .cats-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--line, #eee); font-weight: 600; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
     .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
@@ -826,8 +829,8 @@
       <div class="report-prints">
         <a class="btn" href="/api/price-list" target="_blank" rel="noopener">📄 מחירון</a>
         <a class="btn" href="/api/flyer" target="_blank" rel="noopener">🪧 פלייר מחירים</a>
-        <a class="btn" href="/api/flyer?perCategory=1" target="_blank" rel="noopener">🪧 פלייר לפי קטגוריה</a>
-        <a class="btn" href="/api/signs" target="_blank" rel="noopener">🏷️ שלטי מוצרים</a>
+        <button type="button" class="btn" id="print-flyer-cats">🪧 פלייר לפי קטגוריה</button>
+        <button type="button" class="btn" id="print-signs">🏷️ שלטי מוצרים</button>
       </div>
 
       <details id="acc-chart" class="rep-acc">
@@ -1006,6 +1009,22 @@
       <div class="finish-actions">
         <button type="button" class="btn btn-primary" id="confirm-yes">כן</button>
         <button type="button" class="btn btn-ghost" id="confirm-no">לא</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category picker for the product-pages / flyer prints -->
+  <div id="cats-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="cats-title">בחירת קטגוריות להדפסה</h2>
+      <div class="cats-actions-top">
+        <button type="button" class="btn-link" id="cats-all">בחר הכל</button>
+        <button type="button" class="btn-link" id="cats-none">נקה</button>
+      </div>
+      <div id="cats-list" class="cats-list"></div>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="cats-print">🖨️ הדפס</button>
+        <button type="button" class="btn-link" id="cats-cancel">ביטול</button>
       </div>
     </div>
   </div>
@@ -1667,6 +1686,40 @@
     el('print-full').addEventListener('click', function () { printOrders('full'); });
     el('print-picked').addEventListener('click', function () { printOrders('picked'); });
     el('print-headers').addEventListener('click', function () { printOrders('headers'); });
+
+    // ---- Category picker for the product-pages (signs) / per-category flyer ----
+    var catsPickBase = '';
+    function openCategoryPicker(baseUrl, title) {
+      catsPickBase = baseUrl;
+      el('cats-title').textContent = title || 'בחירת קטגוריות להדפסה';
+      var list = el('cats-list');
+      list.innerHTML = '<div class="loading">טוען…</div>';
+      el('cats-overlay').classList.remove('hidden');
+      var render = function (cats) {
+        if (!cats.length) { list.innerHTML = '<div class="empty">אין קטגוריות.</div>'; return; }
+        list.innerHTML = cats.map(function (c) {
+          return '<label class="cats-item"><input type="checkbox" value="' + esc(c) + '" checked> ' + esc(c) + '</label>';
+        }).join('');
+      };
+      if (state.departments && state.departments.length) { render(state.departments); return; }
+      api('GET', '?action=products').then(function (d) {
+        state.products = d.products || []; state.departments = d.departments || [];
+        render(state.departments || []);
+      }).catch(function () { list.innerHTML = '<div class="empty">שגיאה בטעינת הקטגוריות.</div>'; });
+    }
+    if (el('print-signs')) el('print-signs').addEventListener('click', function () { openCategoryPicker('/api/signs', 'שלטי מוצרים — בחירת קטגוריות'); });
+    if (el('print-flyer-cats')) el('print-flyer-cats').addEventListener('click', function () { openCategoryPicker('/api/flyer?perCategory=1', 'פלייר לפי קטגוריה — בחירת קטגוריות'); });
+    el('cats-cancel').addEventListener('click', function () { el('cats-overlay').classList.add('hidden'); });
+    el('cats-overlay').addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
+    el('cats-all').addEventListener('click', function () { Array.prototype.forEach.call(el('cats-list').querySelectorAll('input'), function (c) { c.checked = true; }); });
+    el('cats-none').addEventListener('click', function () { Array.prototype.forEach.call(el('cats-list').querySelectorAll('input'), function (c) { c.checked = false; }); });
+    el('cats-print').addEventListener('click', function () {
+      var sel = Array.prototype.filter.call(el('cats-list').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+      if (!sel.length) { showToast('בחרו לפחות קטגוריה אחת'); return; }
+      var sep = catsPickBase.indexOf('?') === -1 ? '?' : '&';
+      window.open(catsPickBase + sep + 'categories=' + encodeURIComponent(sel.join(',')), '_blank', 'noopener');
+      el('cats-overlay').classList.add('hidden');
+    });
 
     // Search + filter wiring
     el('search').addEventListener('input', function () {
@@ -2611,7 +2664,11 @@
         return new Promise(function (resolve, reject) {
           var done = false;
           function cleanup() { if (done) return; done = true; window.removeEventListener('message', onMsg); clearTimeout(timer); }
-          function fmtErr(m) { if (Array.isArray(m)) m = m.join('; '); return m || 'שגיאה באימות הכרטיס'; }
+          function fmtErr(m) {
+            if (Array.isArray(m)) m = m.join('; ');
+            var r = String(m || '').trim();
+            return 'אישור התשלום נכשל' + (r ? ': ' + r : '') + '. שים לב: אמריקן אקספרס, דיינרס וכרטיסי תייר / חו״ל אינם נתמכים — נסו כרטיס ישראלי אחר.';
+          }
           function onMsg(e) {
             var msg = e.data || {};
             if (msg.action === 'HandleSubmit') {
