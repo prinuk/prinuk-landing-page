@@ -757,6 +757,11 @@
           <button class="chip" data-origin="all">הכל</button>
           <button class="chip active" data-origin="web">🌐 אתר</button>
           <button class="chip" data-origin="manual">🧾 ידני</button>
+          <span class="sep"></span>
+          <button class="chip active" data-paid="all">כל התשלומים</button>
+          <button class="chip" data-paid="paid">💳 שולם</button>
+          <button class="chip" data-paid="unpaid">לא שולם</button>
+          <button class="chip" data-paid="na">לא רלוונטי</button>
         </div>
       </div>
 
@@ -1054,7 +1059,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'active', type: 'all', origin: 'web' },
+      filters: { search: '', status: 'active', type: 'all', origin: 'web', paid: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       selected: {},
@@ -1411,20 +1416,24 @@
       api('GET', '?action=weekly-report').then(function (data) {
         var weeks = (data && data.weeks) || [];
         if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
-        var totalOrders = 0, totalRevenue = 0, totalFinal = 0;
+        var totalOrders = 0, totalWeb = 0, totalManual = 0, totalRevenue = 0, totalFinal = 0;
         var rows = weeks.map(function (w) {
-          totalOrders += w.count; totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
+          totalOrders += w.count; totalWeb += w.web || 0; totalManual += w.manual || 0;
+          totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
           var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
           return '<tr><td>' + esc(w.saleName) + '</td>' +
             '<td class="num">' + w.count + '</td>' +
+            '<td class="num">' + (w.web || 0) + '</td>' +
+            '<td class="num">' + (w.manual || 0) + '</td>' +
             '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
             '<td class="num">₪' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
             '<td class="num">' + esc(dateLabel) + '</td></tr>';
         }).join('');
         body.innerHTML = '<table class="report-table"><thead><tr>' +
-          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
+          '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">🌐 אתר</th><th class="num">🧾 ידני</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
+          '<td class="num">' + totalWeb + '</td><td class="num">' + totalManual + '</td>' +
           '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td>' +
           '<td class="num">₪' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
           '</tbody></table>';
@@ -1517,6 +1526,7 @@
       }
       if (f.type !== 'all' && o.fulfillment !== f.type) return false;
       if (f.origin && f.origin !== 'all' && (o.origin || 'web') !== f.origin) return false;
+      if (f.paid && f.paid !== 'all' && payStatusOf(o) !== f.paid) return false;
       if (f.search) {
         var q = f.search.toLowerCase();
         var hay = (o.fullName + ' ' + o.phone + ' ' + o.orderId).toLowerCase();
@@ -1743,6 +1753,10 @@
         Array.prototype.forEach.call(this.querySelectorAll('[data-origin]'), function (c) { c.classList.remove('active'); });
         chip.classList.add('active');
         renderCounters();
+      } else if (chip.hasAttribute('data-paid')) {
+        state.filters.paid = chip.getAttribute('data-paid');
+        Array.prototype.forEach.call(this.querySelectorAll('[data-paid]'), function (c) { c.classList.remove('active'); });
+        chip.classList.add('active');
       }
       renderList();
     });
