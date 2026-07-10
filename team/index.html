@@ -1419,7 +1419,7 @@
         if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
         var totalOrders = 0, totalWebRev = 0, totalManualRev = 0, totalRevenue = 0, totalFinal = 0;
         var moneyCell = function (amount, count) {
-          return '<td class="num">₪' + esc(formatMoney(amount || 0)) + '<span class="wk-sub"> (' + (count || 0) + ')</span></td>';
+          return '<td class="num">' + esc(formatMoney(amount || 0)) + '<span class="wk-sub"> (' + (count || 0) + ')</span></td>';
         };
         var rows = weeks.map(function (w) {
           totalOrders += w.count; totalWebRev += w.webRevenue || 0; totalManualRev += w.manualRevenue || 0;
@@ -1429,17 +1429,17 @@
             '<td class="num">' + w.count + '</td>' +
             moneyCell(w.webRevenue, w.web) +
             moneyCell(w.manualRevenue, w.manual) +
-            '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
-            '<td class="num">₪' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
+            '<td class="num">' + esc(formatMoney(w.revenue || 0)) + '</td>' +
+            '<td class="num">' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
             '<td class="num">' + esc(dateLabel) + '</td></tr>';
         }).join('');
         body.innerHTML = '<table class="report-table"><thead><tr>' +
           '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">🌐 אתר</th><th class="num">🧾 ידני</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalWebRev)) + '</td><td class="num">₪' + esc(formatMoney(totalManualRev)) + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td>' +
-          '<td class="num">₪' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
+          '<td class="num">' + esc(formatMoney(totalWebRev)) + '</td><td class="num">' + esc(formatMoney(totalManualRev)) + '</td>' +
+          '<td class="num">' + esc(formatMoney(totalRevenue)) + '</td>' +
+          '<td class="num">' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
           '</tbody></table>';
       }).catch(function (err) {
         if (err.message !== 'unauthorized') body.innerHTML = '<div class="empty">שגיאה בטעינת הדוח.</div>';
