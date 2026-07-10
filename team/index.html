@@ -2084,10 +2084,12 @@
           recomputeWeigh();
           saveCollectDraft();
         });
-        // On blur, reflect the sanitized whole number back into a unit field.
+        // On blur, reflect the sanitized whole number back into a unit field, and
+        // warn if the entered amount is way off the ordered estimate (likely typo).
         inp.addEventListener('change', function () {
           var it = state.currentItems[Number(this.getAttribute('data-idx'))];
           if (!it.isWeightPriced && it.actualQuantity != null) this.value = it.actualQuantity;
+          checkItemDeviation(it);
         });
       });
       el('collect-btn').addEventListener('click', submitCollect);
@@ -2146,6 +2148,44 @@
         return groups * dp + (q - groups * dq) * up;
       }
       return q * up;
+    }
+
+    // Alert when a collected line's amount is way off the ordered estimate (a
+    // likely weight/quantity typo, e.g. 15 instead of 1.5). >3× or <1/3.
+    var DEVIATION_RATIO = 3;
+    function itemDeviation(it) {
+      var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+      var n = (v != null && v !== '') ? Number(v) : null;
+      if (n == null || n <= 0) return null;
+      var estimate = Number(it.lineTotal) || 0;
+      if (estimate <= 0) return null;
+      var actual = it.isWeightPriced ? n * (Number(it.unitPrice) || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice);
+      if (actual <= 0) return null;
+      var ratio = actual / estimate;
+      if (ratio >= DEVIATION_RATIO || ratio <= 1 / DEVIATION_RATIO) return { estimate: estimate, actual: actual };
+      return null;
+    }
+    function checkItemDeviation(it) {
+      var d = itemDeviation(it);
+      if (!d) return;
+      showToast('⚠️ ' + it.name + ': ' + (it.isWeightPriced ? 'המשקל' : 'הכמות') + ' שהוזן חורג מאוד מההזמנה (משוער ' + formatMoney(d.estimate) + ' · בפועל ' + formatMoney(d.actual) + ') — בדקו');
+    }
+    // Whole-order deviation: final total far from the estimate (≥2× or ≤1/2).
+    var ORDER_DEVIATION_RATIO = 2;
+    function orderDeviation() {
+      var est = 0, act = 0;
+      state.currentItems.forEach(function (it) {
+        if (!it.picked) return;
+        var e = Number(it.lineTotal) || 0;
+        var v = it.isWeightPriced ? it.actualWeightKg : it.actualQuantity;
+        var n = (v != null && v !== '') ? Number(v) : null;
+        var a = (n != null && n > 0) ? (it.isWeightPriced ? n * (Number(it.unitPrice) || 0) : applyUnitDeal(n, it.unitPrice, it.dealQty, it.dealPrice)) : e;
+        est += e; act += a;
+      });
+      if (est <= 0 || act <= 0) return null;
+      var ratio = act / est;
+      if (ratio >= ORDER_DEVIATION_RATIO || ratio <= 1 / ORDER_DEVIATION_RATIO) return { estimate: est, actual: act };
+      return null;
     }
 
     function recomputeWeigh() {
@@ -3177,15 +3217,25 @@
       var o = state.current;
       if (!o) return;
 
-      var sum = itemSummary();
-      if (sum.missing > 0) {
-        askFinishChoice(sum.missing).then(function (choice) {
-          if (!choice) return;            // cancelled
-          doCollect(choice === 'close');  // close → mark missing; keep → leave open
-        });
+      // Warn if the collected total is very far from the estimate (likely a typo).
+      var dev = orderDeviation();
+      var proceed = function () {
+        var sum = itemSummary();
+        if (sum.missing > 0) {
+          askFinishChoice(sum.missing).then(function (choice) {
+            if (!choice) return;            // cancelled
+            doCollect(choice === 'close');  // close → mark missing; keep → leave open
+          });
+          return;
+        }
+        doCollect(true);
+      };
+      if (dev) {
+        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות. להמשיך בכל זאת?')
+          .then(function (ok) { if (ok) proceed(); });
         return;
       }
-      doCollect(true);
+      proceed();
     }
 
     function doCollect(closeMissing) {
