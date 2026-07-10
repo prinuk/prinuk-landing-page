@@ -486,6 +486,7 @@
     .cats-actions-top { display: flex; gap: 14px; margin: 6px 0 10px; }
     .cats-list { display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow-y: auto; }
     .cats-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--line, #eee); font-weight: 600; }
+    .wk-sub { color: var(--muted); font-weight: 400; font-size: 11px; }
     .report-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .report-table th, .report-table td { text-align: right; padding: 9px 16px; border-bottom: 1px solid #eee; }
     .report-table th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
@@ -1416,15 +1417,18 @@
       api('GET', '?action=weekly-report').then(function (data) {
         var weeks = (data && data.weeks) || [];
         if (!weeks.length) { body.innerHTML = '<div class="empty">אין נתונים להצגה.</div>'; return; }
-        var totalOrders = 0, totalWeb = 0, totalManual = 0, totalRevenue = 0, totalFinal = 0;
+        var totalOrders = 0, totalWebRev = 0, totalManualRev = 0, totalRevenue = 0, totalFinal = 0;
+        var moneyCell = function (amount, count) {
+          return '<td class="num">₪' + esc(formatMoney(amount || 0)) + '<span class="wk-sub"> (' + (count || 0) + ')</span></td>';
+        };
         var rows = weeks.map(function (w) {
-          totalOrders += w.count; totalWeb += w.web || 0; totalManual += w.manual || 0;
+          totalOrders += w.count; totalWebRev += w.webRevenue || 0; totalManualRev += w.manualRevenue || 0;
           totalRevenue += w.revenue || 0; totalFinal += w.finalRevenue || 0;
           var dateLabel = w.lastAt ? new Date(w.lastAt).toLocaleDateString('he-IL') : '';
           return '<tr><td>' + esc(w.saleName) + '</td>' +
             '<td class="num">' + w.count + '</td>' +
-            '<td class="num">' + (w.web || 0) + '</td>' +
-            '<td class="num">' + (w.manual || 0) + '</td>' +
+            moneyCell(w.webRevenue, w.web) +
+            moneyCell(w.manualRevenue, w.manual) +
             '<td class="num">₪' + esc(formatMoney(w.revenue || 0)) + '</td>' +
             '<td class="num">₪' + esc(formatMoney(w.finalRevenue || 0)) + '</td>' +
             '<td class="num">' + esc(dateLabel) + '</td></tr>';
@@ -1433,7 +1437,7 @@
           '<th>שבוע / מכירה</th><th class="num">הזמנות</th><th class="num">🌐 אתר</th><th class="num">🧾 ידני</th><th class="num">סכום משוער</th><th class="num">סכום סופי</th><th class="num">תאריך אחרון</th>' +
           '</tr></thead><tbody>' + rows +
           '<tr class="dept-row"><td>סה״כ</td><td class="num">' + totalOrders + '</td>' +
-          '<td class="num">' + totalWeb + '</td><td class="num">' + totalManual + '</td>' +
+          '<td class="num">₪' + esc(formatMoney(totalWebRev)) + '</td><td class="num">₪' + esc(formatMoney(totalManualRev)) + '</td>' +
           '<td class="num">₪' + esc(formatMoney(totalRevenue)) + '</td>' +
           '<td class="num">₪' + esc(formatMoney(totalFinal)) + '</td><td></td></tr>' +
           '</tbody></table>';
