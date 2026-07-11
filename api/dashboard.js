@@ -18,6 +18,8 @@ const {
   setOrderPaymentMethod,
   setOrderPaymentStatusManual,
   createManualOrder,
+  createHostedChargeSession,
+  finalizeHostedCharge,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -364,6 +366,27 @@ module.exports = async function handler(req, res) {
         if (!result.ok) {
           return res.status(400).json({ error: result.reason === 'no-items' ? 'יש להוסיף מוצרים.' : (result.error || 'יצירת ההזמנה נכשלה.') });
         }
+        return res.json(result);
+      }
+
+      // Re-open a hosted charge session (fresh LowProfile) for an existing POS order
+      // — used when the first attempt's LowProfile was spent on a failed submit.
+      if (action === 'hosted-charge-session') {
+        const oid = String(body.orderId || '').trim();
+        if (!oid) return res.status(400).json({ error: 'חסר מספר הזמנה.' });
+        const result = await createHostedChargeSession(oid);
+        if (!result.ok || !result.lowProfileId) return res.status(400).json({ error: result.error || 'לא הצלחנו לפתוח את טופס התשלום.' });
+        return res.json(result);
+      }
+
+      // Finish a two-step hosted charge for a POS order (card submitted against the
+      // ChargeAndCreateToken LowProfile) → record the captured payment + invoice.
+      if (action === 'finalize-hosted-charge') {
+        const oid = String(body.orderId || '').trim();
+        const lpId = String(body.lowProfileId || '').trim();
+        if (!oid || !lpId) return res.status(400).json({ error: 'בקשה לא תקינה.' });
+        const result = await finalizeHostedCharge(oid, lpId);
+        if (!result.ok) return res.status(400).json({ error: result.error || 'החיוב לא הושלם.' });
         return res.json(result);
       }
 
