@@ -604,6 +604,9 @@
     .cr-order-disc label { font-weight: 700; flex: 1; }
     .cr-order-disc input { width: 60px; text-align: center; }
     .cr-total { margin-top: 14px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
+    .cr-pay-summary { padding: 12px 14px; background: #eef6ef; border-radius: 10px; text-align: center; }
+    .cr-pay-cust { font-weight: 700; color: var(--ink); }
+    .cr-pay-amount { margin-top: 4px; font-size: 17px; color: var(--accent-dark, #2e7d32); }
     .cr-newhead { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
     .cr-newhead input { width: 100%; }
     .cr-pay-method { display: flex; gap: 16px; }
@@ -2448,6 +2451,7 @@
       var o = state.current;
       if (!o) return;
       var open = function () {
+        tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
         state.review = {
           forceCard: forceCard,
           // Only collected items are billed — missing (חסר) stay on the order untouched.
@@ -2503,6 +2507,7 @@
     function openNewInvoice() {
       var build = function () {
         state.current = null;
+        tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
         state.review = {
           isNew: true,
           customer: { fullName: '', phone: '' },
@@ -2616,7 +2621,10 @@
     }
 
     // ---- Cardcom OPEN FIELDS for the dashboard (hosted card iframes) ----
-    var tkCardcom = { lpId: null, ready: null, master: null };
+    // providedLpId: charge against a LowProfile we were handed (two-step hosted
+    // POS charge) instead of creating a token-only one. hostedOrderId: the order
+    // that LP belongs to (used to fetch a fresh LP on retry).
+    var tkCardcom = { lpId: null, ready: null, master: null, providedLpId: null, hostedOrderId: null };
     function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
     function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
     function tkCardcomCss() {
@@ -2655,7 +2663,9 @@
       return f;
     }
     function tkResetCardcom() {
-      tkCardcom.ready = null; tkCardcom.lpId = null; tkCardcom.master = null;
+      // The LowProfile (incl. a provided/hosted one) is single-use — drop it so the
+      // next open builds/fetches a fresh one. hostedOrderId persists for retry.
+      tkCardcom.ready = null; tkCardcom.lpId = null; tkCardcom.master = null; tkCardcom.providedLpId = null;
       ['cr-cc-number-slot', 'cr-cc-cvv-slot', 'cr-cardcom-master'].forEach(function (id) {
         var s = el(id); if (s) { s.innerHTML = ''; }
       });
@@ -2664,7 +2674,17 @@
     // fresh session so the team can re-enter and retry (only if the slots exist).
     function tkReinitCardcomForRetry() {
       tkResetCardcom();
-      if (el('cr-cc-number-slot')) { tkOpenCardcomFields(); }
+      if (!el('cr-cc-number-slot')) return;
+      // Hosted (two-step POS) charge: the spent LP can't be reused → get a fresh
+      // ChargeAndCreateToken LowProfile for the same order, then reload the fields.
+      if (tkCardcom.hostedOrderId) {
+        api('POST', '', { action: 'hosted-charge-session', orderId: tkCardcom.hostedOrderId }).then(function (d) {
+          tkCardcom.providedLpId = (d && d.lowProfileId) || null;
+          if (tkCardcom.providedLpId) tkOpenCardcomFields();
+        }).catch(function () { /* leave fields blank; team can close + retry */ });
+        return;
+      }
+      tkOpenCardcomFields();
     }
     // HTML for the card block — Cardcom iframes vs. the manual (sumit/mock) inputs.
     function tkCardBlockHtml(needCard) {
@@ -2707,11 +2727,15 @@
       if (tkCardcom.ready && !tkFramesPresent()) { tkResetCardcom(); }
       if (tkCardcom.ready) return tkCardcom.ready;
       tk3DS();
-      tkCardcom.ready = fetch('/api/payment-init', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountAgorot: tkReviewGrandAgorot() })
-      })
-        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+      // Hosted (two-step POS) charge → use the ChargeAndCreateToken LowProfile we
+      // were handed. Otherwise create a token-only one via payment-init.
+      var lpPromise = tkCardcom.providedLpId
+        ? Promise.resolve({ ok: true, d: { lowProfileId: tkCardcom.providedLpId } })
+        : fetch('/api/payment-init', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amountAgorot: tkReviewGrandAgorot() })
+        }).then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); });
+      tkCardcom.ready = lpPromise
         .then(function (out) {
           var d = out.d || {};
           if (!out.ok || !d.lowProfileId) throw new Error(d.detail || d.error || 'לא הצלחנו לפתוח את טופס התשלום');
@@ -2815,7 +2839,14 @@
 
     function renderChargeReview() {
       var r = state.review;
-      var needCard = r.isNew ? (r.payMethod === 'credit') : (!r.docMode && (!r.hasCard || r.forceCard));
+      // Two-step POS credit: once the cart is final we move to a dedicated payment
+      // step (order already created) that just shows the card fields for the exact
+      // amount and charges in one hosted operation.
+      if (r.isNew && r.payMethod === 'credit' && r.payStep) { renderChargePayStep(); return; }
+      // Cardcom POS credit uses a two-step flow → card fields only in the pay step.
+      // Other providers (mock/sumit) keep inline card fields in the cart step.
+      var twoStep = r.isNew && r.payMethod === 'credit' && tkIsCardcom();
+      var needCard = r.isNew ? (r.payMethod === 'credit' && (twoStep ? r.payStep : true)) : (!r.docMode && (!r.hasCard || r.forceCard));
       var ch = el('charge-title'); if (ch) ch.textContent = r.isNew ? 'חשבונית חדשה' : (r.docMode ? 'הפקת חשבונית מס' : 'סקירה וחיוב');
       var namePlaceholder = r.payMethod === 'credit' ? 'שם בעל הכרטיס (חובה לאשראי)' : 'שם הלקוח (לא חובה)';
       var newHead = !r.isNew ? '' :
@@ -2982,6 +3013,41 @@
       }
     }
 
+    // Clear the two-step hosted-charge state (on success, cancel, or a fresh open)
+    // so the modal never reuses a spent LowProfile or a stale order id.
+    function resetHostedChargeState() {
+      var r = state.review;
+      if (r) { r.payStep = false; r.hostedOrderId = null; r.hostedLpId = null; r.hostedChargedLp = null; r.hostedAmount = 0; }
+      tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
+    }
+
+    // Payment step of a two-step POS credit invoice: the order is already created
+    // and we hold its ChargeAndCreateToken LowProfile (tkCardcom.providedLpId) — show
+    // a read-only summary + card fields and charge the exact amount in one submit.
+    function renderChargePayStep() {
+      var r = state.review;
+      el('charge-title').textContent = '💳 תשלום באשראי';
+      var name = String(r.customer.fullName || '').trim() || 'לקוח מזדמן';
+      el('charge-body').innerHTML =
+        '<div class="cr-paystep">' +
+          '<div class="cr-pay-summary">' +
+            '<div class="cr-pay-cust">' + esc(name) + '</div>' +
+            '<div class="cr-pay-amount">לחיוב: <b>' + formatMoney(r.hostedAmount || 0) + '</b></div>' +
+          '</div>' +
+          tkCardBlockHtml(true) +
+          '<div class="field-hint">מלאו את פרטי הכרטיס. החיוב וההפקה של החשבונית מתבצעים יחד.</div>' +
+        '</div>';
+      var cfBtn = el('charge-confirm');
+      if (cfBtn) { cfBtn.disabled = false; cfBtn.textContent = '💳 חייב ' + formatMoney(r.hostedAmount || 0); }
+      // Load the card iframes against the LowProfile we were handed (not a new one).
+      if (tkIsCardcom()) {
+        tkResetCardcom();
+        tkCardcom.hostedOrderId = r.hostedOrderId; // for a fresh LP on retry
+        tkCardcom.providedLpId = r.hostedLpId;
+        tkOpenCardcomFields();
+      }
+    }
+
     function crRecompute() {
       var r = state.review;
       var total = 0;
@@ -3008,7 +3074,8 @@
       }
       var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (r.delivery || 0);
       el('cr-total').textContent = 'סה״כ: ' + formatMoney(grand) + (r.delivery ? ' (כולל משלוח ' + formatMoney(r.delivery) + ')' : '');
-      var verb = (r.isNew && r.payMethod === 'cash') ? (r.docMode ? '🧾 צור והפק חשבונית · ' : 'צור הזמנה ')
+      var verb = (r.isNew && r.payMethod === 'credit' && tkIsCardcom()) ? '💳 המשך לתשלום · '
+        : (r.isNew && r.payMethod === 'cash') ? (r.docMode ? '🧾 צור והפק חשבונית · ' : 'צור הזמנה ')
         : (!r.isNew && r.docMode) ? '🧾 הפקת חשבונית מס · '
         : 'אישור וחיוב ';
       el('charge-confirm').textContent = verb + formatMoney(grand);
@@ -3056,20 +3123,94 @@
             if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה ביצירת ההזמנה');
           });
         };
-        if (r.payMethod === 'credit') {
+        // Record the finalized charge in our DB. Idempotent server-side, so a
+        // failure here (after the card was charged) is retried WITHOUT re-charging.
+        var doFinalizeHosted = function (lpId) {
+          var nb = el('charge-confirm');
+          nb.disabled = true; nb.textContent = 'רושם חיוב…';
+          var oid = r.hostedOrderId;
+          api('POST', '', { action: 'finalize-hosted-charge', orderId: oid, lowProfileId: lpId }).then(function (resp) {
+            el('charge-overlay').classList.add('hidden');
+            resetHostedChargeState();
+            showToast(resp.alreadyCharged ? 'ההזמנה כבר חויבה' : ('✅ נוצר וחויב ' + (resp.amount != null ? formatMoney(resp.amount) : '')));
+            if (resp.invoiceMissing) { handleInvoiceMissing(oid, resp.amount); }
+            loadOrders();
+          }).catch(function (err) {
+            // The card WAS charged; only our recording failed → let the team retry
+            // finalize (server is idempotent — no second charge).
+            nb.disabled = false; nb.textContent = '↻ השלם רישום החיוב';
+            if (err.message !== 'unauthorized') showToast('⚠️ החיוב בוצע אך רישומו נכשל. לחצו "השלם רישום החיוב".');
+          });
+        };
+        // Non-Cardcom providers (mock/sumit) keep the single-step inline tokenize →
+        // create-order + server charge (they have no ChargeAndCreateToken LowProfile).
+        if (r.payMethod === 'credit' && !tkIsCardcom()) {
           if (!String(r.customer.fullName || '').trim()) {
             el('cr-cc-error').textContent = 'יש להזין שם בעל הכרטיס לחיוב באשראי.';
-            var nmEl = el('cr-cust-name'); if (nmEl) nmEl.focus();
+            var nmEl0 = el('cr-cust-name'); if (nmEl0) nmEl0.focus();
             return;
           }
-          var ccErr = tkValidateCard();
-          if (ccErr) { el('cr-cc-error').textContent = ccErr; return; }
+          var ccErr0 = tkValidateCard();
+          if (ccErr0) { el('cr-cc-error').textContent = ccErr0; return; }
           el('cr-cc-error').textContent = '';
           nbtn.disabled = true; nbtn.textContent = 'מאמת כרטיס…';
           tokenizeCardTeam().then(function (tok) { order.paymentToken = tok; send(); }).catch(function (e) {
             nbtn.disabled = false; crRecompute();
             el('cr-cc-error').textContent = e.message || 'שגיאה באימות הכרטיס';
           });
+          return;
+        }
+        if (r.payMethod === 'credit') {
+          // Step 1 (cart): validate, create the order + open a ChargeAndCreateToken
+          // session, then move to the dedicated payment step.
+          if (!r.payStep) {
+            if (!String(r.customer.fullName || '').trim()) {
+              showToast('יש להזין שם בעל הכרטיס לחיוב באשראי');
+              var nmEl = el('cr-cust-name'); if (nmEl) nmEl.focus();
+              return;
+            }
+            order.hostedCharge = true;
+            nbtn.disabled = true; nbtn.textContent = 'פותח תשלום…';
+            api('POST', '', { action: 'create-order', order: order, member: state.member }).then(function (resp) {
+              if (!resp.hostedCharge || !resp.lowProfileId) {
+                // Order saved but the payment session didn't open → let the team
+                // charge it later from the list rather than losing the order.
+                nbtn.disabled = false; crRecompute();
+                showToast('⚠️ ' + (resp.chargeError || 'לא הצלחנו לפתוח את טופס התשלום. ההזמנה נשמרה — אפשר לחייב מרשימת ההזמנות.'));
+                el('charge-overlay').classList.add('hidden');
+                loadOrders();
+                return;
+              }
+              r.payStep = true;
+              r.hostedOrderId = resp.orderId;
+              r.hostedLpId = resp.lowProfileId;
+              r.hostedAmount = resp.amount != null ? resp.amount : (tkReviewGrandAgorot() / 100);
+              r.hostedChargedLp = null;
+              renderChargeReview();
+            }).catch(function (err) {
+              nbtn.disabled = false; crRecompute();
+              if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה ביצירת ההזמנה');
+            });
+            return;
+          }
+          // Step 2 (pay): if a prior charge already went through but finalize failed,
+          // only retry finalize — never re-charge.
+          if (r.hostedChargedLp) { doFinalizeHosted(r.hostedChargedLp); return; }
+          var ccErr = tkValidateCard();
+          if (ccErr) { el('cr-cc-error').textContent = ccErr; return; }
+          el('cr-cc-error').textContent = '';
+          nbtn.disabled = true; nbtn.textContent = 'מחייב…';
+          tkCardcomTokenize().then(function (lpId) {
+            // Card charged in the hosted op → from here it's finalize-only.
+            r.hostedChargedLp = lpId;
+            doFinalizeHosted(lpId);
+          }).catch(function (e) {
+            // Charge failed before capture (tkCardcomTokenize rebuilt a fresh LP).
+            nbtn.disabled = false;
+            nbtn.textContent = '💳 חייב ' + formatMoney(r.hostedAmount || 0);
+            el('cr-cc-error').textContent = e.message || 'שגיאה בחיוב';
+          });
+          return;
         } else { send(); }
         return;
       }
@@ -3745,10 +3886,10 @@
       btn.addEventListener('click', function () { bulkSetProductStatus(this.getAttribute('data-bulk')); });
     });
     el('pbb-clear').addEventListener('click', function () { state.selectedProducts = {}; renderProducts(); });
-    el('charge-cancel').addEventListener('click', function () { el('charge-overlay').classList.add('hidden'); });
+    el('charge-cancel').addEventListener('click', function () { el('charge-overlay').classList.add('hidden'); resetHostedChargeState(); });
     el('charge-confirm').addEventListener('click', submitChargeReview);
     el('new-invoice-btn').addEventListener('click', openNewInvoice);
-    el('charge-overlay').addEventListener('click', function (e) { if (e.target === this) el('charge-overlay').classList.add('hidden'); });
+    el('charge-overlay').addEventListener('click', function (e) { if (e.target === this) { el('charge-overlay').classList.add('hidden'); resetHostedChargeState(); } });
     el('pf-cancel').addEventListener('click', closeProductForm);
     el('modal-overlay').addEventListener('click', function (e) { if (e.target === this) closeProductForm(); });
     el('prod-search').addEventListener('input', renderProducts);
