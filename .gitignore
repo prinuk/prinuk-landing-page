@@ -6,3 +6,6 @@ node_modules
 .env.prod
 .vercel
 public
+
+# Local assistant notes (not version-controlled)
+SKILLS.md
