@@ -400,7 +400,7 @@
     }
     .item-row.missing .miss-toggle { background: var(--danger); color: #fff; border-color: var(--danger); }
 
-    .confirm-msg { color: var(--ink); font-size: 16px; margin: 4px 0; line-height: 1.5; text-align: center; }
+    .confirm-msg { color: var(--ink); font-size: 16px; margin: 4px 0; line-height: 1.5; text-align: center; white-space: pre-line; }
     .finish-msg { color: var(--muted); font-size: 14.5px; margin: 4px 0 4px; line-height: 1.5; }
     .finish-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
     .finish-actions .btn { width: 100%; }
@@ -2188,7 +2188,8 @@
           parts.push('הוזמן ' + ordered + ' · נאסף ' + collected);
         }
       }
-      if (itemDeviation(it)) parts.push('חריגה גדולה מהאומדן — בדקו');
+      var d = itemDeviation(it);
+      if (d) parts.push('חריגה מהאומדן (משוער ' + formatMoney(d.estimate) + ' · בפועל ' + formatMoney(d.actual) + ')');
       return parts.join(' · ');
     }
     // Whole-order deviation: final total far from the estimate (≥2× or ≤1/2).
@@ -2207,6 +2208,17 @@
       var ratio = act / est;
       if (ratio >= ORDER_DEVIATION_RATIO || ratio <= 1 / ORDER_DEVIATION_RATIO) return { estimate: est, actual: act };
       return null;
+    }
+    // Which picked items likely caused the order deviation — a big per-item amount
+    // gap, and/or (for unit items) a collected-vs-ordered count change.
+    function deviationSuspects() {
+      var lines = [];
+      state.currentItems.forEach(function (it) {
+        if (!it.picked) return;
+        var w = itemWarning(it);
+        if (w) lines.push('• ' + it.name + ' — ' + w);
+      });
+      return lines;
     }
 
     function recomputeWeigh() {
@@ -3259,7 +3271,9 @@
         doCollect(true);
       };
       if (dev) {
-        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות. להמשיך בכל זאת?')
+        var suspects = deviationSuspects();
+        var detail = suspects.length ? '\n\nלבדוק במיוחד:\n' + suspects.join('\n') : '';
+        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות.' + detail + '\n\nלהמשיך בכל זאת?')
           .then(function (ok) { if (ok) proceed(); });
         return;
       }
