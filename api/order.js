@@ -121,23 +121,28 @@ module.exports = async function handler(req, res) {
     // (card-on-file) so it can be charged for the final weighed amount at picking.
     if (order.paymentMethod === 'credit') {
       const token = String(body.paymentToken || '').trim();
-      if (!token) {
+      if (token) {
+        // A new/replacement card was entered → tokenize + save it.
+        const saved = await getPaymentAdapter().saveCard({
+          singleUseToken: token,
+          customer: { fullName: order.fullName, phone: order.phone, email: order.email },
+        });
+        if (!saved.ok) {
+          return res.status(402).json({ error: 'לא הצלחנו לאמת את כרטיס האשראי. בדקו את הפרטים ונסו שוב.' });
+        }
+        order.payment = {
+          method: 'credit',
+          providerCustomerRef: saved.customerRef || '',
+          cardExpiry: saved.cardExpiry || '',
+          cardLast4: saved.cardLast4 || '',
+          brand: saved.brand || '',
+        };
+      } else if (!isUpdate) {
+        // A brand-new credit order must include the card details.
         return res.status(400).json({ error: 'חסרים פרטי אשראי. נא להזין את פרטי הכרטיס ולנסות שוב.' });
       }
-      const saved = await getPaymentAdapter().saveCard({
-        singleUseToken: token,
-        customer: { fullName: order.fullName, phone: order.phone, email: order.email },
-      });
-      if (!saved.ok) {
-        return res.status(402).json({ error: 'לא הצלחנו לאמת את כרטיס האשראי. בדקו את הפרטים ונסו שוב.' });
-      }
-      order.payment = {
-        method: 'credit',
-        providerCustomerRef: saved.customerRef || '',
-        cardExpiry: saved.cardExpiry || '',
-        cardLast4: saved.cardLast4 || '',
-        brand: saved.brand || '',
-      };
+      // On an update with no new card, updateOrderInPlace keeps the saved card
+      // (or errors if there is none).
     }
 
     // Reject time-limited items submitted after the weekly cutoff.

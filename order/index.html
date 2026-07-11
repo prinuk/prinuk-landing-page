@@ -4553,6 +4553,16 @@
             border-top: 1px solid #cfe2d6;
             color: #8a5a00;
         }
+        .link-btn {
+            background: none;
+            border: none;
+            color: #1f7a5a;
+            font: inherit;
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 6px 0 0;
+        }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
     <script type="text/javascript">
@@ -4893,6 +4903,13 @@
                                 <span>כרטיס אשראי</span>
                             </label>
                         </div>
+                    </div>
+
+                    <div id="savedCardBox" class="card-fields hidden">
+                        <div class="cc-fullrow cc-payment-explain">
+                            <p>💳 <b>כרטיס האשראי מההזמנה שמור</b> — אין צורך להזין אותו שוב. החיוב יתבצע לאחר הליקוט, לפי המשקל בפועל.</p>
+                        </div>
+                        <button type="button" id="replaceCardBtn" class="cc-fullrow link-btn">להזין כרטיס אחר</button>
                     </div>
 
                     <div id="creditCardFields" class="card-fields hidden">
@@ -5261,6 +5278,7 @@
             customerDetailsPanel: document.getElementById('customerDetailsPanel'),
             paymentMethodGroup: document.getElementById('paymentMethodGroup'),
             creditCardFields: document.getElementById('creditCardFields'),
+            savedCardBox: document.getElementById('savedCardBox'),
             marketNoticeModal: document.getElementById('marketNoticeModal'),
             marketNoticeAccept: document.getElementById('marketNoticeAccept'),
             ageGateModal: document.getElementById('ageGateModal'),
@@ -5452,6 +5470,11 @@
                 togglePaymentFields();
             });
         });
+        // Edit mode: switch from the saved card to entering a new one.
+        if (els.replaceCardBtn === undefined) { els.replaceCardBtn = document.getElementById('replaceCardBtn'); }
+        if (els.replaceCardBtn) {
+            els.replaceCardBtn.addEventListener('click', function () { replacingCard = true; togglePaymentFields(); });
+        }
 
         // Preload the Cardcom LowProfile on checkout intent (first focus of the
         // customer details) so the card fields are ready faster when credit is picked.
@@ -5796,6 +5819,7 @@
         // --- Edit an existing order (via emailed magic link) ----------------
         var editState = null;
         var editLinkChecked = false;
+        var replacingCard = false; // edit: true once the customer chooses to enter a new card
 
         function getEditLinkParams() {
             var params = new URLSearchParams(window.location.search);
@@ -5830,7 +5854,8 @@
         }
 
         function enterEditMode(data, params) {
-            editState = { orderId: data.orderId || params.orderId, token: params.token };
+            editState = { orderId: data.orderId || params.orderId, token: params.token, hasCard: !!data.hasCard };
+            replacingCard = false;
 
             // Replace whatever is in the cart with the order being edited.
             resetProducts();
@@ -5851,6 +5876,13 @@
             setInputValue('apartment', data.delivery && data.delivery.apartment);
             setInputValue('notes', data.notes);
             toggleDeliveryFields();
+
+            // Restore the chosen payment method; the customer can still switch it.
+            if (catalog.payments && catalog.payments.enabled && data.paymentMethod) {
+                var pmInput = els.form.querySelector('input[name="paymentMethod"][value="' + cssEscape(data.paymentMethod) + '"]');
+                if (pmInput) { pmInput.checked = true; }
+            }
+            togglePaymentFields();
 
             var result = applyItemsByName(data.items);
             renderSummary();
@@ -7526,8 +7558,10 @@
             setSubmitting(true);
             openStatusModal();
 
-            // Credit orders: tokenize the card first, then POST with the token.
-            var prep = payload.paymentMethod === 'credit'
+            // Credit orders: tokenize the card first, then POST with the token —
+            // UNLESS this is an edit keeping the already-saved card (no re-entry).
+            var keepSavedCard = payload.paymentMethod === 'credit' && editState && editState.hasCard && !replacingCard;
+            var prep = (payload.paymentMethod === 'credit' && !keepSavedCard)
                 ? tokenizeCard().then(function (token) { payload.paymentToken = token; })
                 : Promise.resolve();
 
@@ -7782,7 +7816,9 @@
                 };
             }
 
-            if (getPaymentMethod() === 'credit') {
+            // Keeping the saved card on an edit → no card fields to validate.
+            var keepingSavedCard = getPaymentMethod() === 'credit' && editState && editState.hasCard && !replacingCard;
+            if (getPaymentMethod() === 'credit' && !keepingSavedCard) {
                 var cardError = validateCreditCard();
                 if (cardError) {
                     return cardError;
@@ -8177,6 +8213,11 @@
             if (numSlot) { numSlot.classList.toggle('hidden', !active); }
             if (cvvInput) { cvvInput.classList.toggle('hidden', active); }
             if (cvvSlot) { cvvSlot.classList.toggle('hidden', !active); }
+            // In OPEN FIELDS the real card number + CVV live in Cardcom's iframes.
+            // Kill autofill on the hidden inputs so the browser doesn't fill THEM
+            // (leaving the iframes empty) and break the deal.
+            if (numInput) { numInput.setAttribute('autocomplete', active ? 'off' : 'cc-number'); if (active) { numInput.setAttribute('tabindex', '-1'); } else { numInput.removeAttribute('tabindex'); } }
+            if (cvvInput) { cvvInput.setAttribute('autocomplete', active ? 'off' : 'cc-csc'); if (active) { cvvInput.setAttribute('tabindex', '-1'); } else { cvvInput.removeAttribute('tabindex'); } }
         }
 
         var sumitScriptPromise = null;
@@ -8254,14 +8295,19 @@
         // Reveal the credit-card fields only when "כרטיס אשראי" is chosen.
         function togglePaymentFields() {
             var isCredit = getPaymentMethod() === 'credit';
+            // Editing a credit order with a saved card → show the "card on file"
+            // box instead of the entry fields, unless the customer chose to replace it.
+            var showSaved = isCredit && !!(editState && editState.hasCard) && !replacingCard;
+            if (els.savedCardBox) { els.savedCardBox.classList.toggle('hidden', !showSaved); }
             if (els.creditCardFields) {
-                els.creditCardFields.classList.toggle('hidden', !isCredit);
+                els.creditCardFields.classList.toggle('hidden', !isCredit || showSaved);
             }
             if (isCardcom()) {
-                applyCardcomFieldMode(isCredit);
+                var wantFields = isCredit && !showSaved;
+                applyCardcomFieldMode(wantFields);
                 // Preload the OPEN FIELDS session (with auto-retry) so the iframes
                 // are ready on submit.
-                if (isCredit) { openCardcomFields(); }
+                if (wantFields) { openCardcomFields(); }
             }
         }
 
