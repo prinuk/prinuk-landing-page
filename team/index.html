@@ -400,7 +400,7 @@
     }
     .item-row.missing .miss-toggle { background: var(--danger); color: #fff; border-color: var(--danger); }
 
-    .confirm-msg { color: var(--ink); font-size: 16px; margin: 4px 0; line-height: 1.5; text-align: center; }
+    .confirm-msg { color: var(--ink); font-size: 16px; margin: 4px 0; line-height: 1.5; text-align: center; white-space: pre-line; }
     .finish-msg { color: var(--muted); font-size: 14.5px; margin: 4px 0 4px; line-height: 1.5; }
     .finish-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
     .finish-actions .btn { width: 100%; }
@@ -512,6 +512,7 @@
     .item-weigh { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
     .item-weigh .wkg { width: 92px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit; text-align: center; }
     .wkg-line { font-size: 13px; font-weight: 700; color: var(--fresh, #2e9e4f); }
+    .wkg-warn { margin-top: 6px; padding: 7px 10px; border-radius: 9px; font-size: 14px; font-weight: 800; color: #8a4b00; background: #fff3d6; border: 1.5px solid var(--amber, #e0a020); }
     .weigh-total { margin-top: 10px; padding: 9px 10px; text-align: center; font-size: 15px; background: #eef6ef; border-radius: 10px; }
     .weigh-total:empty { display: none; }
     .settings-wrap { padding: 14px 16px 24px; max-width: 640px; margin: 0 auto; }
@@ -1966,6 +1967,7 @@
                 '<input class="wkg" type="number" min="0" step="' + (it.isWeightPriced ? '0.01' : '1') + '" inputmode="' + (it.isWeightPriced ? 'decimal' : 'numeric') + '" placeholder="' + (it.isWeightPriced ? 'ק״ג בפועל' : 'כמות בפועל') + '" value="' + (it.isWeightPriced ? (it.actualWeightKg != null ? esc(it.actualWeightKg) : '') : (it.actualQuantity != null ? esc(it.actualQuantity) : '')) + '" data-idx="' + idx + '">' +
                 '<span class="wkg-line" data-idx="' + idx + '"></span>' +
               '</div>' +
+              '<div class="wkg-warn" data-idx="' + idx + '" hidden></div>' +
               (it.note ? '<div class="item-note">📝 ' + esc(it.note) + '</div>' : '') +
             '</div>' +
           '</div>';
@@ -2174,6 +2176,22 @@
       if (!d) return;
       showToast('⚠️ ' + it.name + ': ' + (it.isWeightPriced ? 'המשקל' : 'הכמות') + ' שהוזן חורג מאוד מההזמנה (משוער ' + formatMoney(d.estimate) + ' · בפועל ' + formatMoney(d.actual) + ') — בדקו');
     }
+    // Inline warning text for an item card: a big amount deviation, and (for unit
+    // items) a collected-vs-ordered quantity difference. '' = no warning.
+    function itemWarning(it) {
+      var parts = [];
+      if (!it.isWeightPriced) {
+        var ordered = Number(it.quantity) || 0;
+        var cRaw = it.actualQuantity;
+        var collected = (cRaw != null && cRaw !== '') ? Number(cRaw) : null;
+        if (collected != null && collected !== ordered) {
+          parts.push('הוזמן ' + ordered + ' · נאסף ' + collected);
+        }
+      }
+      var d = itemDeviation(it);
+      if (d) parts.push('חריגה מהאומדן (משוער ' + formatMoney(d.estimate) + ' · בפועל ' + formatMoney(d.actual) + ')');
+      return parts.join(' · ');
+    }
     // Whole-order deviation: final total far from the estimate (≥2× or ≤1/2).
     var ORDER_DEVIATION_RATIO = 2;
     function orderDeviation() {
@@ -2191,6 +2209,17 @@
       if (ratio >= ORDER_DEVIATION_RATIO || ratio <= 1 / ORDER_DEVIATION_RATIO) return { estimate: est, actual: act };
       return null;
     }
+    // Which picked items likely caused the order deviation — a big per-item amount
+    // gap, and/or (for unit items) a collected-vs-ordered count change.
+    function deviationSuspects() {
+      var lines = [];
+      state.currentItems.forEach(function (it) {
+        if (!it.picked) return;
+        var w = itemWarning(it);
+        if (w) lines.push('• ' + it.name + ' — ' + w);
+      });
+      return lines;
+    }
 
     function recomputeWeigh() {
       var total = 0;
@@ -2206,6 +2235,13 @@
           if (span) span.textContent = '= ' + formatMoney(lineActual);
         } else if (span) {
           span.textContent = '';
+        }
+        // Inline deviation / quantity-difference warning on the item card.
+        var warnEl = el('detail-view') && el('detail-view').querySelector('.wkg-warn[data-idx="' + idx + '"]');
+        if (warnEl) {
+          var w = itemWarning(it);
+          warnEl.textContent = w ? '⚠️ ' + w : '';
+          warnEl.hidden = !w;
         }
         if (it.picked) total += lineActual;
       });
@@ -3235,7 +3271,9 @@
         doCollect(true);
       };
       if (dev) {
-        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות. להמשיך בכל זאת?')
+        var suspects = deviationSuspects();
+        var detail = suspects.length ? '\n\nלבדוק במיוחד:\n' + suspects.join('\n') : '';
+        askYesNo('⚠️ הסכום הסופי (' + formatMoney(dev.actual) + ') שונה מאוד מהאומדן (' + formatMoney(dev.estimate) + ').\nלבדוק את המשקלים/הכמויות.' + detail + '\n\nלהמשיך בכל זאת?')
           .then(function (ok) { if (ok) proceed(); });
         return;
       }
