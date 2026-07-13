@@ -21,7 +21,6 @@ const {
   createHostedChargeSession,
   finalizeHostedCharge,
   getOrdersPaymentInfo,
-  openCombinedCardSession,
   collectPayment,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
@@ -398,15 +397,6 @@ module.exports = async function handler(req, res) {
         const codes = Array.isArray(body.orderCodes) ? body.orderCodes : [];
         if (!codes.length) return res.status(400).json({ error: 'לא נבחרו הזמנות.' });
         const result = await getOrdersPaymentInfo(codes);
-        return res.json(result);
-      }
-
-      // Open a hosted card session for the card PORTION of a combined/split payment.
-      if (action === 'combined-card-session') {
-        const amountAgorot = Math.round(Number(body.amountAgorot) || 0);
-        if (!(amountAgorot > 0)) return res.status(400).json({ error: 'סכום לא תקין.' });
-        const result = await openCombinedCardSession(amountAgorot, body.description || 'תשלום');
-        if (!result.ok || !result.lowProfileId) return res.status(400).json({ error: result.error || 'לא הצלחנו לפתוח את טופס התשלום.' });
         return res.json(result);
       }
 

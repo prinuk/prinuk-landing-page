@@ -617,8 +617,6 @@
     .pay-remaining { margin-top: 6px; font-weight: 700; font-size: 14px; }
     .pay-remaining.ok { color: var(--fresh, #2e9e4f); }
     .pay-remaining.bad { color: #c0392b; }
-    .pay-card-opt { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; }
-    .pay-card-opt select { width: auto; flex: 1; }
     .cr-pay-summary { padding: 12px 14px; background: #eef6ef; border-radius: 10px; text-align: center; }
     .cr-pay-cust { font-weight: 700; color: var(--ink); }
     .cr-pay-amount { margin-top: 4px; font-size: 17px; color: var(--accent-dark, #2e7d32); }
@@ -2655,7 +2653,7 @@
     // providedLpId: charge against a LowProfile we were handed (two-step hosted
     // POS charge) instead of creating a token-only one. hostedOrderId: the order
     // that LP belongs to (used to fetch a fresh LP on retry).
-    var tkCardcom = { lpId: null, ready: null, master: null, providedLpId: null, hostedOrderId: null, payCardAgorot: null };
+    var tkCardcom = { lpId: null, ready: null, master: null, providedLpId: null, hostedOrderId: null };
     function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
     function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
     function tkCardcomCss() {
@@ -2704,19 +2702,8 @@
     // After a failed attempt the LowProfile is spent + fields lock — rebuild a
     // fresh session so the team can re-enter and retry (only if the slots exist).
     function tkReinitCardcomForRetry() {
-      var payAg = tkCardcom.payCardAgorot;
       tkResetCardcom();
       if (!el('cr-cc-number-slot')) return;
-      // Combined/split payment card portion: fetch a fresh ChargeAndCreateToken LP
-      // for the same amount (a spent LP can't be reused).
-      if (payAg) {
-        api('POST', '', { action: 'combined-card-session', amountAgorot: payAg, description: 'תשלום הזמנות' }).then(function (d) {
-          tkCardcom.providedLpId = (d && d.lowProfileId) || null;
-          if (state.pay) state.pay.lpId = tkCardcom.providedLpId;
-          if (tkCardcom.providedLpId) tkOpenCardcomFields();
-        }).catch(function () { /* leave blank; team can close + retry */ });
-        return;
-      }
       // Hosted (two-step POS) charge: the spent LP can't be reused → get a fresh
       // ChargeAndCreateToken LowProfile for the same order, then reload the fields.
       if (tkCardcom.hostedOrderId) {
@@ -3061,7 +3048,7 @@
     function resetHostedChargeState() {
       var r = state.review;
       if (r) { r.payStep = false; r.hostedOrderId = null; r.hostedLpId = null; r.hostedChargedLp = null; r.hostedAmount = 0; }
-      tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null; tkCardcom.payCardAgorot = null;
+      tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
     }
 
     // Payment step of a two-step POS credit invoice: the order is already created
@@ -3355,19 +3342,20 @@
       api('POST', '', { action: 'payment-info', orderCodes: codes }).then(function (resp) {
         var all = resp.orders || [];
         var paid = all.filter(function (o) { return o.paid; });
-        var orders = all.filter(function (o) { return !o.paid; });
+        // Orders where the customer entered a credit card are charged on that saved
+        // card (per-order) — they're not part of the combine/split-payment flow.
+        var carded = all.filter(function (o) { return !o.paid && o.hasCard; });
+        var orders = all.filter(function (o) { return !o.paid && !o.hasCard; });
         if (paid.length) showToast('דילגנו על ' + paid.length + ' הזמנות ששולמו כבר');
-        if (!orders.length) { showToast('כל ההזמנות שנבחרו כבר שולמו'); return; }
+        if (carded.length) showToast('דילגנו על ' + carded.length + ' הזמנות עם כרטיס אשראי שמור (יש לחייב אותן בנפרד)');
+        if (!orders.length) { showToast('אין הזמנות מתאימות (ללא כרטיס שמור וללא תשלום)'); return; }
         var totalAgorot = orders.reduce(function (s, o) { return s + o.amountAgorot; }, 0);
-        var withCard = orders.filter(function (o) { return o.hasCard; });
         var first = orders[0];
         state.pay = {
           orders: orders, totalAgorot: totalAgorot,
           recipient: { fullName: first.fullName || '', phone: first.phone || '', email: first.email || '' },
           tenders: [{ method: 'credit', amountAgorot: totalAgorot, reference: '' }],
-          cardMode: withCard.length ? 'saved' : 'new',
-          savedCardOrderCode: withCard.length ? withCard[0].orderCode : '',
-          step: 'form', lpId: null, chargedLp: null,
+          step: 'form', chargedLp: null,
         };
         renderPay();
         el('pay-overlay').classList.remove('hidden');
@@ -3402,17 +3390,7 @@
       var rem = payRemainingAgorot();
       tendersHtml += '<div class="pay-remaining' + (Math.abs(rem) > 1 ? ' bad' : ' ok') + '">' +
         (Math.abs(rem) <= 1 ? '✓ מכסה את הסכום' : (rem > 0 ? 'נותר לשלם: ' + formatMoney(rem / 100) : 'עודף: ' + formatMoney(-rem / 100))) + '</div></div>';
-      var cardHtml = '';
-      if (payHasCredit()) {
-        var withCard = p.orders.filter(function (o) { return o.hasCard; });
-        cardHtml = '<div class="pay-sec"><div class="pay-sec-t">כרטיס לחיוב (חלק האשראי)</div>';
-        if (withCard.length) {
-          cardHtml += '<label class="pay-card-opt"><input type="radio" name="pay-card" value="saved"' + (p.cardMode === 'saved' ? ' checked' : '') + '> כרטיס שמור: ' +
-            '<select id="pay-saved-order">' + withCard.map(function (o) { return '<option value="' + esc(o.orderCode) + '"' + (p.savedCardOrderCode === o.orderCode ? ' selected' : '') + '>' + esc(o.orderCode) + ' · ' + esc(o.fullName || '') + '</option>'; }).join('') + '</select></label>';
-        }
-        cardHtml += '<label class="pay-card-opt"><input type="radio" name="pay-card" value="new"' + (p.cardMode === 'new' ? ' checked' : '') + '> הזנת כרטיס חדש</label></div>';
-      }
-      el('pay-body').innerHTML = recipHtml + ordersHtml + tendersHtml + cardHtml + '<div class="cr-total">סה״כ: ' + formatMoney(p.totalAgorot / 100) + '</div>';
+      el('pay-body').innerHTML = recipHtml + ordersHtml + tendersHtml + '<div class="cr-total">סה״כ: ' + formatMoney(p.totalAgorot / 100) + '</div>';
       // Wire events
       var rs = el('pay-recip-select');
       if (rs) rs.addEventListener('change', function () { var parts = this.value.split('|'); p.recipient.phone = parts[0] || ''; p.recipient.fullName = parts.slice(1).join('|') || ''; var nm = el('pay-recip-name'); if (nm) nm.value = p.recipient.fullName; });
@@ -3431,13 +3409,9 @@
       });
       var add = el('pay-add-tender');
       if (add) add.addEventListener('click', function () { p.tenders.push({ method: 'cash', amountAgorot: Math.max(0, payRemainingAgorot()), reference: '' }); renderPay(); });
-      Array.prototype.forEach.call(el('pay-body').querySelectorAll('input[name="pay-card"]'), function (rb) {
-        rb.addEventListener('change', function () { p.cardMode = this.value; renderPay(); });
-      });
-      var so = el('pay-saved-order'); if (so) so.addEventListener('change', function () { p.savedCardOrderCode = this.value; });
-      var newCard = payHasCredit() && p.cardMode === 'new';
       el('pay-confirm').disabled = false;
-      el('pay-confirm').textContent = newCard ? ('💳 המשך לתשלום · ' + formatMoney(p.totalAgorot / 100)) : ('חייב ' + formatMoney(p.totalAgorot / 100));
+      // A credit portion means a card must be entered → move to the card step next.
+      el('pay-confirm').textContent = payHasCredit() ? ('💳 המשך לתשלום · ' + formatMoney(p.totalAgorot / 100)) : ('אישור · ' + formatMoney(p.totalAgorot / 100));
     }
     // Live-update just the remaining line without a full re-render (keeps focus).
     function payUpdateRemaining() {
@@ -3459,11 +3433,12 @@
         tkCardBlockHtml(true);
       el('pay-confirm').disabled = false;
       el('pay-confirm').textContent = '💳 חייב ' + formatMoney(cardPortion / 100);
+      // Tokenize the card here (CreateTokenOnly, the proven path); the card portion
+      // is charged server-side in collect-payment. providedLpId stays null so
+      // tkEnsureCardcom opens a fresh token-only session via /api/payment-init.
       if (tkIsCardcom()) {
         tkResetCardcom();
         tkCardcom.hostedOrderId = null;
-        tkCardcom.payCardAgorot = cardPortion; // fetch a fresh LP for this amount on retry
-        tkCardcom.providedLpId = p.lpId;
         tkOpenCardcomFields();
       }
     }
@@ -3477,8 +3452,7 @@
         recipient: p.recipient,
         tenders: p.tenders.map(function (t) { return { method: t.method, amountAgorot: t.amountAgorot, reference: t.reference || '' }; }),
       };
-      if (lpId) payload.lowProfileId = lpId;
-      else if (payHasCredit() && p.cardMode === 'saved') payload.savedCardOrderCode = p.savedCardOrderCode;
+      if (lpId) payload.newCardLpId = lpId;
       api('POST', '', payload).then(function (resp) {
         el('pay-overlay').classList.add('hidden'); resetHostedChargeState();
         showToast('✅ נגבה ' + (resp.amount != null ? formatMoney(resp.amount) : '') + ' · חשבונית אחת ל-' + (resp.orderCount || p.orders.length) + ' הזמנות');
@@ -3509,16 +3483,12 @@
       // Form step: validate tenders + recipient.
       if (Math.abs(payRemainingAgorot()) > 1) { showToast('סכום אמצעי התשלום אינו שווה לסה״כ'); return; }
       if (!String(p.recipient.fullName || '').trim()) { showToast('יש להזין שם לחשבונית'); return; }
-      if (payHasCredit() && p.cardMode === 'new') {
-        // Open a hosted session for the card portion, then go to the card step.
-        var b = el('pay-confirm'); b.disabled = true; b.textContent = 'פותח תשלום…';
-        api('POST', '', { action: 'combined-card-session', amountAgorot: payCreditAgorot(), description: 'תשלום הזמנות' }).then(function (resp) {
-          if (!resp.lowProfileId) { b.disabled = false; renderPay(); showToast('לא הצלחנו לפתוח את טופס התשלום'); return; }
-          p.lpId = resp.lowProfileId; p.chargedLp = null; p.step = 'card'; renderPay();
-        }).catch(function (err) { b.disabled = false; renderPay(); if (err && err.message !== 'unauthorized') showToast(err.message || 'שגיאה'); });
+      if (payHasCredit()) {
+        // A credit portion → go to the card-entry step (tokenize there, charge server-side).
+        p.chargedLp = null; p.step = 'card'; renderPay();
         return;
       }
-      // Saved card and/or cash/external only → collect in one server call.
+      // Cash/external only → collect in one server call.
       doCollectPay(null);
     }
 
