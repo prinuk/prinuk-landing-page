@@ -2566,14 +2566,6 @@
       for (var i = d.length - 1; i >= 0; i--) { var n = +d[i]; if (a) { n *= 2; if (n > 9) n -= 9; } s += n; a = !a; }
       return s % 10 === 0;
     }
-    function tkValidId(v) {
-      var id = String(v || '').replace(/\D/g, '');
-      if (!id.length || id.length > 9) return false;
-      while (id.length < 9) id = '0' + id;
-      var s = 0;
-      for (var i = 0; i < 9; i++) { var n = +id[i] * ((i % 2) + 1); if (n > 9) n -= 9; s += n; }
-      return s % 10 === 0;
-    }
     function tkValidateCard() {
       // Cardcom OPEN FIELDS: card number + CVV are in Cardcom iframes (self-validated);
       // only check the fields we own here (expiry + ת״ז).
@@ -2597,7 +2589,7 @@
       if (!/^\d{2}$/.test(yy)) return 'שנת תוקף לא תקינה';
       var now = new Date(); var fy = 2000 + parseInt(yy, 10);
       if (fy < now.getFullYear() || (fy === now.getFullYear() && mm < now.getMonth() + 1)) return 'תוקף הכרטיס פג';
-      if (!tkValidId(el('cr-cc-id').value)) return 'ת״ז לא תקינה';
+      // ת״ז is optional — don't block (blank or a mismatched checksum is allowed).
       return '';
     }
     var tkSumitScript = null;
@@ -3336,6 +3328,18 @@
     }
 
     function openCollectPayment() {
+      var codes = selectedIds();
+      if (!codes.length) { showToast('לא נבחרו הזמנות'); return; }
+      // Payments config drives whether we use Cardcom's iframes vs. manual entry —
+      // load it first if missing (otherwise the card step falls back to manual).
+      if (!state.payments) {
+        api('GET', '?action=settings').then(function (d) { state.settings = d.settings || state.settings || {}; state.payments = d.payments || { enabled: false }; })
+          .then(openCollectPaymentInner).catch(function () { openCollectPaymentInner(); });
+        return;
+      }
+      openCollectPaymentInner();
+    }
+    function openCollectPaymentInner() {
       var codes = selectedIds();
       if (!codes.length) { showToast('לא נבחרו הזמנות'); return; }
       // Clear any stale charge-modal card block so its ids don't collide with ours.
