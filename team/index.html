@@ -604,6 +604,21 @@
     .cr-order-disc label { font-weight: 700; flex: 1; }
     .cr-order-disc input { width: 60px; text-align: center; }
     .cr-total { margin-top: 14px; font-size: 18px; font-weight: 800; text-align: center; color: var(--accent-dark); }
+    .pay-sec { margin-bottom: 14px; }
+    .pay-sec-t { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+    .pay-sec input, .pay-sec select { width: 100%; }
+    .pay-orders { display: flex; flex-direction: column; gap: 4px; }
+    .pay-order { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 4px 0; border-bottom: 1px dashed var(--line, #e3e8e0); }
+    .pay-tender { display: flex; gap: 6px; align-items: center; margin-bottom: 7px; }
+    .pay-tender .pay-t-method { flex: 0 0 42%; }
+    .pay-tender .pay-t-amount { flex: 1; min-width: 60px; }
+    .pay-tender .pay-t-ref { flex: 1; min-width: 60px; }
+    .pay-tender .pay-t-rm { flex: none; width: 32px; height: 32px; border: 1px solid var(--line, #e3e8e0); background: #fff; border-radius: 8px; cursor: pointer; color: #c0392b; }
+    .pay-remaining { margin-top: 6px; font-weight: 700; font-size: 14px; }
+    .pay-remaining.ok { color: var(--fresh, #2e9e4f); }
+    .pay-remaining.bad { color: #c0392b; }
+    .pay-card-opt { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; }
+    .pay-card-opt select { width: auto; flex: 1; }
     .cr-pay-summary { padding: 12px 14px; background: #eef6ef; border-radius: 10px; text-align: center; }
     .cr-pay-cust { font-weight: 700; color: var(--ink); }
     .cr-pay-amount { margin-top: 4px; font-size: 17px; color: var(--accent-dark, #2e7d32); }
@@ -788,6 +803,7 @@
         <button class="btn" id="print-full">🖨️ הדפס הכל</button>
         <button class="btn" id="print-picked">🖨️ סיכום ליקוט</button>
         <button class="btn" id="print-headers">🖨️ כותרות בלבד</button>
+        <button class="btn hidden" id="collect-pay-btn">💳 גביית תשלום</button>
       </div>
 
       <div class="list" id="list"></div>
@@ -1047,6 +1063,18 @@
       <div class="finish-actions">
         <button type="button" class="btn btn-primary" id="charge-confirm">אישור וחיוב</button>
         <button type="button" class="btn-link" id="charge-cancel">ביטול</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collect payment for one or more selected orders as a single invoice -->
+  <div id="pay-overlay" class="modal-overlay hidden">
+    <div class="modal charge-modal">
+      <h2 id="pay-title">💳 גביית תשלום</h2>
+      <div id="pay-body"></div>
+      <div class="finish-actions">
+        <button type="button" class="btn btn-primary" id="pay-confirm">חייב</button>
+        <button type="button" class="btn-link" id="pay-cancel">ביטול</button>
       </div>
     </div>
   </div>
@@ -1662,6 +1690,9 @@
       if (pf) pf.textContent = n ? ('🖨️ הדפס נבחרות (' + n + ')') : '🖨️ הדפס הכל';
       if (pp) pp.textContent = n ? ('🖨️ סיכום ליקוט (' + n + ')') : '🖨️ סיכום ליקוט';
       if (ph) ph.textContent = n ? ('🖨️ כותרות נבחרות (' + n + ')') : '🖨️ כותרות בלבד';
+      // Collect payment acts on the ticked orders → show only when something is ticked.
+      var cpb = el('collect-pay-btn');
+      if (cpb) { cpb.classList.toggle('hidden', n === 0); cpb.textContent = '💳 גביית תשלום (' + n + ')'; }
     }
     el('select-all-orders').addEventListener('change', function () {
       var vis = visibleOrderIds();
@@ -2624,7 +2655,7 @@
     // providedLpId: charge against a LowProfile we were handed (two-step hosted
     // POS charge) instead of creating a token-only one. hostedOrderId: the order
     // that LP belongs to (used to fetch a fresh LP on retry).
-    var tkCardcom = { lpId: null, ready: null, master: null, providedLpId: null, hostedOrderId: null };
+    var tkCardcom = { lpId: null, ready: null, master: null, providedLpId: null, hostedOrderId: null, payCardAgorot: null };
     function tkIsCardcom() { return ((state.payments && state.payments.provider) || '') === 'cardcom'; }
     function tkCardcomBase() { return (state.payments && state.payments.baseUrl) || 'https://secure.cardcom.solutions'; }
     function tkCardcomCss() {
@@ -2673,8 +2704,19 @@
     // After a failed attempt the LowProfile is spent + fields lock — rebuild a
     // fresh session so the team can re-enter and retry (only if the slots exist).
     function tkReinitCardcomForRetry() {
+      var payAg = tkCardcom.payCardAgorot;
       tkResetCardcom();
       if (!el('cr-cc-number-slot')) return;
+      // Combined/split payment card portion: fetch a fresh ChargeAndCreateToken LP
+      // for the same amount (a spent LP can't be reused).
+      if (payAg) {
+        api('POST', '', { action: 'combined-card-session', amountAgorot: payAg, description: 'תשלום הזמנות' }).then(function (d) {
+          tkCardcom.providedLpId = (d && d.lowProfileId) || null;
+          if (state.pay) state.pay.lpId = tkCardcom.providedLpId;
+          if (tkCardcom.providedLpId) tkOpenCardcomFields();
+        }).catch(function () { /* leave blank; team can close + retry */ });
+        return;
+      }
       // Hosted (two-step POS) charge: the spent LP can't be reused → get a fresh
       // ChargeAndCreateToken LowProfile for the same order, then reload the fields.
       if (tkCardcom.hostedOrderId) {
@@ -2807,8 +2849,9 @@
           var cust = r.customer || {};
           // Cardcom requires a card-owner name. Use the POS customer name, or the
           // existing order's customer name when charging a saved/manual card.
-          var ownerName = cust.fullName || (state.current && state.current.fullName) || '';
-          var ownerPhone = cust.phone || (state.current && state.current.phone) || '';
+          var payRecip = (state.pay && state.pay.recipient) || {};
+          var ownerName = cust.fullName || payRecip.fullName || (state.current && state.current.fullName) || '';
+          var ownerPhone = cust.phone || payRecip.phone || (state.current && state.current.phone) || '';
           tkCardcom.master.contentWindow.postMessage({
             action: 'doTransaction',
             cardOwnerId: citizen,
@@ -3018,7 +3061,7 @@
     function resetHostedChargeState() {
       var r = state.review;
       if (r) { r.payStep = false; r.hostedOrderId = null; r.hostedLpId = null; r.hostedChargedLp = null; r.hostedAmount = 0; }
-      tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
+      tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null; tkCardcom.payCardAgorot = null;
     }
 
     // Payment step of a two-step POS credit invoice: the order is already created
@@ -3285,6 +3328,198 @@
         return;
       }
       post();
+    }
+
+    // ===== Collect payment for selected orders → ONE invoice (split/combined) =====
+    var PAY_METHODS = [['credit', 'אשראי'], ['cash', 'מזומן'], ['transfer', 'העברה בנקאית'], ['bit', 'ביט'], ['paybox', 'פייבוקס'], ['paypal', 'PayPal']];
+    function payIsExternal(m) { return m === 'transfer' || m === 'bit' || m === 'paybox' || m === 'paypal'; }
+    function payHasCredit() { return (state.pay.tenders || []).some(function (t) { return t.method === 'credit'; }); }
+    function payCreditAgorot() { return (state.pay.tenders || []).filter(function (t) { return t.method === 'credit'; }).reduce(function (s, t) { return s + (t.amountAgorot || 0); }, 0); }
+    function payTenderSum() { return (state.pay.tenders || []).reduce(function (s, t) { return s + (t.amountAgorot || 0); }, 0); }
+    function payRemainingAgorot() { return state.pay.totalAgorot - payTenderSum(); }
+    function payDistinctCustomers() {
+      var seen = {}, out = [];
+      (state.pay.orders || []).forEach(function (o) {
+        var key = (o.phone || '') + '|' + (o.fullName || '');
+        if (seen[key]) return; seen[key] = true;
+        out.push({ fullName: o.fullName || '', phone: o.phone || '', email: o.email || '' });
+      });
+      return out;
+    }
+
+    function openCollectPayment() {
+      var codes = selectedIds();
+      if (!codes.length) { showToast('לא נבחרו הזמנות'); return; }
+      // Clear any stale charge-modal card block so its ids don't collide with ours.
+      var cb = el('charge-body'); if (cb) cb.innerHTML = '';
+      api('POST', '', { action: 'payment-info', orderCodes: codes }).then(function (resp) {
+        var all = resp.orders || [];
+        var paid = all.filter(function (o) { return o.paid; });
+        var orders = all.filter(function (o) { return !o.paid; });
+        if (paid.length) showToast('דילגנו על ' + paid.length + ' הזמנות ששולמו כבר');
+        if (!orders.length) { showToast('כל ההזמנות שנבחרו כבר שולמו'); return; }
+        var totalAgorot = orders.reduce(function (s, o) { return s + o.amountAgorot; }, 0);
+        var withCard = orders.filter(function (o) { return o.hasCard; });
+        var first = orders[0];
+        state.pay = {
+          orders: orders, totalAgorot: totalAgorot,
+          recipient: { fullName: first.fullName || '', phone: first.phone || '', email: first.email || '' },
+          tenders: [{ method: 'credit', amountAgorot: totalAgorot, reference: '' }],
+          cardMode: withCard.length ? 'saved' : 'new',
+          savedCardOrderCode: withCard.length ? withCard[0].orderCode : '',
+          step: 'form', lpId: null, chargedLp: null,
+        };
+        renderPay();
+        el('pay-overlay').classList.remove('hidden');
+      }).catch(function (err) { if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בטעינת ההזמנות'); });
+    }
+
+    function renderPay() {
+      var p = state.pay;
+      if (p.step === 'card') { renderPayCardStep(); return; }
+      el('pay-title').textContent = '💳 גביית תשלום (' + p.orders.length + ')';
+      var custs = payDistinctCustomers();
+      var recipHtml = '<div class="pay-sec"><div class="pay-sec-t">שם לחשבונית</div>';
+      if (custs.length > 1) {
+        recipHtml += '<select id="pay-recip-select">' + custs.map(function (c) {
+          return '<option value="' + esc(c.phone) + '|' + esc(c.fullName) + '"' + (p.recipient.fullName === c.fullName && p.recipient.phone === c.phone ? ' selected' : '') + '>' + esc(c.fullName || 'לקוח') + (c.phone ? ' · ' + esc(c.phone) : '') + '</option>';
+        }).join('') + '</select>';
+      }
+      recipHtml += '<input id="pay-recip-name" placeholder="שם בחשבונית" value="' + esc(p.recipient.fullName || '') + '"></div>';
+      var ordersHtml = '<div class="pay-sec"><div class="pay-sec-t">הזמנות</div><div class="pay-orders">' +
+        p.orders.map(function (o) { return '<div class="pay-order"><span>' + esc(o.orderCode) + ' · ' + esc(o.fullName || '') + '</span><b>' + formatMoney(o.amount) + '</b></div>'; }).join('') +
+        '</div></div>';
+      var tendersHtml = '<div class="pay-sec"><div class="pay-sec-t">אמצעי תשלום</div>';
+      p.tenders.forEach(function (t, i) {
+        tendersHtml += '<div class="pay-tender" data-i="' + i + '">' +
+          '<select class="pay-t-method" data-i="' + i + '">' + PAY_METHODS.map(function (m) { return '<option value="' + m[0] + '"' + (t.method === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select>' +
+          '<input class="pay-t-amount" data-i="' + i + '" type="number" min="0" step="0.01" inputmode="decimal" value="' + (t.amountAgorot ? (t.amountAgorot / 100) : '') + '">' +
+          (payIsExternal(t.method) ? '<input class="pay-t-ref" data-i="' + i + '" placeholder="אסמכתא" value="' + esc(t.reference || '') + '">' : '') +
+          (p.tenders.length > 1 ? '<button class="pay-t-rm" data-i="' + i + '" title="הסר">✕</button>' : '') +
+          '</div>';
+      });
+      tendersHtml += '<button class="btn btn-ghost" id="pay-add-tender">➕ הוסף אמצעי תשלום</button>';
+      var rem = payRemainingAgorot();
+      tendersHtml += '<div class="pay-remaining' + (Math.abs(rem) > 1 ? ' bad' : ' ok') + '">' +
+        (Math.abs(rem) <= 1 ? '✓ מכסה את הסכום' : (rem > 0 ? 'נותר לשלם: ' + formatMoney(rem / 100) : 'עודף: ' + formatMoney(-rem / 100))) + '</div></div>';
+      var cardHtml = '';
+      if (payHasCredit()) {
+        var withCard = p.orders.filter(function (o) { return o.hasCard; });
+        cardHtml = '<div class="pay-sec"><div class="pay-sec-t">כרטיס לחיוב (חלק האשראי)</div>';
+        if (withCard.length) {
+          cardHtml += '<label class="pay-card-opt"><input type="radio" name="pay-card" value="saved"' + (p.cardMode === 'saved' ? ' checked' : '') + '> כרטיס שמור: ' +
+            '<select id="pay-saved-order">' + withCard.map(function (o) { return '<option value="' + esc(o.orderCode) + '"' + (p.savedCardOrderCode === o.orderCode ? ' selected' : '') + '>' + esc(o.orderCode) + ' · ' + esc(o.fullName || '') + '</option>'; }).join('') + '</select></label>';
+        }
+        cardHtml += '<label class="pay-card-opt"><input type="radio" name="pay-card" value="new"' + (p.cardMode === 'new' ? ' checked' : '') + '> הזנת כרטיס חדש</label></div>';
+      }
+      el('pay-body').innerHTML = recipHtml + ordersHtml + tendersHtml + cardHtml + '<div class="cr-total">סה״כ: ' + formatMoney(p.totalAgorot / 100) + '</div>';
+      // Wire events
+      var rs = el('pay-recip-select');
+      if (rs) rs.addEventListener('change', function () { var parts = this.value.split('|'); p.recipient.phone = parts[0] || ''; p.recipient.fullName = parts.slice(1).join('|') || ''; var nm = el('pay-recip-name'); if (nm) nm.value = p.recipient.fullName; });
+      var rn = el('pay-recip-name'); if (rn) rn.addEventListener('input', function () { p.recipient.fullName = this.value; });
+      Array.prototype.forEach.call(el('pay-body').querySelectorAll('.pay-t-method'), function (sel) {
+        sel.addEventListener('change', function () { p.tenders[+this.getAttribute('data-i')].method = this.value; renderPay(); });
+      });
+      Array.prototype.forEach.call(el('pay-body').querySelectorAll('.pay-t-amount'), function (inp) {
+        inp.addEventListener('input', function () { p.tenders[+this.getAttribute('data-i')].amountAgorot = Math.max(0, Math.round((Number(this.value) || 0) * 100)); payUpdateRemaining(); });
+      });
+      Array.prototype.forEach.call(el('pay-body').querySelectorAll('.pay-t-ref'), function (inp) {
+        inp.addEventListener('input', function () { p.tenders[+this.getAttribute('data-i')].reference = this.value; });
+      });
+      Array.prototype.forEach.call(el('pay-body').querySelectorAll('.pay-t-rm'), function (btn) {
+        btn.addEventListener('click', function () { p.tenders.splice(+this.getAttribute('data-i'), 1); renderPay(); });
+      });
+      var add = el('pay-add-tender');
+      if (add) add.addEventListener('click', function () { p.tenders.push({ method: 'cash', amountAgorot: Math.max(0, payRemainingAgorot()), reference: '' }); renderPay(); });
+      Array.prototype.forEach.call(el('pay-body').querySelectorAll('input[name="pay-card"]'), function (rb) {
+        rb.addEventListener('change', function () { p.cardMode = this.value; renderPay(); });
+      });
+      var so = el('pay-saved-order'); if (so) so.addEventListener('change', function () { p.savedCardOrderCode = this.value; });
+      var newCard = payHasCredit() && p.cardMode === 'new';
+      el('pay-confirm').disabled = false;
+      el('pay-confirm').textContent = newCard ? ('💳 המשך לתשלום · ' + formatMoney(p.totalAgorot / 100)) : ('חייב ' + formatMoney(p.totalAgorot / 100));
+    }
+    // Live-update just the remaining line without a full re-render (keeps focus).
+    function payUpdateRemaining() {
+      var rem = payRemainingAgorot();
+      var el2 = el('pay-body') && el('pay-body').querySelector('.pay-remaining');
+      if (el2) {
+        el2.className = 'pay-remaining' + (Math.abs(rem) > 1 ? ' bad' : ' ok');
+        el2.textContent = Math.abs(rem) <= 1 ? '✓ מכסה את הסכום' : (rem > 0 ? 'נותר לשלם: ' + formatMoney(rem / 100) : 'עודף: ' + formatMoney(-rem / 100));
+      }
+    }
+    function renderPayCardStep() {
+      var p = state.pay;
+      el('pay-title').textContent = '💳 תשלום באשראי';
+      var cardPortion = payCreditAgorot();
+      var rest = p.totalAgorot - cardPortion;
+      el('pay-body').innerHTML =
+        '<div class="cr-pay-summary"><div class="cr-pay-amount">חלק האשראי לחיוב: <b>' + formatMoney(cardPortion / 100) + '</b></div>' +
+          (rest > 0 ? '<div class="field-hint">שאר הסכום (' + formatMoney(rest / 100) + ') יירשם בחשבונית לפי אמצעי התשלום שנבחרו.</div>' : '') + '</div>' +
+        tkCardBlockHtml(true);
+      el('pay-confirm').disabled = false;
+      el('pay-confirm').textContent = '💳 חייב ' + formatMoney(cardPortion / 100);
+      if (tkIsCardcom()) {
+        tkResetCardcom();
+        tkCardcom.hostedOrderId = null;
+        tkCardcom.payCardAgorot = cardPortion; // fetch a fresh LP for this amount on retry
+        tkCardcom.providedLpId = p.lpId;
+        tkOpenCardcomFields();
+      }
+    }
+
+    function doCollectPay(lpId) {
+      var p = state.pay;
+      var b = el('pay-confirm'); b.disabled = true; b.textContent = 'מבצע תשלום…';
+      var payload = {
+        action: 'collect-payment',
+        orderCodes: p.orders.map(function (o) { return o.orderCode; }),
+        recipient: p.recipient,
+        tenders: p.tenders.map(function (t) { return { method: t.method, amountAgorot: t.amountAgorot, reference: t.reference || '' }; }),
+      };
+      if (lpId) payload.lowProfileId = lpId;
+      else if (payHasCredit() && p.cardMode === 'saved') payload.savedCardOrderCode = p.savedCardOrderCode;
+      api('POST', '', payload).then(function (resp) {
+        el('pay-overlay').classList.add('hidden'); resetHostedChargeState();
+        showToast('✅ נגבה ' + (resp.amount != null ? formatMoney(resp.amount) : '') + ' · חשבונית אחת ל-' + (resp.orderCount || p.orders.length) + ' הזמנות');
+        state.selected = {};
+        loadOrders();
+      }).catch(function (err) {
+        b.disabled = false;
+        b.textContent = p.step === 'card' ? '↻ נסה שוב' : ('חייב ' + formatMoney(p.totalAgorot / 100));
+        if (err && err.message !== 'unauthorized') showToast(err.message || 'שגיאה בגביית התשלום');
+      });
+    }
+
+    function submitPay() {
+      var p = state.pay;
+      if (!p) return;
+      // Card step: submit the hosted fields for the card portion → then collect.
+      if (p.step === 'card') {
+        if (p.chargedLp) { doCollectPay(p.chargedLp); return; } // charged already → only finalize
+        var cErr = tkValidateCard(); if (cErr) { el('cr-cc-error').textContent = cErr; return; }
+        el('cr-cc-error').textContent = '';
+        var cb = el('pay-confirm'); cb.disabled = true; cb.textContent = 'מחייב…';
+        tkCardcomTokenize().then(function (lpId) { p.chargedLp = lpId; doCollectPay(lpId); }).catch(function (e) {
+          cb.disabled = false; cb.textContent = '💳 חייב ' + formatMoney(payCreditAgorot() / 100);
+          el('cr-cc-error').textContent = e.message || 'שגיאה בחיוב';
+        });
+        return;
+      }
+      // Form step: validate tenders + recipient.
+      if (Math.abs(payRemainingAgorot()) > 1) { showToast('סכום אמצעי התשלום אינו שווה לסה״כ'); return; }
+      if (!String(p.recipient.fullName || '').trim()) { showToast('יש להזין שם לחשבונית'); return; }
+      if (payHasCredit() && p.cardMode === 'new') {
+        // Open a hosted session for the card portion, then go to the card step.
+        var b = el('pay-confirm'); b.disabled = true; b.textContent = 'פותח תשלום…';
+        api('POST', '', { action: 'combined-card-session', amountAgorot: payCreditAgorot(), description: 'תשלום הזמנות' }).then(function (resp) {
+          if (!resp.lowProfileId) { b.disabled = false; renderPay(); showToast('לא הצלחנו לפתוח את טופס התשלום'); return; }
+          p.lpId = resp.lowProfileId; p.chargedLp = null; p.step = 'card'; renderPay();
+        }).catch(function (err) { b.disabled = false; renderPay(); if (err && err.message !== 'unauthorized') showToast(err.message || 'שגיאה'); });
+        return;
+      }
+      // Saved card and/or cash/external only → collect in one server call.
+      doCollectPay(null);
     }
 
     // Persist in-progress collection locally so leaving the page doesn't lose it.
@@ -3890,6 +4125,10 @@
     el('charge-confirm').addEventListener('click', submitChargeReview);
     el('new-invoice-btn').addEventListener('click', openNewInvoice);
     el('charge-overlay').addEventListener('click', function (e) { if (e.target === this) { el('charge-overlay').classList.add('hidden'); resetHostedChargeState(); } });
+    el('collect-pay-btn').addEventListener('click', openCollectPayment);
+    el('pay-confirm').addEventListener('click', submitPay);
+    el('pay-cancel').addEventListener('click', function () { el('pay-overlay').classList.add('hidden'); resetHostedChargeState(); });
+    el('pay-overlay').addEventListener('click', function (e) { if (e.target === this) { el('pay-overlay').classList.add('hidden'); resetHostedChargeState(); } });
     el('pf-cancel').addEventListener('click', closeProductForm);
     el('modal-overlay').addEventListener('click', function (e) { if (e.target === this) closeProductForm(); });
     el('prod-search').addEventListener('input', renderProducts);

@@ -20,6 +20,9 @@ const {
   createManualOrder,
   createHostedChargeSession,
   finalizeHostedCharge,
+  getOrdersPaymentInfo,
+  openCombinedCardSession,
+  collectPayment,
   adminUpdateOrder,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
@@ -387,6 +390,30 @@ module.exports = async function handler(req, res) {
         if (!oid || !lpId) return res.status(400).json({ error: 'בקשה לא תקינה.' });
         const result = await finalizeHostedCharge(oid, lpId);
         if (!result.ok) return res.status(400).json({ error: result.error || 'החיוב לא הושלם.' });
+        return res.json(result);
+      }
+
+      // Combined/split payment across selected orders → info for the modal.
+      if (action === 'payment-info') {
+        const codes = Array.isArray(body.orderCodes) ? body.orderCodes : [];
+        if (!codes.length) return res.status(400).json({ error: 'לא נבחרו הזמנות.' });
+        const result = await getOrdersPaymentInfo(codes);
+        return res.json(result);
+      }
+
+      // Open a hosted card session for the card PORTION of a combined/split payment.
+      if (action === 'combined-card-session') {
+        const amountAgorot = Math.round(Number(body.amountAgorot) || 0);
+        if (!(amountAgorot > 0)) return res.status(400).json({ error: 'סכום לא תקין.' });
+        const result = await openCombinedCardSession(amountAgorot, body.description || 'תשלום');
+        if (!result.ok || !result.lowProfileId) return res.status(400).json({ error: result.error || 'לא הצלחנו לפתוח את טופס התשלום.' });
+        return res.json(result);
+      }
+
+      // Collect payment (any mix of methods) for selected orders as ONE invoice.
+      if (action === 'collect-payment') {
+        const result = await collectPayment(body || {});
+        if (!result.ok) return res.status(400).json(result);
         return res.json(result);
       }
 
