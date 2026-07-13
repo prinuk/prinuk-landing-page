@@ -2659,9 +2659,6 @@
         + '#cvvField{padding:0 12px;text-align:center;}';
     }
     function tkReviewGrandAgorot() {
-      // Collect-payment card step tokenizes for the credit portion — Cardcom's J2
-      // verify needs a real amount (a ₪0 token session is declined "חיוב נכשל").
-      if (state.pay && state.pay.step === 'card') return payCreditAgorot();
       var r = state.review; if (!r) return 0;
       var total = r.items.reduce(function (s, it) { return s + crNet(it); }, 0);
       var grand = Math.max(0, total - crResolveDiscount(total, r.orderDiscountValue, r.orderDiscountType)) + (Number(r.delivery) || 0);
@@ -3044,7 +3041,6 @@
     function resetHostedChargeState() {
       var r = state.review;
       if (r) { r.payStep = false; r.hostedOrderId = null; r.hostedLpId = null; r.hostedChargedLp = null; r.hostedAmount = 0; }
-      state.pay = null; // clear the collect-payment session (its step drives tkReviewGrandAgorot)
       tkCardcom.hostedOrderId = null; tkCardcom.providedLpId = null;
     }
 
