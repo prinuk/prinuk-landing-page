@@ -2584,8 +2584,9 @@
         if (!/^\d{2}$/.test(yyC)) return 'שנת תוקף לא תקינה';
         var nowC = new Date(); var fyC = 2000 + parseInt(yyC, 10);
         if (fyC < nowC.getFullYear() || (fyC === nowC.getFullYear() && mmC < nowC.getMonth() + 1)) return 'תוקף הכרטיס פג';
-        var idv = (el('cr-cc-id').value || '').replace(/\D/g, '');
-        if (idv && !tkValidId(idv)) return 'ת״ז לא תקינה'; // optional — blank → 000000000 placeholder
+        // ת״ז is optional and NOT checksum-blocked — Cardcom accepts a placeholder
+        // (blank → 000000000) and does its own card validation (also allows foreign
+        // cardholders). So we never reject on the ת״ז here.
         return '';
       }
       var num = (el('cr-cc-number').value || '').replace(/\D/g, '');
