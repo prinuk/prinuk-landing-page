@@ -8493,9 +8493,9 @@
                 if (!/^\d{2}$/.test(ccYearEl && ccYearEl.value)) return { message: 'שנת התוקף אינה תקינה.', field: ccYearEl };
                 var expMsgC = expiryError(true);
                 if (expMsgC) return { message: expMsgC, field: ccMonthEl };
-                var ccCitizenEl = document.getElementById('ccCitizen');
-                var citValC = (ccCitizenEl && ccCitizenEl.value || '').replace(/\D/g, '');
-                if (citValC && !isValidIsraeliId(citValC)) return { message: 'תעודת הזהות אינה תקינה.', field: ccCitizenEl }; // optional
+                // ת״ז is optional and NOT blocked here — Cardcom accepts a placeholder
+                // (blank → 000000000) and validates the card itself. A soft hint still
+                // shows on blur, but it never prevents submitting.
                 return null;
             }
             var num = document.getElementById('ccNumber');
