@@ -7821,6 +7821,7 @@
             if (getPaymentMethod() === 'credit' && !keepingSavedCard) {
                 var cardError = validateCreditCard();
                 if (cardError) {
+                    logCardFailure('validate', cardError.message);
                     return cardError;
                 }
             }
@@ -8148,6 +8149,28 @@
             var r = String(reason || '').trim();
             return 'אישור התשלום נכשל' + (r ? ': ' + r : '') + '. שימו לב: כרטיסי אמריקן אקספרס, דיינרס וכרטיסי תייר / חו״ל אינם נתמכים — נא לנסות כרטיס ישראלי אחר.';
         }
+        // Best-effort beacon so a card failure that never reaches our server (a
+        // Cardcom tokenize decline, or a client-side validation block) still leaves
+        // a queryable record of WHY. NEVER include card data — only the reason.
+        function logCardFailure(stage, reason) {
+            try {
+                var nameEl = document.getElementById('fullName');
+                var phoneEl = document.getElementById('phone');
+                var payload = JSON.stringify({
+                    stage: stage,
+                    reason: String(reason == null ? '' : reason).slice(0, 400),
+                    provider: (catalog.payments && catalog.payments.provider) || '',
+                    name: (nameEl && nameEl.value) || '',
+                    phone: (phoneEl && phoneEl.value) || '',
+                    ua: (navigator.userAgent || '').slice(0, 240)
+                });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/card-failure', new Blob([payload], { type: 'application/json' }));
+                } else {
+                    fetch('/api/card-failure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true });
+                }
+            } catch (e) { /* logging must never break checkout */ }
+        }
         // Run the card deal inside the iframes and resolve with the LowProfileId.
         function cardcomTokenize() {
             return ensureCardcom().then(function () {
@@ -8159,13 +8182,14 @@
                         if (msg.action === 'HandleSubmit') {
                             cleanup();
                             if (msg.data && msg.data.IsSuccess) { resolve(cardcom.lpId); }
-                            else { reject(new Error(cardcomFailMessage(msg.data && msg.data.Description))); }
+                            else { logCardFailure('cardcom_submit', (msg.data && msg.data.Description) || 'IsSuccess=false'); reject(new Error(cardcomFailMessage(msg.data && msg.data.Description))); }
                         } else if (msg.action === 'HandleEror') {
                             cleanup();
+                            logCardFailure('cardcom_error', msg.message);
                             reject(new Error(cardcomFailMessage(msg.message)));
                         }
                     }
-                    var timer = setTimeout(function () { cleanup(); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
+                    var timer = setTimeout(function () { cleanup(); logCardFailure('cardcom_timeout', 'no response within 60s'); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
                     window.addEventListener('message', onMsg);
                     var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
                     var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
