@@ -2020,8 +2020,9 @@
         // The current payment method drives the button — switching to מזומן shows
         // the invoice action even if a card is on file, and back to אשראי shows
         // the charge action.
+        // Charge the collected (final) amount when picked; otherwise the estimate.
         var btnLabel = (o.payment.method === 'credit')
-          ? (hasCard ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב בכרטיס אשראי')
+          ? (hasCard ? (isCollected ? '💳 חיוב הכרטיס בסכום הסופי' : '💳 חיוב הכרטיס לפי האומדן') : '💳 חיוב בכרטיס אשראי')
           : '🧾 הפקת חשבונית / חיוב';
         var methodSwitch = !captured
           ? '<div class="cust-line"><span class="lbl">אמצעי תשלום</span><span class="val">' +
@@ -2030,7 +2031,7 @@
                 '<button type="button" class="pm-opt' + (o.payment.method === 'credit' ? ' active' : '') + '" data-pm="credit">אשראי</button>' +
               '</span></span></div>'
           : '';
-        var replaceCardBtn = (!captured && isCollected && o.payment.method === 'credit' && (hasCard || st === 'failed'))
+        var replaceCardBtn = (!captured && o.payment.method === 'credit' && (hasCard || st === 'failed'))
           ? '<button class="btn btn-ghost" id="replace-card-btn" style="margin-top:8px">🔄 החלף פרטי כרטיס' + (st === 'failed' ? ' ונסה שוב' : '') + '</button>'
           : '';
         var psVal = payStatusOf(o);
@@ -2048,9 +2049,8 @@
             methodSwitch +
             (o.payment.invoiceUrl ? '<div class="cust-line"><span class="lbl">חשבונית</span><span class="val"><a href="' + esc(o.payment.invoiceUrl) + '" target="_blank" rel="noopener">צפייה בחשבונית</a></span></div>' : '') +
             (!captured
-              ? (isCollected
-                ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>' + replaceCardBtn
-                : '<div class="field-hint" style="margin-top:10px">יש לסמן את ההזמנה כנאספה לפני החיוב.</div>')
+              ? '<button class="btn btn-primary" id="charge-btn" style="margin-top:10px">' + btnLabel + '</button>' + replaceCardBtn +
+                (!isCollected ? '<div class="field-hint" style="margin-top:8px">⚠️ ההזמנה לא סומנה כנאספה — החיוב יתבצע לפי האומדן.</div>' : '')
               // Charged on card but the invoice never issued → let the team create it now.
               : (!o.payment.invoiceUrl
                 ? '<button class="btn btn-ghost" id="issue-charged-btn" style="margin-top:10px">🧾 הפקת חשבונית להזמנה שחויבה</button>'
