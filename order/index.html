@@ -3303,7 +3303,8 @@
             .product-image-wrap {
                 grid-row: 1 / span 3;
                 width: 118px;
-                min-height: 100%;
+                height: 100%;
+                align-self: stretch;
                 aspect-ratio: auto;
                 border-bottom: 0;
                 border-inline-end: 1px solid var(--line);
@@ -4562,6 +4563,16 @@
             text-decoration: underline;
             cursor: pointer;
             padding: 6px 0 0;
+        }
+
+        /* Optional extra detail line (e.g. "כשר בהשגחת הרבנות") from the catalog. */
+        .product-detail {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.82em;
+            font-weight: 600;
+            line-height: 1.35;
+            color: var(--muted, #8a8f88);
         }
     </style>
     <!-- Microsoft Clarity (production order site only) -->
@@ -6681,6 +6692,7 @@
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
                 product.volumeMl ? '<span class="product-vol">' + escapeHtml(product.volumeMl) + ' מ״ל</span>' : '',
+                product.details ? '<span class="product-detail">' + escapeHtml(product.details) + '</span>' : '',
                 '<span class="row-estimate empty" data-row-estimate></span>',
                 '</div>',
                 '</div>',
@@ -6698,6 +6710,7 @@
                 renderProductImage(product, true),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
+                product.details ? '<span class="product-detail">' + escapeHtml(product.details) + '</span>' : '',
                 priceHtml(product),
                 '</div>',
                 '</div>',
@@ -6714,6 +6727,7 @@
                 renderProductImage(product, true, 'נסגר השבוע'),
                 '<div class="product-name">',
                 '<strong>' + escapeHtml(product.name) + '</strong>',
+                product.details ? '<span class="product-detail">' + escapeHtml(product.details) + '</span>' : '',
                 priceHtml(product),
                 '<span class="cutoff-note closed">ההזמנה נסגרה לשבוע זה (ניתן היה עד ' + escapeHtml(cutoffDisplayLabel()) + ')</span>',
                 '</div>',
