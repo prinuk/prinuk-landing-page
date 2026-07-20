@@ -3865,6 +3865,8 @@
       { key: 'description', label: 'תיאור', type: 'textarea' },
       { key: 'closedMessage', label: 'הודעה כשההזמנות סגורות', type: 'textarea' },
       { key: 'pickupText', label: 'פרטי איסוף', type: 'textarea' },
+      { key: 'announcement', label: 'הודעה באתר (באנר עליון)', hint: 'טקסט קצר שמופיע בראש דף ההזמנה. השאירו ריק כדי להסתיר', type: 'textarea' },
+      { key: 'announcementProductId', label: 'קישור למוצר מההודעה — לא חובה', hint: 'לחיצה על הבאנר תגלול למוצר הנבחר ותדגיש אותו', type: 'product-select' },
       { key: 'saleName', label: 'שם המכירה', hint: 'חייב להיות זהה לשם הגיליון בקובץ חישוב מחירים', type: 'input' },
       { key: 'contactPhone', label: 'טלפון ליצירת קשר', type: 'input' },
       { key: 'contactEmail', label: 'מייל ליצירת קשר', type: 'input' },
@@ -3884,9 +3886,16 @@
 
     function loadSettings() {
       el('settings-body').innerHTML = '<div class="loading">טוען הגדרות…</div>';
-      api('GET', '?action=settings').then(function (data) {
+      // Products are needed for the announcement "link to product" dropdown.
+      var needProducts = !(state.products && state.products.length);
+      Promise.all([
+        api('GET', '?action=settings'),
+        needProducts ? api('GET', '?action=products') : Promise.resolve(null)
+      ]).then(function (res) {
+        var data = res[0];
         state.settings = data.settings || {};
         state.payments = data.payments || { enabled: false };
+        if (res[1]) { state.products = res[1].products || []; state.departments = res[1].departments || state.departments; }
         renderSettings(state.settings);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('settings-body').innerHTML = '<div class="empty">שגיאה בטעינת ההגדרות.</div>';
@@ -3906,6 +3915,14 @@
           control = '<select id="set-' + f.key + '" class="status-select">' +
             f.options.map(function (o) {
               return '<option value="' + esc(o.value) + '"' + (o.value === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+            }).join('') + '</select>';
+        } else if (f.type === 'product-select') {
+          var curId = String(s[f.key] == null ? '' : s[f.key]);
+          var prods = (state.products || []).slice().sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'he'); });
+          control = '<select id="set-' + f.key + '" class="status-select">' +
+            '<option value="">— ללא קישור —</option>' +
+            prods.map(function (p) {
+              return '<option value="' + esc(p.id) + '"' + (String(p.id) === curId ? ' selected' : '') + '>' + esc(p.name) + '</option>';
             }).join('') + '</select>';
         } else {
           control = '<input id="set-' + f.key + '" type="text" value="' + val + '">';

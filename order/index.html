@@ -4412,54 +4412,74 @@
         }
 
         /* Location-move notice (top of the order page) */
-        .move-banner {
+        /* Top-of-page announcement banner (settings-driven, e.g. a new product).
+           Soft brand-green strip; becomes clickable when linked to a product. */
+        .site-announcement {
             display: flex;
             align-items: center;
-            gap: 14px;
-            background: linear-gradient(180deg, #fff8e8 0%, #fdf0d2 100%);
-            border: 1.5px solid #e3b452;
+            gap: 12px;
+            background: linear-gradient(180deg, #f2f8ee 0%, #e8f3e0 100%);
+            border: 1.5px solid #bcd9ab;
             border-radius: 16px;
-            padding: 15px 18px;
+            padding: 13px 18px;
             margin-bottom: 18px;
-            box-shadow: 0 6px 20px rgba(180, 110, 22, 0.14);
+            box-shadow: 0 6px 20px rgba(46, 90, 57, 0.1);
+            color: #2e5a39;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .move-banner-icon {
-            font-size: 28px;
+        .site-announcement-icon {
+            font-size: 22px;
             line-height: 1;
             flex-shrink: 0;
         }
 
-        .move-banner-text {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
+        .site-announcement-text {
+            flex: 1;
             min-width: 0;
-        }
-
-        .move-banner-text strong {
-            font-size: 16.5px;
+            font-size: 15.5px;
             font-weight: 800;
-            color: #7a5512;
-            line-height: 1.25;
+            line-height: 1.3;
+            color: #2b5233;
         }
 
-        .move-banner-text span {
-            font-size: 15px;
-            color: #8a6a2e;
-            line-height: 1.35;
+        .site-announcement-cta {
+            display: none;
+            font-size: 26px;
+            font-weight: 400;
+            line-height: 1;
+            color: #4a7a52;
+            flex-shrink: 0;
+            /* RTL: point the chevron to the start (left) of the row. */
+            transform: scaleX(-1);
+            transition: transform 0.15s ease;
         }
 
-        .move-banner-text .move-banner-address {
-            font-weight: 800;
-            color: #6b4d12;
+        .site-announcement.is-clickable {
+            cursor: pointer;
+        }
+
+        .site-announcement.is-clickable .site-announcement-cta {
+            display: inline;
+        }
+
+        .site-announcement.is-clickable:hover,
+        .site-announcement.is-clickable:focus-visible {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 26px rgba(46, 90, 57, 0.18);
+            outline: none;
+        }
+
+        .site-announcement.is-clickable:hover .site-announcement-cta,
+        .site-announcement.is-clickable:focus-visible .site-announcement-cta {
+            transform: scaleX(-1) translateX(3px);
         }
 
         @media (max-width: 480px) {
-            .move-banner { padding: 13px 15px; gap: 11px; }
-            .move-banner-icon { font-size: 24px; }
-            .move-banner-text strong { font-size: 15.5px; }
-            .move-banner-text span { font-size: 14px; }
+            .site-announcement { padding: 12px 15px; gap: 10px; }
+            .site-announcement-icon { font-size: 20px; }
+            .site-announcement-text { font-size: 14.5px; }
+            .site-announcement-cta { font-size: 23px; }
         }
 
         /* Weekly "order earlier next week" reminder banner (task 5). */
@@ -4721,6 +4741,11 @@
 
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
+                <div id="siteAnnouncement" class="site-announcement hidden" role="status">
+                    <span class="site-announcement-icon" aria-hidden="true">✨</span>
+                    <span id="siteAnnouncementText" class="site-announcement-text"></span>
+                    <span class="site-announcement-cta" aria-hidden="true">›</span>
+                </div>
                 <section class="weekly-sale-intro" aria-labelledby="weeklySaleTitle">
                     <div class="hero-leaves" aria-hidden="true">
                         <span class="leaf leaf-1">🍃</span>
@@ -5183,6 +5208,63 @@
             try { localStorage.setItem(WEEKLY_REMINDER_DISMISS_KEY, currentWeekId()); } catch (e) {}
             var banner = document.getElementById('weeklyReminder');
             if (banner) banner.classList.add('hidden');
+        }
+
+        // Settings-driven top announcement banner (e.g. a new product). Shown when
+        // settings.announcement has text; clickable when it links to a product.
+        function scrollToAnnouncementTarget() {
+            var banner = document.getElementById('siteAnnouncement');
+            if (!banner || !banner.classList.contains('is-clickable')) return;
+            var pid = banner.getAttribute('data-target') || '';
+            if (!pid || !els.productsRoot) return;
+            // Reveal all categories so the target card is rendered and visible.
+            switchCategory('');
+            var safeId = (window.CSS && CSS.escape) ? CSS.escape(pid) : pid;
+            var card = els.productsRoot.querySelector('[data-product-id="' + safeId + '"]');
+            if (!card) return;
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Play the highlight once the scroll has settled so it's noticed on arrival.
+            window.setTimeout(function () {
+                card.classList.remove('just-added');
+                card.offsetWidth;
+                card.classList.add('just-added');
+                window.setTimeout(function () { card.classList.remove('just-added'); }, 700);
+            }, 350);
+        }
+
+        function updateAnnouncement() {
+            var banner = document.getElementById('siteAnnouncement');
+            if (!banner) return;
+            var s = catalog.settings || {};
+            var text = String(s.announcement || '').trim();
+            if (!text) {
+                banner.classList.add('hidden');
+                banner.classList.remove('is-clickable');
+                return;
+            }
+            document.getElementById('siteAnnouncementText').textContent = text;
+            var pid = String(s.announcementProductId || '').trim();
+            var hasTarget = !!(pid && productById[pid]);
+            banner.setAttribute('data-target', hasTarget ? pid : '');
+            banner.classList.toggle('is-clickable', hasTarget);
+            if (hasTarget) {
+                banner.setAttribute('role', 'button');
+                banner.setAttribute('tabindex', '0');
+            } else {
+                banner.setAttribute('role', 'status');
+                banner.removeAttribute('tabindex');
+            }
+            if (!banner.dataset.bound) {
+                banner.dataset.bound = '1';
+                banner.addEventListener('click', scrollToAnnouncementTarget);
+                banner.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        scrollToAnnouncementTarget();
+                    }
+                });
+            }
+            banner.classList.remove('hidden');
         }
 
         // Fill the "אילו שכונות?" tooltips from the delivery <select> (single
@@ -6418,6 +6500,7 @@
                     if (Number(cs.deliveryFee) >= 0 && cs.deliveryFee !== '' && cs.deliveryFee != null) { DELIVERY_FEE = Number(cs.deliveryFee); }
                     updateWeeklyReminder();
                     renderCatalog();
+                    updateAnnouncement();
                     applyPaymentsConfig();
                 })
                 .catch(function (error) {
