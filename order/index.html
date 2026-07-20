@@ -4417,12 +4417,14 @@
         .site-announcement {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 13px;
+            width: calc(100% - 32px);
+            max-width: 860px;
+            margin: 2px auto 18px;
             background: linear-gradient(180deg, #f2f8ee 0%, #e8f3e0 100%);
             border: 1.5px solid #bcd9ab;
             border-radius: 16px;
-            padding: 13px 18px;
-            margin-bottom: 18px;
+            padding: 11px 16px;
             box-shadow: 0 6px 20px rgba(46, 90, 57, 0.1);
             color: #2e5a39;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -4432,6 +4434,16 @@
             font-size: 22px;
             line-height: 1;
             flex-shrink: 0;
+        }
+
+        .site-announcement-img {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            object-fit: cover;
+            border-radius: 11px;
+            border: 1px solid rgba(46, 90, 57, 0.15);
+            background: #fff;
         }
 
         .site-announcement-text {
@@ -4742,7 +4754,8 @@
         <form id="orderForm" class="layout" novalidate>
             <main class="main">
                 <div id="siteAnnouncement" class="site-announcement hidden" role="status">
-                    <span class="site-announcement-icon" aria-hidden="true">✨</span>
+                    <img id="siteAnnouncementImg" class="site-announcement-img" alt="" decoding="async" hidden>
+                    <span id="siteAnnouncementIcon" class="site-announcement-icon" aria-hidden="true">✨</span>
                     <span id="siteAnnouncementText" class="site-announcement-text"></span>
                     <span class="site-announcement-cta" aria-hidden="true">›</span>
                 </div>
@@ -5245,6 +5258,22 @@
             document.getElementById('siteAnnouncementText').textContent = text;
             var pid = String(s.announcementProductId || '').trim();
             var hasTarget = !!(pid && productById[pid]);
+            // Show the linked product's photo as a thumbnail; otherwise the ✨ icon.
+            var img = document.getElementById('siteAnnouncementImg');
+            var icon = document.getElementById('siteAnnouncementIcon');
+            var imgUrl = hasTarget ? String((productById[pid] || {}).imageUrl || '').trim() : '';
+            if (img && icon) {
+                if (imgUrl) {
+                    img.src = imgUrl;
+                    img.alt = String((productById[pid] || {}).name || '');
+                    img.hidden = false;
+                    icon.hidden = true;
+                } else {
+                    img.hidden = true;
+                    img.removeAttribute('src');
+                    icon.hidden = false;
+                }
+            }
             banner.setAttribute('data-target', hasTarget ? pid : '');
             banner.classList.toggle('is-clickable', hasTarget);
             if (hasTarget) {
