@@ -4571,6 +4571,7 @@
         }
         .cc-frame-slot.is-invalid-field { border-color: #c0392b; }
         .cc-loading-note { color: #165a43; font-weight: 700; font-size: 13.5px; padding: 2px 0; }
+        .cc-exp-hint { color: #7a8579; font-size: 12.5px; margin-top: -2px; }
         .cc-payment-explain {
             border: 1px solid #d7e5db;
             background: #e9f5ef;
@@ -4974,7 +4975,7 @@
                         </label>
                         <label class="field cc-f-sm">
                             <span>חודש <span class="required-star">*</span></span>
-                            <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="2" placeholder="MM" dir="ltr">
+                            <input id="ccMonth" type="text" inputmode="numeric" autocomplete="cc-exp-month" data-og="expirationmonth" maxlength="7" placeholder="MM" dir="ltr">
                         </label>
                         <label class="field cc-f-sm">
                             <span>שנה <span class="required-star">*</span></span>
@@ -4990,6 +4991,7 @@
                             <span>ת״ז בעל הכרטיס <span class="optional-note">(לא חובה)</span></span>
                             <input id="ccCitizen" type="text" inputmode="numeric" data-og="citizenid" maxlength="9" dir="ltr">
                         </label>
+                        <small class="cc-fullrow cc-exp-hint">תוקף הכרטיס: חודש (MM) ואז שנה (YY), כפי שמופיע על הכרטיס.</small>
                         <small id="ccNumberError" class="field-error cc-fullrow" aria-live="polite"></small>
                         <small id="ccExpError" class="field-error cc-fullrow" aria-live="polite"></small>
                         <small id="ccCitizenError" class="field-error cc-fullrow" aria-live="polite"></small>
@@ -8485,6 +8487,32 @@
             return sum % 10 === 0;
         }
 
+        // Parse whatever the customer typed into the expiry-month box into a
+        // {month, year} pair. Handles the common confusions behind "invalid month":
+        // typing the whole expiry as printed on the card ("05/28", "0528", "05 28"),
+        // a single-digit month ("5" → "05"), or a 4-digit year ("05/2028" → "28").
+        function parseExpiryEntry(raw) {
+            raw = String(raw || '');
+            var sep = raw.match(/^\s*(\d{1,2})\s*[\/\-.\s]\s*(\d{0,4})/);
+            var mPart, yPart;
+            if (sep) {
+                mPart = sep[1];
+                yPart = sep[2] || '';
+            } else {
+                var digits = raw.replace(/\D/g, '');
+                if (digits.length > 2) { mPart = digits.slice(0, 2); yPart = digits.slice(2, 6); }
+                else { mPart = digits; yPart = ''; }
+            }
+            // Auto-pad a single-digit month when it can't still grow into 10/11/12
+            // (digit ≥ 2), or when a year already follows it.
+            if (mPart.length === 1 && (Number(mPart) >= 2 || yPart !== '' || sep)) { mPart = '0' + mPart; }
+            mPart = mPart.replace(/\D/g, '').slice(0, 2);
+            yPart = yPart.replace(/\D/g, '');
+            if (yPart.length === 4) { yPart = yPart.slice(2); } // 2028 → 28
+            yPart = yPart.slice(0, 2);
+            return { month: mPart, year: yPart };
+        }
+
         // Israeli ID (ת״ז) checksum: pad to 9 digits, alternate ×1/×2 (sum digits
         // of products > 9), valid when the total is divisible by 10.
         function isValidIsraeliId(value) {
@@ -8538,7 +8566,7 @@
             if (!month || !year) return '';
             // Month range, the moment it's fully entered (even before the year).
             if (month.value.length === 2 && !(parseInt(month.value, 10) >= 1 && parseInt(month.value, 10) <= 12)) {
-                return 'חודש התוקף חייב להיות בין 01 ל-12.';
+                return 'חודש התוקף צריך להיות בין 01 ל-12 (כפי שמופיע על הכרטיס).';
             }
             if (!month.value || !year.value) return '';
             var mm = parseInt(month.value, 10);
@@ -8583,19 +8611,34 @@
                 refreshCardNumberField(true);
             });
 
+            function syncOgYear() {
+                ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
+            }
+
             month.addEventListener('input', function () {
-                var v = month.value.replace(/\D/g, '').slice(0, 2);
-                if (v.length === 1 && Number(v) >= 2) { v = '0' + v; } // 5 → 05
-                month.value = v;
+                // Accept the full expiry in this box ("05/28", "0528", "05 28") and
+                // spill the year part into the year field — a big source of the
+                // "invalid month" failures was people typing it all here.
+                var parsed = parseExpiryEntry(month.value);
+                month.value = parsed.month;
+                if (parsed.year) {
+                    year.value = parsed.year;
+                    syncOgYear();
+                }
                 refreshExpiry();
-                var mm = parseInt(v, 10);
-                if (v.length === 2 && mm >= 1 && mm <= 12) { year.focus(); }
+                var mm = parseInt(parsed.month, 10);
+                if (parsed.month.length === 2 && mm >= 1 && mm <= 12) {
+                    // Month done: jump to year, or past it to CVV if already filled.
+                    // (Cardcom's CVV is a cross-origin iframe we can't focus into.)
+                    if (year.value.length >= 2) { if (!isCardcom()) { cvv.focus(); } }
+                    else { year.focus(); }
+                }
             });
             month.addEventListener('blur', function () { refreshExpiry(true); });
 
             year.addEventListener('input', function () {
                 year.value = year.value.replace(/\D/g, '').slice(0, 2);
-                ogYear.value = year.value.length === 2 ? ('20' + year.value) : year.value;
+                syncOgYear();
                 refreshExpiry();
                 // For Cardcom the CVV is a cross-origin iframe we can't focus into,
                 // so leave the cursor on year — the customer taps CVV. (sumit/mock
@@ -8633,9 +8676,11 @@
                 if (cardcomValid.cvv === false) return { message: 'קוד ה-CVV אינו תקין.', field: document.getElementById('CardComCvv') };
                 var ccMonthEl = document.getElementById('ccMonth');
                 var mmC = parseInt(ccMonthEl && ccMonthEl.value, 10);
-                if (!(mmC >= 1 && mmC <= 12)) return { message: 'חודש התוקף אינו תקין.', field: ccMonthEl };
+                if (!(ccMonthEl && ccMonthEl.value.trim())) return { message: 'יש למלא את חודש התוקף (MM).', field: ccMonthEl };
+                if (!(mmC >= 1 && mmC <= 12)) return { message: 'חודש התוקף צריך להיות בין 01 ל-12 (כפי שמופיע על הכרטיס).', field: ccMonthEl };
                 var ccYearEl = document.getElementById('ccYear');
-                if (!/^\d{2}$/.test(ccYearEl && ccYearEl.value)) return { message: 'שנת התוקף אינה תקינה.', field: ccYearEl };
+                if (!(ccYearEl && ccYearEl.value.trim())) return { message: 'יש למלא את שנת התוקף (YY).', field: ccYearEl };
+                if (!/^\d{2}$/.test(ccYearEl && ccYearEl.value)) return { message: 'שנת התוקף אינה תקינה (YY).', field: ccYearEl };
                 var expMsgC = expiryError(true);
                 if (expMsgC) return { message: expMsgC, field: ccMonthEl };
                 // ת״ז is optional and NOT blocked here — Cardcom accepts a placeholder
@@ -8653,9 +8698,11 @@
             if (!luhnValid(digits)) return { message: 'מספר הכרטיס אינו תקין — בדקו שוב.', field: num };
             var month = document.getElementById('ccMonth');
             var mm = parseInt(month && month.value, 10);
-            if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף אינו תקין.', field: month };
+            if (!(month && month.value.trim())) return { message: 'יש למלא את חודש התוקף (MM).', field: month };
+            if (!(mm >= 1 && mm <= 12)) return { message: 'חודש התוקף צריך להיות בין 01 ל-12 (כפי שמופיע על הכרטיס).', field: month };
             var year = document.getElementById('ccYear');
-            if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה.', field: year };
+            if (!(year && year.value.trim())) return { message: 'יש למלא את שנת התוקף (YY).', field: year };
+            if (!/^\d{2}$/.test(year && year.value)) return { message: 'שנת התוקף אינה תקינה (YY).', field: year };
             var expMsg = expiryError(true);
             if (expMsg) return { message: expMsg, field: month };
             var cvv = document.getElementById('ccCvv');
