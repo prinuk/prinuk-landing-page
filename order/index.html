@@ -8314,8 +8314,9 @@
                     }
                     var timer = setTimeout(function () { cleanup(); logCardFailure('cardcom_timeout', 'no response within 60s'); reject(new Error('אימות כרטיס האשראי נתקע. נסו שוב או בחרו תשלום במזומן.')); }, 60000);
                     window.addEventListener('message', onMsg);
-                    var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
-                    var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
+                    var exp = readCardExpiry();
+                    var month = exp.month;
+                    var yy = exp.yy;
                     var citizen = (document.getElementById('ccCitizen').value || '').replace(/\D/g, '') || '000000000';
                     var nameEl = document.getElementById('fullName');
                     var phoneEl = document.getElementById('phone');
@@ -8393,8 +8394,9 @@
                 return Promise.reject(new Error('סליקת אשראי עדיין אינה מוגדרת. נא לבחור תשלום במזומן.'));
             }
             var num = (document.getElementById('ogCardNumber').value || '').replace(/\D/g, '');
-            var month = (document.getElementById('ccMonth').value || '').replace(/\D/g, '');
-            var yy = (document.getElementById('ccYear').value || '').replace(/\D/g, '');
+            var exp = readCardExpiry();
+            var month = exp.month;
+            var yy = exp.yy;
             var year = yy.length === 2 ? '20' + yy : yy;
             var cvv = (document.getElementById('ccCvv').value || '').replace(/\D/g, '');
             var citizenId = (document.getElementById('ccCitizen').value || '').replace(/\D/g, '');
@@ -8511,6 +8513,24 @@
             if (yPart.length === 4) { yPart = yPart.slice(2); } // 2028 → 28
             yPart = yPart.slice(0, 2);
             return { month: mPart, year: yPart };
+        }
+
+        // Read the card expiry from our fields as { month:'MM', yy:'YY' }, tolerant
+        // of browser autofill: a 4-digit year ("2028" → "28"), and a combined value
+        // the browser dumped into the month box ("05/2028" / "052028" → 05 + 28) even
+        // when it skipped the input event that normally splits them. Used at submit
+        // (both tokenizers) so autofill can't push a wrong/4-digit year to the gateway.
+        function readCardExpiry() {
+            var monthEl = document.getElementById('ccMonth');
+            var yearEl = document.getElementById('ccYear');
+            var parsed = parseExpiryEntry(monthEl ? monthEl.value : '');
+            var month = parsed.month;
+            var yy = parsed.year;
+            if (!yy) {
+                yy = String(yearEl && yearEl.value || '').replace(/\D/g, '');
+                if (yy.length > 2) { yy = yy.slice(-2); } // 4-digit autofill (2028 → 28)
+            }
+            return { month: month, yy: yy };
         }
 
         // Israeli ID (ת״ז) checksum: pad to 9 digits, alternate ×1/×2 (sum digits
@@ -8637,7 +8657,10 @@
             month.addEventListener('blur', function () { refreshExpiry(true); });
 
             year.addEventListener('input', function () {
-                year.value = year.value.replace(/\D/g, '').slice(0, 2);
+                var d = year.value.replace(/\D/g, '');
+                // A 4-digit year (browser autofill fills "2028") → keep the last two
+                // ("28"), not the first two ("20") which would send the century.
+                year.value = d.length > 2 ? d.slice(-2) : d;
                 syncOgYear();
                 refreshExpiry();
                 // For Cardcom the CVV is a cross-origin iframe we can't focus into,
@@ -8646,6 +8669,21 @@
                 if (year.value.length >= 2 && !isCardcom()) { cvv.focus(); }
             });
             year.addEventListener('blur', function () { refreshExpiry(true); });
+
+            // Self-heal after browser autofill. iOS Safari (and sometimes others)
+            // populate saved-card fields WITHOUT firing 'input', so the handlers
+            // above never run — but 'change' does fire. Re-derive month + a 2-digit
+            // year via readCardExpiry() and write them back, so the fields (and the
+            // expiry sent to the gateway) are correct even when input was skipped.
+            function healExpiryAfterAutofill() {
+                var exp = readCardExpiry();
+                if (exp.month) { month.value = exp.month; }
+                if (exp.yy) { year.value = exp.yy; }
+                syncOgYear();
+                refreshExpiry();
+            }
+            month.addEventListener('change', healExpiryAfterAutofill);
+            year.addEventListener('change', healExpiryAfterAutofill);
 
             cvv.addEventListener('input', function () {
                 cvv.value = cvv.value.replace(/\D/g, '').slice(0, 4);
