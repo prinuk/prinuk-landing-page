@@ -6,6 +6,7 @@ const {
   getOrdersTimeline,
   getCustomers,
   getWeightSummary,
+  getQrStats,
   getOrdersDetailed,
   readOrderForDashboard,
   claimOrderForPicking,
@@ -242,6 +243,11 @@ module.exports = async function handler(req, res) {
       if (action === 'weight-summary') {
         const summary = await getWeightSummary(parseOrderScope(req.query));
         return res.json({ ok: true, ...summary });
+      }
+
+      if (action === 'qr-stats') {
+        const codes = await getQrStats();
+        return res.json({ ok: true, codes });
       }
 
       if (action === 'settings') {
