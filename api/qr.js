@@ -17,7 +17,7 @@ const DESTINATIONS = {
 // Normalise a campaign code to a short, safe slug (a-z, 0-9, _ , -).
 function cleanCode(raw) {
   const c = String(raw || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
-  return c || 'main';
+  return c || 'meida';
 }
 
 // Has this browser already been counted for this code? (first hit → unique person)
