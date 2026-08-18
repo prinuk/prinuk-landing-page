@@ -3915,6 +3915,37 @@
             color: var(--muted);
         }
 
+        /* A special item locked into an order being edited (out-of-stock / past
+           cutoff): keep it readable (it IS part of the order) and show a clear
+           "can't be removed" note. */
+        .product-row.out-of-stock.locked-in-order {
+            opacity: 1;
+            border-color: var(--accent);
+        }
+        .product-row.out-of-stock.locked-in-order .product-name strong {
+            color: var(--accent-dark, var(--accent));
+        }
+        .product-row.out-of-stock.locked-in-order .product-image {
+            filter: none;
+            opacity: 1;
+        }
+        .locked-order-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin-top: 6px;
+        }
+        .locked-order-qty {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--accent-dark, var(--accent));
+        }
+        .locked-order-msg {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #8a5a12;
+        }
+
         .stock-badge {
             position: absolute;
             top: 10px;
@@ -5883,6 +5914,29 @@
         // Apply a list of {name, mode, quantity, note} to the rendered product
         // rows, matching by normalized NAME. Shared by the regular basket and
         // the edit-order flow. Returns how many were applied vs unavailable.
+        // Lock an out-of-stock / past-cutoff item that's already in the order being
+        // edited: show its quantity + a "special item — can't be removed" message,
+        // with no quantity controls. collectItems() picks it up via data-locked-qty.
+        // Returns true when locked (quantity > 0), false to treat as unavailable.
+        function lockOrderedItem(row, item) {
+            var qty = Math.round(Number(item.quantity) || 0);
+            if (qty <= 0) { return false; }
+            row.setAttribute('data-locked-qty', String(qty));
+            row.setAttribute('data-locked-note', String(item.note || ''));
+            row.classList.add('locked-in-order');
+            if (!row.querySelector('.locked-order-info')) {
+                var nameBox = row.querySelector('.product-name');
+                if (nameBox) {
+                    var box = document.createElement('div');
+                    box.className = 'locked-order-info';
+                    box.innerHTML = '<span class="locked-order-qty">בהזמנה: ' + qty + ' יח׳</span>' +
+                        '<span class="locked-order-msg">🔒 פריט מיוחד — לא ניתן להסיר מההזמנה</span>';
+                    nameBox.appendChild(box);
+                }
+            }
+            return true;
+        }
+
         function applyItemsByName(items) {
             var rowByName = {};
             els.productsRoot.querySelectorAll('.product-row').forEach(function (row) {
@@ -5894,9 +5948,22 @@
 
             (items || []).forEach(function (item) {
                 var row = rowByName[normalizeText(item.name)];
-                var input = row && row.querySelector('.quantity-input');
 
-                if (!row || row.getAttribute('data-out-of-stock') || !input) {
+                if (!row) {
+                    missing.push(item.name);
+                    return;
+                }
+
+                // A special item now out-of-stock / past-cutoff but already in this
+                // order → lock it in place (view-only, cannot be removed) rather than
+                // drop it. The business already committed to it.
+                if (row.getAttribute('data-out-of-stock')) {
+                    if (lockOrderedItem(row, item)) { loaded++; } else { missing.push(item.name); }
+                    return;
+                }
+
+                var input = row.querySelector('.quantity-input');
+                if (!input) {
                     missing.push(item.name);
                     return;
                 }
@@ -6018,6 +6085,11 @@
 
         function exitEditMode() {
             editState = null;
+            // Locked special items only make sense inside the edit they came from —
+            // drop them so a subsequent "new order" isn't blocked by an out-of-stock item.
+            var hadLocked = !!els.productsRoot.querySelector('.product-row[data-locked-qty]');
+            clearLockedItems();
+            if (hadLocked) { renderSummary(); }
             if (els.editModeBanner) {
                 els.editModeBanner.classList.add('hidden');
                 els.editModeBanner.classList.remove('is-error');
@@ -7212,6 +7284,41 @@
                 updateRowState(row);
             });
 
+            // Locked special items (out-of-stock / past-cutoff, kept in an edited
+            // order): they have no quantity input — include them at their fixed
+            // quantity so they stay in the order and count toward the estimate.
+            els.productsRoot.querySelectorAll('.product-row[data-locked-qty]').forEach(function (row) {
+                var qty = Math.round(Number(row.getAttribute('data-locked-qty')) || 0);
+                if (qty <= 0) { return; }
+                var id = row.getAttribute('data-product-id');
+                var product = productById[id];
+                if (!product) { return; }
+                var note = String(row.getAttribute('data-locked-note') || '');
+                var lineEstimate = calculateLineEstimate('unit', qty, product);
+                var estimatedLineTotal = lineEstimate.total;
+                if (estimatedLineTotal !== null) {
+                    result.estimatedTotal = roundMoney(result.estimatedTotal + estimatedLineTotal);
+                    if (lineEstimate.isEstimatedWeight) { result.estimatedWeightItemCount++; }
+                } else {
+                    result.unpricedItemCount++;
+                }
+                result.items.push({
+                    id: id,
+                    name: product.name,
+                    mode: 'unit',
+                    quantity: qty,
+                    addedOrder: Number(row.getAttribute('data-added-order') || 0),
+                    note: note,
+                    unitLabel: 'יחידות',
+                    estimatedLineTotal: estimatedLineTotal,
+                    estimatedWeightKg: lineEstimate.estimatedWeightKg,
+                    estimatedWeightPerUnitKg: lineEstimate.estimatedWeightPerUnitKg,
+                    isEstimatedPrice: lineEstimate.isEstimatedPrice,
+                    isEstimatedWeight: lineEstimate.isEstimatedWeight,
+                    locked: true
+                });
+            });
+
             result.items.sort(function (a, b) {
                 return (a.addedOrder || 0) - (b.addedOrder || 0);
             });
@@ -8030,7 +8137,21 @@
             return message;
         }
 
+        // Remove the "locked special item" state (set in edit mode) from all cards,
+        // so leaving/cancelling an edit doesn't carry a non-orderable item into a
+        // fresh cart.
+        function clearLockedItems() {
+            els.productsRoot.querySelectorAll('.product-row[data-locked-qty]').forEach(function (row) {
+                row.removeAttribute('data-locked-qty');
+                row.removeAttribute('data-locked-note');
+                row.classList.remove('locked-in-order');
+                var info = row.querySelector('.locked-order-info');
+                if (info) { info.remove(); }
+            });
+        }
+
         function resetProducts() {
+            clearLockedItems();
             els.productsRoot.querySelectorAll('.quantity-input').forEach(function (input) {
                 input.value = '';
             });

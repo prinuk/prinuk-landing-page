@@ -7,6 +7,7 @@ const {
   validateAndBuildOrder,
   writeOrder,
 } = require('../lib/store');
+const { normalizeProductName } = require('../lib/sheets');
 const { paymentsEnabled, getPaymentAdapter } = require('../lib/payments');
 const { sendBusinessOrderEmail, sendCustomerOrderEmail } = require('../lib/email');
 const { createOrderPdf, createOrderChangesPdf } = require('../lib/order-pdf');
@@ -111,7 +112,35 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const order = validateAndBuildOrder(body, catalog.products, settings);
+    // On an edit, "special" items already in the order that are now out-of-stock or
+    // past the weekly cutoff are LOCKED: the customer can't remove them, and we
+    // force-keep them at their original quantity even if the client omits/alters
+    // them. (New orders never reach this — they can't add such items.)
+    let allowOutOfStockIds = null;
+    if (isUpdate) {
+      const original = await readOrderForEdit(String(body.editOrderId).trim(), String(body.editToken).trim());
+      if (original && original.ok) {
+        const cutoffClosed = isWeeklyCutoffClosed(settings);
+        const catByName = new Map((catalog.products || []).map((p) => [normalizeProductName(p.name), p]));
+        const locked = [];
+        for (const oit of original.order.items) {
+          const p = catByName.get(normalizeProductName(oit.name));
+          const qty = Number(oit.quantity) || 0;
+          if (qty > 0 && p && (p.outOfStock || (p.orderCutoff && cutoffClosed))) {
+            locked.push({ id: p.id, quantity: qty, note: oit.note || '' });
+          }
+        }
+        if (locked.length) {
+          allowOutOfStockIds = new Set(locked.map((l) => l.id));
+          // Drop any client-sent version of a locked item, then add the authoritative
+          // one (original qty/note) — so it can neither be removed nor changed.
+          const rest = Array.isArray(body.items) ? body.items.filter((it) => !allowOutOfStockIds.has(it.id)) : [];
+          body.items = rest.concat(locked.map((l) => ({ id: l.id, quantity: l.quantity, note: l.note })));
+        }
+      }
+    }
+
+    const order = validateAndBuildOrder(body, catalog.products, settings, { allowOutOfStockIds });
     order.settings = settings;
     // Record the chosen payment method — credit only when the processor is live
     // (otherwise fall back to cash / pay-on-delivery).
@@ -149,7 +178,8 @@ module.exports = async function handler(req, res) {
     if (isWeeklyCutoffClosed(settings)) {
       const cutoffIds = new Set((catalog.products || []).filter((p) => p.orderCutoff).map((p) => p.id));
       const closed = (order.items || [])
-        .filter((it) => it.product && cutoffIds.has(it.product.id))
+        // Locked items already in the order are preserved; only NEW cutoff items are rejected.
+        .filter((it) => it.product && cutoffIds.has(it.product.id) && !(allowOutOfStockIds && allowOutOfStockIds.has(it.product.id)))
         .map((it) => it.product.name);
       if (closed.length) {
         const HEB_WEEKDAYS = ['יום ראשון', 'יום שני', 'יום שלישי', 'יום רביעי', 'יום חמישי', 'יום שישי', 'שבת'];
