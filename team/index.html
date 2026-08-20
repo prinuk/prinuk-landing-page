@@ -482,6 +482,10 @@
     .rep-acc > summary::-webkit-details-marker { display: none; }
     .rep-acc > summary::after { content: '▸'; float: left; color: var(--muted); transition: transform .15s; }
     .rep-acc[open] > summary::after { transform: rotate(90deg); }
+    .qr-daterange { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 4px 16px 6px; font-size: 13px; color: var(--muted); }
+    .qr-daterange label { display: inline-flex; align-items: center; gap: 6px; }
+    .qr-daterange input[type="date"] { padding: 6px 8px; border: 1.5px solid var(--line-strong); border-radius: 8px; font: inherit; background: var(--surface); }
+    .qr-range-note { color: var(--accent-dark, var(--accent)); font-weight: 700; }
     .qr-hint { padding: 4px 16px 12px; font-size: 13px; color: var(--muted); line-height: 1.6; }
     .qr-hint code { font-size: 12px; background: rgba(0,0,0,.05); padding: 2px 5px; border-radius: 5px; word-break: break-all; }
     .btn-sm { padding: 3px 10px; font-size: 12px; }
@@ -912,6 +916,11 @@
 
       <details id="acc-qr" class="rep-acc">
         <summary>📱 QR — סריקות</summary>
+        <div class="qr-daterange">
+          <label>מתאריך <input type="date" id="qr-from"></label>
+          <label>עד <input type="date" id="qr-to"></label>
+          <button class="btn btn-ghost btn-sm" id="qr-range-clear">כל הזמן</button>
+        </div>
         <div id="qr-stats-body"><div class="loading">טוען…</div></div>
       </details>
     </div>
@@ -1346,6 +1355,11 @@
     el('acc-weekly').addEventListener('toggle', function () { if (this.open) loadWeeklyReport(); });
     el('acc-weight').addEventListener('toggle', function () { if (this.open) loadWeightSummary(); });
     el('acc-qr').addEventListener('toggle', function () { if (this.open) loadQrStats(); });
+    el('qr-from').addEventListener('change', loadQrStats);
+    el('qr-to').addEventListener('change', loadQrStats);
+    el('qr-range-clear').addEventListener('click', function () {
+      el('qr-from').value = ''; el('qr-to').value = ''; loadQrStats();
+    });
 
     // ---- Sales comparison chart: one line per chosen sale, X=hour, Y=orders ----
     var CHART_COLORS = ['#0c4c9c', '#1d9b68', '#ec6f4a', '#b46e16', '#8e44ad', '#16a085', '#c0392b', '#2c3e50', '#d35400', '#2980b9'];
@@ -1579,7 +1593,12 @@
     }
     function loadQrStats() {
       el('qr-stats-body').innerHTML = '<div class="loading">טוען…</div>';
-      api('GET', '?action=qr-stats').then(function (data) {
+      var from = el('qr-from') ? el('qr-from').value : '';
+      var to = el('qr-to') ? el('qr-to').value : '';
+      var qs = '?action=qr-stats';
+      if (from) qs += '&from=' + encodeURIComponent(from);
+      if (to) qs += '&to=' + encodeURIComponent(to);
+      api('GET', qs).then(function (data) {
         renderQrStats(data.codes || []);
       }).catch(function (err) {
         if (err.message !== 'unauthorized') el('qr-stats-body').innerHTML = '<div class="empty">שגיאה בטעינת הנתונים.</div>';
@@ -1587,20 +1606,24 @@
     }
     function renderQrStats(codes) {
       var mainLink = qrLink('meida');
+      var rangeActive = (el('qr-from') && el('qr-from').value) || (el('qr-to') && el('qr-to').value);
       var head = '<div class="qr-hint">הקוד הראשי מפנה ל־<b>order.prinuk.co.il</b>. הקישור שמאחורי ה־QR: ' +
         '<code>' + esc(mainLink) + '</code> ' +
-        '<button class="btn btn-ghost btn-sm" id="qr-copy">העתקה</button></div>';
+        '<button class="btn btn-ghost btn-sm" id="qr-copy">העתקה</button>' +
+        (rangeActive ? '<br><span class="qr-range-note">מציג סריקות בטווח התאריכים שנבחר.</span>' : '') +
+        '</div>';
       var body;
       if (!codes.length) {
-        body = '<div class="empty">עדיין אין סריקות. הדפיסו את קוד ה־QR — הסריקות יופיעו כאן.</div>';
+        body = '<div class="empty">' + (rangeActive ? 'אין סריקות בטווח שנבחר.' : 'עדיין אין סריקות. הדפיסו את קוד ה־QR — הסריקות יופיעו כאן.') + '</div>';
       } else {
         body = '<table class="report-table"><thead><tr>' +
-          '<th>קוד</th><th class="num">סריקות</th><th class="num">אנשים (ייחודי)</th><th class="num">סריקה אחרונה</th></tr></thead><tbody>';
+          '<th>קוד</th><th class="num">סריקות</th><th class="num">אנשים (ייחודי)</th><th class="num">סריקה אחרונה</th><th></th></tr></thead><tbody>';
         codes.forEach(function (c) {
           body += '<tr><td>' + esc(c.code) + '</td>' +
             '<td class="num">' + (c.total || 0) + '</td>' +
             '<td class="num">' + (c.uniques || 0) + '</td>' +
-            '<td class="num">' + fmtScanTime(c.last) + '</td></tr>';
+            '<td class="num">' + fmtScanTime(c.last) + '</td>' +
+            '<td class="num"><button class="btn btn-ghost btn-sm qr-reset-btn" data-code="' + esc(c.code) + '">🗑 אפס</button></td></tr>';
         });
         body += '</tbody></table>';
       }
@@ -1610,6 +1633,19 @@
         (navigator.clipboard ? navigator.clipboard.writeText(mainLink) : Promise.reject())
           .then(function () { showToast('הקישור הועתק'); })
           .catch(function () { showToast(mainLink); });
+      });
+      Array.prototype.forEach.call(el('qr-stats-body').querySelectorAll('.qr-reset-btn'), function (btn) {
+        btn.addEventListener('click', function () {
+          var code = this.getAttribute('data-code');
+          if (!confirm('לאפס את כל הסריקות של הקוד "' + code + '"? הפעולה מוחקת את הנתונים לצמיתות ואינה הפיכה.')) return;
+          this.disabled = true;
+          api('POST', '', { action: 'qr-reset', code: code }).then(function (r) {
+            showToast('אופסו ' + ((r && r.deleted) || 0) + ' סריקות של "' + code + '"');
+            loadQrStats();
+          }).catch(function (err) {
+            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה באיפוס');
+          });
+        });
       });
     }
 

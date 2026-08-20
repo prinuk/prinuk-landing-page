@@ -7,6 +7,7 @@ const {
   getCustomers,
   getWeightSummary,
   getQrStats,
+  resetQrCode,
   getOrdersDetailed,
   readOrderForDashboard,
   claimOrderForPicking,
@@ -246,7 +247,10 @@ module.exports = async function handler(req, res) {
       }
 
       if (action === 'qr-stats') {
-        const codes = await getQrStats();
+        const codes = await getQrStats({
+          from: req.query && req.query.from,
+          to: req.query && req.query.to,
+        });
         return res.json({ ok: true, codes });
       }
 
@@ -265,6 +269,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') {
       const body = req.body || {};
       const action = String(body.action || '').trim();
+
+      if (action === 'qr-reset') {
+        const result = await resetQrCode(body.code);
+        return res.json(result);
+      }
 
       // --- Catalog management ---
       if (action === 'image-upload') {
