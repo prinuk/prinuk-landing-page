@@ -234,6 +234,20 @@
       color: var(--muted); font-size: 16px; pointer-events: none;
     }
 
+    .prod-filter { display: flex; gap: 8px; margin-bottom: 10px; align-items: stretch; }
+    .prod-filter .prod-filter-name { flex: 1; margin-bottom: 0; }
+    .prod-filter-units {
+      width: 96px; flex: 0 0 auto;
+      padding: 12px 12px; border: 1.5px solid var(--line-strong); border-radius: 999px;
+      font-size: 15px; font-family: inherit; background: var(--surface); text-align: center;
+    }
+    .prod-filter-units:focus { outline: none; border-color: var(--accent); }
+    .oc-prod-match {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(46,90,57,.1); color: var(--accent-dark, var(--accent));
+      font-weight: 800; font-size: 12.5px; padding: 2px 9px; border-radius: 999px;
+    }
+
     .chips { display: flex; flex-wrap: wrap; gap: 7px; }
     .chip {
       border: 1.5px solid var(--line-strong);
@@ -763,6 +777,13 @@
           <span class="icn">🔍</span>
           <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או מספר הזמנה" />
         </div>
+        <div class="prod-filter">
+          <div class="search-wrap prod-filter-name">
+            <span class="icn">🥬</span>
+            <input id="prod-filter-search" type="search" placeholder="חיפוש לפי מוצר שהוזמן" />
+          </div>
+          <input id="prod-filter-units" type="number" inputmode="numeric" min="1" step="1" placeholder="כמות יח׳" class="prod-filter-units" aria-label="מספר יחידות מהמוצר" />
+        </div>
         <div class="chips" id="status-chips">
           <button class="chip active" data-status="active">לטיפול</button>
           <button class="chip" data-status="all">הכל</button>
@@ -1103,7 +1124,7 @@
       orders: [],
       current: null,        // detail order object
       currentItems: [],     // [{name, ..., picked}]
-      filters: { search: '', status: 'active', type: 'all', origin: 'web', paid: 'all' },
+      filters: { search: '', productSearch: '', productUnits: '', status: 'active', type: 'all', origin: 'web', paid: 'all' },
       scope: { kind: 'current', from: '', to: '', saleName: '' },
       reportScope: { kind: 'current', from: '', to: '', saleName: '' },
       selected: {},
@@ -1610,8 +1631,32 @@
       return (o && o.paymentStatus === 'captured') ? 'paid' : 'unpaid';
     }
 
+    // Product search: does this order contain a line whose product name matches
+    // the query, and how many units in total across matching lines? Returns
+    // { matched, units, names } (names = the distinct matched product names).
+    function productMatch(o, query) {
+      var q = String(query || '').trim().toLowerCase();
+      var out = { matched: false, units: 0, names: [] };
+      if (!q || !Array.isArray(o.items)) return out;
+      o.items.forEach(function (it) {
+        if (String(it.name || '').toLowerCase().indexOf(q) !== -1) {
+          out.matched = true;
+          out.units += Number(it.quantity) || 0;
+          if (out.names.indexOf(it.name) === -1) out.names.push(it.name);
+        }
+      });
+      return out;
+    }
+
     function matchesFilters(o) {
       var f = state.filters;
+      if (f.productSearch) {
+        var pm = productMatch(o, f.productSearch);
+        if (!pm.matched) return false;
+        // Optional exact-units filter (empty → any quantity of the product).
+        var wantUnits = String(f.productUnits || '').trim();
+        if (wantUnits !== '' && pm.units !== Number(wantUnits)) return false;
+      }
       if (f.status !== 'all') {
         if (f.status === 'active') {
           if (o.status !== STATUS.NEW && o.status !== STATUS.PICKING) return false;
@@ -1693,6 +1738,13 @@
               '<span class="tag ' + (isDeliver ? 'deliver' : 'pickup') + '">' +
                 (isDeliver ? '🚚 משלוח' : '🛍️ איסוף עצמי') + '</span>' +
               '<span class="tag">' + o.itemCount + ' פריטים</span>' +
+              (function () {
+                if (!state.filters.productSearch) return '';
+                var pm = productMatch(o, state.filters.productSearch);
+                if (!pm.matched) return '';
+                var label = pm.names.length === 1 ? pm.names[0] : 'המוצר';
+                return '<span class="oc-prod-match">🥬 ' + pm.units + ' יח׳ · ' + esc(label) + '</span>';
+              })() +
               (o.grandTotal !== '' ? '<span class="oc-total">אומדן ' + esc(formatMoney(o.grandTotal)) + '</span>' : '') +
               (o.finalTotal !== '' && o.finalTotal != null ? '<span class="oc-total final">סופי ' + esc(formatMoney(o.finalTotal)) + '</span>' : '') +
               (function () {
@@ -1834,6 +1886,15 @@
     // Search + filter wiring
     el('search').addEventListener('input', function () {
       state.filters.search = this.value.trim();
+      renderList();
+    });
+
+    el('prod-filter-search').addEventListener('input', function () {
+      state.filters.productSearch = this.value.trim();
+      renderList();
+    });
+    el('prod-filter-units').addEventListener('input', function () {
+      state.filters.productUnits = this.value.trim();
       renderList();
     });
 
