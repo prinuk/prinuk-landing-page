@@ -15,6 +15,7 @@ const {
   setOrderStatus,
   chargeOrder,
   reviewAndCharge,
+  saveOrderDiscounts,
   reviewAndIssueDocument,
   issueChargedInvoice,
   setOrderPaymentMethod,
@@ -599,6 +600,12 @@ module.exports = async function handler(req, res) {
         } catch (err) {
           return res.status(400).json({ error: err.message || 'שגיאה בעדכון ההזמנה.' });
         }
+      }
+
+      if (action === 'save-discounts') {
+        const result = await saveOrderDiscounts(orderId, body.payload || {});
+        if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
+        return res.json(result);
       }
 
       return res.status(400).json({ error: 'פעולה לא תקינה.' });

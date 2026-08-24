@@ -92,6 +92,13 @@
       "when": 1784413222320,
       "tag": "0012_odd_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787592307302,
+      "tag": "0013_oval_zombie",
+      "breakpoints": true
     }
   ]
 }
