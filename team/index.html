@@ -524,6 +524,12 @@
     .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
     .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
     .ed-new { font-size: 11px; font-weight: 700; color: #6a4fb0; background: #ece7fa; border-radius: 999px; padding: 1px 7px; }
+    .disc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .disc-row .disc-name { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; }
+    .disc-amt-wrap { display: inline-flex; align-items: center; gap: 4px; }
+    .disc-row .disc-amt { width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font: inherit; text-align: center; }
+    .disc-inv { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; white-space: nowrap; }
+    .disc-rm { flex: none; width: 32px; height: 32px; border: 1px solid var(--line, #e3e8e0); background: #fff; border-radius: 8px; cursor: pointer; color: #c0392b; }
     .ed-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line, #e3e8e0); }
     .ed-add-search { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; margin-bottom: 8px; }
     .ed-add-row { display: flex; gap: 8px; align-items: center; }
@@ -2044,6 +2050,9 @@
           state.currentItems = (data.order.items || []).map(function (it) {
             return Object.assign({}, it, { picked: it.picked === true, missing: it.pickStatus === 'חסר' });
           });
+          state.currentDiscounts = (data.order.discounts || []).map(function (d) {
+            return { name: d.name || '', amount: Number(d.amount) || 0, showOnInvoice: d.showOnInvoice !== false };
+          });
           // Restore any unsaved in-progress collection (only while still picking).
           if (data.order.status === STATUS.NEW || data.order.status === STATUS.PICKING) {
             applyCollectDraft(orderId);
@@ -2251,6 +2260,8 @@
           '<div class="weigh-total" id="weigh-total"></div>' +
         '</div>' +
 
+        discountsPanelHtml() +
+
         paymentBlock +
 
         '<div class="submit-bar"><div class="inner">' +
@@ -2330,7 +2341,74 @@
       el('edit-order-btn').addEventListener('click', startEdit);
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
       el('print-order-btn').addEventListener('click', function () { printSingleOrder(o.orderId); });
+      wireDiscounts();
       recomputeWeigh();
+    }
+
+    // ----- Order discounts (named rows, per-row "show on invoice", save) -----
+    function discountsPanelHtml() {
+      return '<div class="panel">' +
+        '<div class="items-head"><h2 style="margin:0">הנחות</h2>' +
+          '<span class="summary" id="disc-total"></span></div>' +
+        '<div id="disc-rows"></div>' +
+        '<button class="btn btn-ghost" id="disc-add">+ הוסף הנחה</button>' +
+        '<button class="btn btn-primary" id="disc-save" style="margin-inline-start:8px">שמור הנחות</button>' +
+        '<div class="field-hint" style="margin-top:8px">הנחה מסומנת “בחשבונית” תופיע כשורה בחשבונית; אחרת היא רק מקטינה את הסכום.</div>' +
+      '</div>';
+    }
+    function discTotal() {
+      return (state.currentDiscounts || []).reduce(function (s, d) { return s + (Number(d.amount) || 0); }, 0);
+    }
+    function renderDiscRows() {
+      var rows = state.currentDiscounts || [];
+      var html = rows.map(function (d, i) {
+        return '<div class="disc-row" data-i="' + i + '">' +
+          '<input class="disc-name" data-i="' + i + '" placeholder="שם ההנחה (למשל: הנחת נאמנות)" value="' + esc(d.name || '') + '">' +
+          '<div class="disc-amt-wrap">₪<input class="disc-amt" data-i="' + i + '" type="number" min="0" step="0.01" inputmode="decimal" value="' + (d.amount || '') + '"></div>' +
+          '<label class="disc-inv"><input type="checkbox" class="disc-show" data-i="' + i + '"' + (d.showOnInvoice ? ' checked' : '') + '> בחשבונית</label>' +
+          '<button class="disc-rm" data-i="' + i + '" title="הסר">✕</button>' +
+        '</div>';
+      }).join('') || '<div class="field-hint">אין הנחות. לחצו “הוסף הנחה”.</div>';
+      el('disc-rows').innerHTML = html;
+      var t = el('disc-total');
+      if (t) t.textContent = discTotal() > 0 ? 'סה״כ הנחה: ' + formatMoney(discTotal()) : '';
+      Array.prototype.forEach.call(el('disc-rows').querySelectorAll('.disc-name'), function (inp) {
+        inp.addEventListener('input', function () { state.currentDiscounts[+this.getAttribute('data-i')].name = this.value; });
+      });
+      Array.prototype.forEach.call(el('disc-rows').querySelectorAll('.disc-amt'), function (inp) {
+        inp.addEventListener('input', function () {
+          state.currentDiscounts[+this.getAttribute('data-i')].amount = Math.max(0, Number(this.value) || 0);
+          var t2 = el('disc-total'); if (t2) t2.textContent = discTotal() > 0 ? 'סה״כ הנחה: ' + formatMoney(discTotal()) : '';
+        });
+      });
+      Array.prototype.forEach.call(el('disc-rows').querySelectorAll('.disc-show'), function (inp) {
+        inp.addEventListener('change', function () { state.currentDiscounts[+this.getAttribute('data-i')].showOnInvoice = this.checked; });
+      });
+      Array.prototype.forEach.call(el('disc-rows').querySelectorAll('.disc-rm'), function (btn) {
+        btn.addEventListener('click', function () { state.currentDiscounts.splice(+this.getAttribute('data-i'), 1); renderDiscRows(); });
+      });
+    }
+    function wireDiscounts() {
+      if (!el('disc-rows')) return;
+      renderDiscRows();
+      el('disc-add').addEventListener('click', function () {
+        state.currentDiscounts.push({ name: '', amount: 0, showOnInvoice: true });
+        renderDiscRows();
+      });
+      el('disc-save').addEventListener('click', function () {
+        var o = state.current; if (!o) return;
+        var rows = (state.currentDiscounts || [])
+          .map(function (d) { return { name: String(d.name || '').trim(), amountAgorot: Math.round((Number(d.amount) || 0) * 100), showOnInvoice: d.showOnInvoice !== false }; })
+          .filter(function (d) { return d.amountAgorot > 0; });
+        var btn = el('disc-save'); btn.disabled = true; btn.textContent = 'שומר…';
+        api('POST', '', { action: 'save-discounts', orderId: o.orderId, payload: { discounts: rows } }).then(function () {
+          showToast('ההנחות נשמרו');
+          openOrder(o.orderId);
+        }).catch(function (err) {
+          btn.disabled = false; btn.textContent = 'שמור הנחות';
+          if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בשמירת ההנחות');
+        });
+      });
     }
 
     // Live final total from the collected weights (kg items) + fixed lines.
@@ -2482,6 +2560,15 @@
       }).join('');
       var itemsEdit = state.currentItems.map(function (it, idx) {
         if (it.removed) return '';
+        // A newly-added weight-priced item is entered by kg (actual weight).
+        if (it.isNew && it.isWeight) {
+          return '<div class="ed-item" data-idx="' + idx + '">' +
+            '<span class="ed-item-name">' + esc(it.name) + ' <span class="ed-new">חדש</span></span>' +
+            '<input class="ed-wkg" type="number" min="0" step="0.01" inputmode="decimal" placeholder="ק״ג" value="' + esc(it.weightKg != null ? it.weightKg : '') + '" data-idx="' + idx + '">' +
+            '<span class="ed-unit">ק״ג</span>' +
+            '<button class="ed-remove" data-idx="' + idx + '" title="הסר">✕</button>' +
+          '</div>';
+        }
         return '<div class="ed-item" data-idx="' + idx + '">' +
           '<span class="ed-item-name">' + esc(it.name) + (it.isNew ? ' <span class="ed-new">חדש</span>' : '') + '</span>' +
           '<input class="ed-qty" type="number" min="0" step="1" value="' + esc(it.quantity) + '" data-idx="' + idx + '">' +
@@ -2511,7 +2598,8 @@
               '<div id="ed-add-results" class="add-results" hidden></div>' +
             '</div>' +
             '<div class="ed-add-row"><select id="ed-add-select">' + buildEdAddOpts(edAddable) + '</select>' +
-            '<input id="ed-add-qty" class="ed-add-qty" type="number" min="1" value="1"><button class="btn btn-ghost" id="ed-add-btn">הוסף</button></div>' +
+            '<input id="ed-add-qty" class="ed-add-qty" type="number" min="0" step="0.01" value="1"><span id="ed-add-unit" class="ed-unit">כמות</span><button class="btn btn-ghost" id="ed-add-btn">הוסף</button></div>' +
+            '<div class="field-hint" id="ed-add-hint">למוצרים לפי משקל יש להזין ק״ג בפועל.</div>' +
           '</div>' +
         '</div>' +
         '<div class="submit-bar"><div class="inner">' +
@@ -2523,9 +2611,23 @@
       view.querySelectorAll('.ed-qty').forEach(function (inp) {
         inp.addEventListener('change', function () { state.currentItems[Number(this.getAttribute('data-idx'))].quantity = Number(this.value); });
       });
+      view.querySelectorAll('.ed-wkg').forEach(function (inp) {
+        inp.addEventListener('input', function () { state.currentItems[Number(this.getAttribute('data-idx'))].weightKg = Math.max(0, Number(this.value) || 0); });
+      });
       view.querySelectorAll('.ed-remove').forEach(function (btn) {
         btn.addEventListener('click', function () { state.currentItems[Number(this.getAttribute('data-idx'))].removed = true; renderDetailEdit(); });
       });
+      // Reflect whether the add-box is a quantity (units) or a weight (kg) for the
+      // currently-selected product.
+      var edIsKgProduct = function (id) {
+        var p = edAddable.find(function (x) { return x.id === id; });
+        return p ? /ק/.test(String(p.priceUnit || p.unit || '')) : false;
+      };
+      var updateEdAddUnit = function () {
+        var kg = edIsKgProduct(el('ed-add-select').value);
+        var u = el('ed-add-unit'); if (u) u.textContent = kg ? 'ק״ג' : 'כמות';
+      };
+      if (el('ed-add-select')) el('ed-add-select').addEventListener('change', updateEdAddUnit);
       var edSearch = el('ed-add-search');
       var edResults = el('ed-add-results');
       if (edSearch) edSearch.addEventListener('input', function () {
@@ -2548,15 +2650,23 @@
         if (edSearch) edSearch.value = p ? p.name : '';
         this.hidden = true; this.innerHTML = '';
       });
-      if (edSearch) edSearch.addEventListener('blur', function () { setTimeout(function () { if (edResults) edResults.hidden = true; }, 150); });
+      if (edSearch) edSearch.addEventListener('blur', function () { setTimeout(function () { if (edResults) edResults.hidden = true; }, 150); updateEdAddUnit(); });
+      updateEdAddUnit();
       var edAddBtn = el('ed-add-btn');
       if (edAddBtn) edAddBtn.addEventListener('click', function () {
         var pid = el('ed-add-select').value;
         if (!pid) { showToast('בחרו מוצר'); return; }
         var p = edAddable.find(function (x) { return x.id === pid; });
         if (!p) return;
-        var qty = Math.max(1, Math.round(Number(el('ed-add-qty').value) || 1));
-        state.currentItems.push({ id: null, productId: p.id, name: p.name, quantity: qty, orderUnit: p.unit || '', isNew: true, removed: false });
+        var val = Number(el('ed-add-qty').value) || 0;
+        if (edIsKgProduct(pid)) {
+          // Weight-priced → add by actual weight (kg).
+          var w = Math.max(0, val);
+          if (!(w > 0)) { showToast('הזינו משקל בק״ג'); return; }
+          state.currentItems.push({ id: null, productId: p.id, name: p.name, isWeight: true, weightKg: w, orderUnit: 'ק״ג', isNew: true, removed: false });
+        } else {
+          state.currentItems.push({ id: null, productId: p.id, name: p.name, quantity: Math.max(1, Math.round(val || 1)), orderUnit: p.unit || '', isNew: true, removed: false });
+        }
         renderDetailEdit();
       });
       el('save-edit').addEventListener('click', saveEdit);
@@ -2569,9 +2679,18 @@
       el('detail-view').querySelectorAll('.ed-qty').forEach(function (inp) {
         state.currentItems[Number(inp.getAttribute('data-idx'))].quantity = Number(inp.value);
       });
+      el('detail-view').querySelectorAll('.ed-wkg').forEach(function (inp) {
+        state.currentItems[Number(inp.getAttribute('data-idx'))].weightKg = Math.max(0, Number(inp.value) || 0);
+      });
       var items = state.currentItems
-        .filter(function (it) { return !it.removed && Number(it.quantity) > 0; })
-        .map(function (it) { return it.id ? { id: it.id, quantity: Number(it.quantity) } : { productId: it.productId, quantity: Number(it.quantity) }; });
+        .filter(function (it) {
+          if (it.removed) return false;
+          return it.isWeight ? Number(it.weightKg) > 0 : Number(it.quantity) > 0;
+        })
+        .map(function (it) {
+          if (it.id) return { id: it.id, quantity: Number(it.quantity) };
+          return it.isWeight ? { productId: it.productId, weightKg: Number(it.weightKg) } : { productId: it.productId, quantity: Number(it.quantity) };
+        });
       if (!items.length) { showToast('חייב להישאר מוצר אחד לפחות (לביטול ההזמנה השתמשו בכפתור בטל)'); return; }
       var payload = {
         fullName: el('ed-name').value, phone: el('ed-phone').value, email: el('ed-email').value,
