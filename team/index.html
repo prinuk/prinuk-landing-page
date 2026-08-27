@@ -525,6 +525,7 @@
     .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
     .ed-new { font-size: 11px; font-weight: 700; color: #6a4fb0; background: #ece7fa; border-radius: 999px; padding: 1px 7px; }
     .quick-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line, #e3e8e0); }
+    .qa-unit-sel { flex: 0 0 auto; padding: 7px 6px; border: 1px solid #ddd; border-radius: 8px; font: inherit; background: #fff; }
     .disc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
     .disc-row .disc-name { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; }
     .disc-amt-wrap { display: inline-flex; align-items: center; gap: 4px; }
@@ -2356,9 +2357,10 @@
           '<div id="qa-results" class="add-results" hidden></div>' +
         '</div>' +
         '<div class="ed-add-row"><select id="qa-select"></select>' +
-          '<input id="qa-qty" class="ed-add-qty" type="number" min="0" step="0.01" value="1"><span id="qa-unit" class="ed-unit">כמות</span>' +
+          '<input id="qa-qty" class="ed-add-qty" type="number" min="0" step="0.01" value="1">' +
+          '<select id="qa-unit" class="qa-unit-sel"><option value="unit">יחידות</option><option value="kg">ק״ג</option></select>' +
           '<button class="btn btn-ghost" id="qa-btn">הוסף</button></div>' +
-        '<div class="field-hint">מוסיף שורה חדשה (גם למוצר שכבר בהזמנה). למוצר לפי משקל — הזינו ק״ג.</div>' +
+        '<div class="field-hint">מוסיף שורה חדשה (גם למוצר שכבר בהזמנה). בחרו יחידות או ק״ג — המחיר יחושב בהתאם.</div>' +
       '</div>';
     }
     function wireQuickAdd() {
@@ -2375,7 +2377,8 @@
         };
         if (el('qa-select')) el('qa-select').innerHTML = buildOpts(addable);
         var isKg = function (id) { var p = addable.find(function (x) { return x.id === id; }); return p ? /ק/.test(String(p.priceUnit || p.unit || '')) : false; };
-        var updUnit = function () { var u = el('qa-unit'); if (u) u.textContent = isKg(el('qa-select').value) ? 'ק״ג' : 'כמות'; };
+        // Default the measure dropdown to the product's natural unit; the team can override.
+        var updUnit = function () { var u = el('qa-unit'); if (u) u.value = isKg(el('qa-select').value) ? 'kg' : 'unit'; };
         var searchEl = el('qa-search');
         var resultsEl = el('qa-results');
         if (searchEl) searchEl.addEventListener('input', function () {
@@ -2404,8 +2407,9 @@
           var pid = el('qa-select').value;
           if (!pid) { showToast('בחרו מוצר'); return; }
           var val = Number(el('qa-qty').value) || 0;
-          var payload = { productId: pid };
-          if (isKg(pid)) {
+          var measure = el('qa-unit') ? el('qa-unit').value : (isKg(pid) ? 'kg' : 'unit');
+          var payload = { productId: pid, unit: measure };
+          if (measure === 'kg') {
             if (!(val > 0)) { showToast('הזינו משקל בק״ג'); return; }
             payload.weightKg = val;
           } else {
