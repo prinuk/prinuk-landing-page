@@ -524,6 +524,7 @@
     .ed-unit { color: var(--muted); font-size: 13px; min-width: 40px; }
     .ed-remove { border: 1px solid var(--danger, #d23030); color: var(--danger, #d23030); background: #fff; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
     .ed-new { font-size: 11px; font-weight: 700; color: #6a4fb0; background: #ece7fa; border-radius: 999px; padding: 1px 7px; }
+    .quick-add { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line, #e3e8e0); }
     .disc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
     .disc-row .disc-name { flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font: inherit; }
     .disc-amt-wrap { display: inline-flex; align-items: center; gap: 4px; }
@@ -2258,6 +2259,7 @@
           '</div>' +
           itemsHtml +
           '<div class="weigh-total" id="weigh-total"></div>' +
+          quickAddHtml() +
         '</div>' +
 
         discountsPanelHtml() +
@@ -2342,7 +2344,83 @@
       el('cancel-order-btn').addEventListener('click', cancelOrderConfirm);
       el('print-order-btn').addEventListener('click', function () { printSingleOrder(o.orderId); });
       wireDiscounts();
+      wireQuickAdd();
       recomputeWeigh();
+    }
+
+    // ----- Quick-add a product to the order (one tap, no full edit) -----
+    function quickAddHtml() {
+      return '<div class="quick-add">' +
+        '<div class="cr-add-combo">' +
+          '<input id="qa-search" class="ed-add-search" type="search" inputmode="search" autocomplete="off" placeholder="➕ הוספת מוצר להזמנה…">' +
+          '<div id="qa-results" class="add-results" hidden></div>' +
+        '</div>' +
+        '<div class="ed-add-row"><select id="qa-select"></select>' +
+          '<input id="qa-qty" class="ed-add-qty" type="number" min="0" step="0.01" value="1"><span id="qa-unit" class="ed-unit">כמות</span>' +
+          '<button class="btn btn-ghost" id="qa-btn">הוסף</button></div>' +
+        '<div class="field-hint">מוסיף שורה חדשה (גם למוצר שכבר בהזמנה). למוצר לפי משקל — הזינו ק״ג.</div>' +
+      '</div>';
+    }
+    function wireQuickAdd() {
+      if (!el('qa-btn')) return;
+      var ensure = (state.products && state.products.length)
+        ? Promise.resolve()
+        : api('GET', '?action=products').then(function (d) { state.products = d.products || []; state.departments = d.departments || state.departments; }).catch(function () {});
+      ensure.then(function () {
+        var addable = (state.products || []).filter(function (p) { return p.state !== 'hidden' && p.price; });
+        var buildOpts = function (list) {
+          return '<option value="">+ בחר מוצר…</option>' + list.map(function (p) {
+            return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + formatMoney(p.price) + ')</option>';
+          }).join('');
+        };
+        if (el('qa-select')) el('qa-select').innerHTML = buildOpts(addable);
+        var isKg = function (id) { var p = addable.find(function (x) { return x.id === id; }); return p ? /ק/.test(String(p.priceUnit || p.unit || '')) : false; };
+        var updUnit = function () { var u = el('qa-unit'); if (u) u.textContent = isKg(el('qa-select').value) ? 'ק״ג' : 'כמות'; };
+        var searchEl = el('qa-search');
+        var resultsEl = el('qa-results');
+        if (searchEl) searchEl.addEventListener('input', function () {
+          var q = this.value.trim().toLowerCase();
+          var filtered = !q ? addable : addable.filter(function (p) { return (p.name || '').toLowerCase().indexOf(q) !== -1; });
+          el('qa-select').innerHTML = buildOpts(filtered);
+          if (filtered.length === 1) el('qa-select').value = filtered[0].id;
+          updUnit();
+          if (!q) { resultsEl.hidden = true; resultsEl.innerHTML = ''; return; }
+          resultsEl.innerHTML = filtered.slice(0, 8).map(function (p) {
+            return '<button type="button" class="add-result" data-id="' + esc(p.id) + '">' + esc(p.name) + ' <span class="add-result-price">' + formatMoney(p.price) + '</span></button>';
+          }).join('') || '<div class="add-noresult">לא נמצאו מוצרים</div>';
+          resultsEl.hidden = false;
+        });
+        if (resultsEl) resultsEl.addEventListener('click', function (e) {
+          var btn = e.target.closest('.add-result'); if (!btn) return;
+          var id = btn.getAttribute('data-id');
+          var p = addable.find(function (x) { return x.id === id; });
+          el('qa-select').value = id; if (searchEl) searchEl.value = p ? p.name : '';
+          updUnit(); this.hidden = true; this.innerHTML = '';
+        });
+        if (searchEl) searchEl.addEventListener('blur', function () { setTimeout(function () { if (resultsEl) resultsEl.hidden = true; }, 150); });
+        if (el('qa-select')) el('qa-select').addEventListener('change', updUnit);
+        el('qa-btn').addEventListener('click', function () {
+          var o = state.current; if (!o) return;
+          var pid = el('qa-select').value;
+          if (!pid) { showToast('בחרו מוצר'); return; }
+          var val = Number(el('qa-qty').value) || 0;
+          var payload = { productId: pid };
+          if (isKg(pid)) {
+            if (!(val > 0)) { showToast('הזינו משקל בק״ג'); return; }
+            payload.weightKg = val;
+          } else {
+            payload.quantity = Math.max(1, Math.round(val || 1));
+          }
+          var btn = el('qa-btn'); btn.disabled = true; btn.textContent = 'מוסיף…';
+          api('POST', '', { action: 'add-item', orderId: o.orderId, payload: payload }).then(function (r) {
+            showToast('נוסף: ' + ((r && r.name) || 'מוצר'));
+            openOrder(o.orderId);
+          }).catch(function (err) {
+            btn.disabled = false; btn.textContent = 'הוסף';
+            if (err.message !== 'unauthorized') showToast(err.message || 'שגיאה בהוספת המוצר');
+          });
+        });
+      });
     }
 
     // ----- Order discounts (named rows, per-row "show on invoice", save) -----

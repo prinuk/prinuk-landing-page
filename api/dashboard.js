@@ -26,6 +26,7 @@ const {
   getOrdersPaymentInfo,
   collectPayment,
   adminUpdateOrder,
+  addOrderItem,
   ORDER_STATUS_NEW,
   ORDER_STATUS_PICKING,
   ORDER_STATUS_COLLECTED,
@@ -605,6 +606,18 @@ module.exports = async function handler(req, res) {
       if (action === 'save-discounts') {
         const result = await saveOrderDiscounts(orderId, body.payload || {});
         if (!result.ok) return res.status(404).json({ error: 'ההזמנה לא נמצאה.' });
+        return res.json(result);
+      }
+
+      if (action === 'add-item') {
+        const result = await addOrderItem(orderId, body.payload || {});
+        if (!result.ok) {
+          const msg = result.reason === 'notfound' ? 'ההזמנה לא נמצאה.'
+            : result.reason === 'no-product' ? 'המוצר לא נמצא.'
+            : result.reason === 'bad-weight' ? 'יש להזין משקל תקין.'
+            : 'לא ניתן להוסיף את המוצר.';
+          return res.status(400).json({ error: msg });
+        }
         return res.json(result);
       }
 
