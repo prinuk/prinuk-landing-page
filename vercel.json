@@ -18,6 +18,36 @@
   },
   "routes": [
     {
+      "src": "^/(?!api(?:/|$)|team(?:/|$)|assets/|_vercel/).*$",
+      "has": [{ "type": "host", "value": "prinuk.co.il" }],
+      "status": 301,
+      "headers": { "Location": "https://shuklick.co.il/?from=prinuk" }
+    },
+    {
+      "src": "^/(?!api(?:/|$)|team(?:/|$)|assets/|_vercel/).*$",
+      "has": [{ "type": "host", "value": "www.prinuk.co.il" }],
+      "status": 301,
+      "headers": { "Location": "https://shuklick.co.il/?from=prinuk" }
+    },
+    {
+      "src": "^/(?!api(?:/|$)|team(?:/|$)|assets/|_vercel/).*$",
+      "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
+      "status": 301,
+      "headers": { "Location": "https://shuklick.co.il/?from=prinuk" }
+    },
+    {
+      "src": "^/(?!api(?:/|$)|team(?:/|$)|assets/|_vercel/).*$",
+      "has": [{ "type": "host", "value": "test.prinuk.co.il" }],
+      "status": 301,
+      "headers": { "Location": "https://test.shuklick.co.il/?from=prinuk" }
+    },
+    {
+      "src": "^/(?!api(?:/|$)|team(?:/|$)|assets/|_vercel/).*$",
+      "has": [{ "type": "host", "value": "test.order.prinuk.co.il" }],
+      "status": 301,
+      "headers": { "Location": "https://test.shuklick.co.il/?from=prinuk" }
+    },
+    {
       "src": "/team",
       "has": [{ "type": "host", "value": "order.prinuk.co.il" }],
       "dest": "/team/index.html"

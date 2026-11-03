@@ -9,7 +9,9 @@ const { logQrScan } = require('../lib/store');
 
 // Fixed destination — never an open redirect (we never honour a caller-supplied
 // target URL). To send different codes elsewhere later, add them to this map.
-const DEFAULT_DESTINATION = 'https://order.prinuk.co.il/';
+// Prinuk moved to השוק (shuklick.co.il) — printed QR codes now land there,
+// tagged ?from=prinuk so the new site shows its welcome message.
+const DEFAULT_DESTINATION = 'https://shuklick.co.il/?from=prinuk';
 const DESTINATIONS = {
   // main: 'https://order.prinuk.co.il/',
 };
